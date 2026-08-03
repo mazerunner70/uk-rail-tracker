@@ -2,6 +2,7 @@ package com.ukrailtracker.app.data.mapper
 
 import com.ukrailtracker.app.data.local.db.StationEntity
 import com.ukrailtracker.app.domain.model.Station
+import com.ukrailtracker.app.domain.model.StationAccessibility
 import org.json.JSONObject
 
 fun StationEntity.toDomain(): Station {
@@ -33,5 +34,29 @@ fun StationEntity.toDomain(): Station {
         operatorCode = operatorCode,
         addressLines = lines,
         postcode = postcode,
+        accessibility = accessibilityJson.toAccessibility(),
+        stationMapUrl = stationMapUrl,
     )
+}
+
+private fun String?.toAccessibility(): StationAccessibility {
+    if (this.isNullOrBlank()) return StationAccessibility()
+    return runCatching {
+        val obj = JSONObject(this)
+        StationAccessibility(
+            stepFreeCategory = obj.optString("stepFree").takeIf { it.isNotBlank() },
+            rampAvailable = if (obj.has("rampAvailable")) obj.optBoolean("rampAvailable") else null,
+            tactilePaving = obj.optString("tactilePaving").takeIf { it.isNotBlank() },
+            wheelchairsAvailable = if (obj.has("wheelchairsAvailable")) {
+                obj.optBoolean("wheelchairsAvailable")
+            } else {
+                null
+            },
+            accessibleToiletsAvailable = if (obj.has("accessibleToilets")) {
+                obj.optBoolean("accessibleToilets")
+            } else {
+                null
+            },
+        )
+    }.getOrDefault(StationAccessibility())
 }

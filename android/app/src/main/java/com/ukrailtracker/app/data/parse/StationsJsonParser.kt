@@ -1,6 +1,7 @@
 package com.ukrailtracker.app.data.parse
 
 import android.util.JsonReader
+import android.util.JsonToken
 import com.ukrailtracker.app.data.local.db.StationEntity
 import com.ukrailtracker.app.data.source.SourcePayload
 import org.json.JSONObject
@@ -13,7 +14,7 @@ data class StationWriteBatch(
 )
 
 /** Bump when the bundled asset format or content generation changes. */
-const val STATIONS_ASSET_VERSION = 1
+const val STATIONS_ASSET_VERSION = 2
 
 class StationsJsonParser {
     fun parse(payload: SourcePayload): StationWriteBatch {
@@ -45,6 +46,9 @@ class StationsJsonParser {
         var operatorName = ""
         var operatorCode = ""
         var addressJson: String? = null
+        var accessibilityJson: String? = null
+        var stationMapUrl: String? = null
+        var accessibleToilets: Boolean? = null
 
         reader.beginObject()
         while (reader.hasNext()) {
@@ -63,7 +67,7 @@ class StationsJsonParser {
                     reader.endObject()
                 }
                 "stationOperator" -> {
-                    if (reader.peek() == android.util.JsonToken.NULL) {
+                    if (reader.peek() == JsonToken.NULL) {
                         reader.nextNull()
                     } else {
                         reader.beginObject()
@@ -78,11 +82,31 @@ class StationsJsonParser {
                     }
                 }
                 "address" -> {
-                    if (reader.peek() == android.util.JsonToken.NULL) {
+                    if (reader.peek() == JsonToken.NULL) {
                         reader.nextNull()
                     } else {
-                        // Consume object into a compact JSON string for detail screen
-                        addressJson = readObjectAsJsonString(reader)
+                        addressJson = readFlatObjectAsJsonString(reader)
+                    }
+                }
+                "stationAccessibility" -> {
+                    if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                    } else {
+                        accessibilityJson = parseAccessibilitySummary(reader)
+                    }
+                }
+                "toiletsAndChanging" -> {
+                    if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                    } else {
+                        accessibleToilets = parseAccessibleToilets(reader)
+                    }
+                }
+                "stationMap" -> {
+                    if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                    } else {
+                        stationMapUrl = parseStationMapUrl(reader)
                     }
                 }
                 else -> reader.skipValue()
@@ -93,6 +117,11 @@ class StationsJsonParser {
         if (crs.isNullOrBlank() || name.isNullOrBlank() || lat == null || lng == null) {
             return null
         }
+
+        if (accessibleToilets != null) {
+            accessibilityJson = mergeAccessibleToilets(accessibilityJson, accessibleToilets)
+        }
+
         return StationEntity(
             crsCode = crs,
             name = name,
@@ -101,26 +130,133 @@ class StationsJsonParser {
             operatorName = operatorName,
             operatorCode = operatorCode,
             addressJson = addressJson,
+            accessibilityJson = accessibilityJson,
+            stationMapUrl = stationMapUrl,
         )
     }
 
-    /**
-     * JsonReader has already consumed the name; peek is BEGIN_OBJECT.
-     * Rebuild a minimal JSON object string for later display.
-     */
-    private fun readObjectAsJsonString(reader: JsonReader): String {
+    private fun parseAccessibilitySummary(reader: JsonReader): String {
+        var stepFree: String? = null
+        var rampAvailable: Boolean? = null
+        var tactilePaving: String? = null
+        var wheelchairsAvailable: Boolean? = null
+
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "stepFreeCategory" -> {
+                    if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                    } else {
+                        reader.beginObject()
+                        while (reader.hasNext()) {
+                            when (reader.nextName()) {
+                                "category" -> stepFree = readNullableString(reader)
+                                else -> reader.skipValue()
+                            }
+                        }
+                        reader.endObject()
+                    }
+                }
+                "trainRamp" -> {
+                    if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                    } else {
+                        reader.beginObject()
+                        while (reader.hasNext()) {
+                            when (reader.nextName()) {
+                                "available" -> rampAvailable = reader.nextBoolean()
+                                else -> reader.skipValue()
+                            }
+                        }
+                        reader.endObject()
+                    }
+                }
+                "tactilePaving" -> tactilePaving = readNullableString(reader)
+                "wheelchairsAvailable" -> {
+                    if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                    } else {
+                        wheelchairsAvailable = reader.nextBoolean()
+                    }
+                }
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+
+        val obj = JSONObject()
+        stepFree?.let { obj.put("stepFree", it) }
+        rampAvailable?.let { obj.put("rampAvailable", it) }
+        tactilePaving?.let { obj.put("tactilePaving", it) }
+        wheelchairsAvailable?.let { obj.put("wheelchairsAvailable", it) }
+        return obj.toString()
+    }
+
+    private fun parseAccessibleToilets(reader: JsonReader): Boolean? {
+        var result: Boolean? = null
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "toilets" -> {
+                    if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                    } else {
+                        reader.beginObject()
+                        while (reader.hasNext()) {
+                            when (reader.nextName()) {
+                                "accessibleToiletsAvailable" -> {
+                                    if (reader.peek() == JsonToken.NULL) {
+                                        reader.nextNull()
+                                    } else {
+                                        result = reader.nextBoolean()
+                                    }
+                                }
+                                else -> reader.skipValue()
+                            }
+                        }
+                        reader.endObject()
+                    }
+                }
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+        return result
+    }
+
+    private fun parseStationMapUrl(reader: JsonReader): String? {
+        var url: String? = null
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "url" -> url = readNullableString(reader)
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+        return url?.takeIf { it.isNotBlank() }
+    }
+
+    private fun mergeAccessibleToilets(existing: String?, accessibleToilets: Boolean): String {
+        val obj = existing?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
+        obj.put("accessibleToilets", accessibleToilets)
+        return obj.toString()
+    }
+
+    private fun readFlatObjectAsJsonString(reader: JsonReader): String {
         val map = linkedMapOf<String, String?>()
         reader.beginObject()
         while (reader.hasNext()) {
             val key = reader.nextName()
             when (reader.peek()) {
-                android.util.JsonToken.NULL -> {
+                JsonToken.NULL -> {
                     reader.nextNull()
                     map[key] = null
                 }
-                android.util.JsonToken.STRING -> map[key] = reader.nextString()
-                android.util.JsonToken.NUMBER -> map[key] = reader.nextString()
-                android.util.JsonToken.BOOLEAN -> map[key] = reader.nextBoolean().toString()
+                JsonToken.STRING -> map[key] = reader.nextString()
+                JsonToken.NUMBER -> map[key] = reader.nextString()
+                JsonToken.BOOLEAN -> map[key] = reader.nextBoolean().toString()
                 else -> {
                     reader.skipValue()
                     map[key] = null
@@ -132,4 +268,17 @@ class StationsJsonParser {
         map.forEach { (k, v) -> obj.put(k, v ?: JSONObject.NULL) }
         return obj.toString()
     }
+
+    private fun readNullableString(reader: JsonReader): String? =
+        when (reader.peek()) {
+            JsonToken.NULL -> {
+                reader.nextNull()
+                null
+            }
+            JsonToken.STRING -> reader.nextString()
+            else -> {
+                reader.skipValue()
+                null
+            }
+        }
 }

@@ -4,7 +4,7 @@ A native Android app for live UK rail information — nearby stations, contextua
 
 ## Status
 
-Early development. The Android app is a Hello World scaffold (v0.1.0). Station reference data (2,612 stations) is collected; live rail API integration is next.
+**M1 in progress / nearly complete:** nearby stations (GPS), station search, static detail with accessibility, and live departure boards via Darwin OpenLDBWS. Home / Journeys / Settings remain placeholders for M2+.
 
 ## Documentation
 
@@ -16,9 +16,10 @@ Early development. The Android app is a Hello World scaffold (v0.1.0). Station r
 | Doc | Description |
 |-----|-------------|
 | [Milestone roadmap](docs/milestone-roadmap.md) | M0–M6 delivery plan |
+| [M0+M1 nearby plan](docs/m0-m1-nearby-plan.md) | Nearby slice + M1 remainder |
 | [Product vision](docs/product-vision.md) | Goals, audience, design principles |
 | [Architecture](docs/architecture.md) | App layers, Room schema, privacy |
-| [Data sources](docs/data-sources.md) | TransportAPI / Darwin setup |
+| [Data sources](docs/data-sources.md) | Darwin / TransportAPI setup |
 | [Compensation guide](docs/compensation-guide.md) | Delay Repay rules by operator |
 
 ## Project structure
@@ -32,6 +33,21 @@ uk-rail-tracker/
 ```
 
 ## Build the Android app
+
+Add your Rail Data Marketplace **consumer key** to `android/local.properties` (gitignored):
+
+```properties
+sdk.dir=/path/to/Android/Sdk
+DARWIN_LDB_API_KEY=your_consumer_key
+```
+
+Live boards call:
+
+`GET https://api1.raildata.org.uk/1010-live-arrival-and-departure-boards-arr-and-dep1_1/LDBWS/api/20220120/GetArrDepBoardWithDetails/{CRS}`
+
+with header `x-apikey: <consumer key>`.
+
+Then:
 
 ```bash
 cd android

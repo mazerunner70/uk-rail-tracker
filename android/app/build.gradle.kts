@@ -1,8 +1,15 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use(::load)
 }
 
 android {
@@ -13,10 +20,16 @@ android {
         applicationId = "com.ukrailtracker.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Rail Data Marketplace consumer key (x-apikey). Falls back to legacy DARWIN_LDB_TOKEN.
+        val ldbApiKey = localProperties.getProperty("DARWIN_LDB_API_KEY")
+            ?: localProperties.getProperty("DARWIN_LDB_TOKEN")
+            ?: ""
+        buildConfigField("String", "DARWIN_LDB_API_KEY", "\"$ldbApiKey\"")
     }
 
     buildTypes {
@@ -38,6 +51,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -73,11 +87,14 @@ dependencies {
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    // Real org.json for JVM unit tests (android.jar stubs throw by default)
+    testImplementation("org.json:json:20240303")
 }
 
 // Copy repo-root stations.xml into assets as stations.json (do not commit the generated copy).

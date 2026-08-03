@@ -20,16 +20,30 @@
     <string name="nearby_permission_title">Location needed</string>
     <string name="nearby_permission_body">Allow location access to sort stations by distance from you.</string>
     <string name="nearby_permission_allow">Allow location</string>
-    <string name="nearby_permission_denied">Location permission denied. Enable it in system settings to see nearby stations.</string>
+    <string name="nearby_permission_denied">Location permission denied. Enable it in system settings to see nearby stations, or search by name.</string>
     <string name="nearby_location_unavailable">Could not read your location. Try again outdoors or set a mock location on the emulator.</string>
     <string name="nearby_empty">No stations found near you.</string>
     <string name="nearby_error">Something went wrong loading stations.</string>
     <string name="nearby_open_settings">Open settings</string>
 
+    <string name="search_title">Search</string>
+    <string name="search_hint">Station name or CRS</string>
+    <string name="search_recent">Recent</string>
+    <string name="search_empty_prompt">Search all UK stations by name or CRS code.</string>
+    <string name="search_loading">Searching…</string>
+    <string name="search_no_results">No stations match that search.</string>
+
     <string name="station_detail_title">Station</string>
     <string name="station_crs">CRS</string>
     <string name="station_operator">Operator</string>
     <string name="station_address">Address</string>
+    <string name="station_accessibility">Accessibility</string>
+    <string name="station_open_map">Open station map</string>
+    <string name="station_board_title">Live board</string>
+    <string name="station_board_loading">Loading departures…</string>
+    <string name="station_board_empty">No services in the current window.</string>
+    <string name="station_board_refresh">Refresh board</string>
     <string name="station_not_found">Station not found</string>
+    <string name="powered_by_national_rail">Powered by National Rail</string>
     <string name="back">Back</string>
 </resources>

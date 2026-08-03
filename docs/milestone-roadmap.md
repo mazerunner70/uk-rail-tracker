@@ -79,11 +79,11 @@ gantt
 
 ### Acceptance criteria
 
-- [ ] Standing at or near a real station, it appears in the top 3 nearby results
-- [ ] Departure board shows live data with correct delay/cancel indicators
-- [ ] Pull-to-refresh updates the board; stale data shows timestamp
-- [ ] Station detail renders accessibility info from bundled data
-- [ ] Search finds stations by partial name (e.g. "Kings" → King's Cross)
+- [x] Standing at or near a real station, it appears in the top 3 nearby results
+- [x] Departure board shows live data with correct delay/cancel indicators
+- [x] Pull-to-refresh updates the board; stale data shows timestamp
+- [x] Station detail renders accessibility info from bundled data
+- [x] Search finds stations by partial name (e.g. "Kings" → King's Cross)
 
 ### Sub-milestone M1.1 (optional)
 

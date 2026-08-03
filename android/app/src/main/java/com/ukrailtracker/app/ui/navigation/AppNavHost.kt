@@ -32,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ukrailtracker.app.R
 import com.ukrailtracker.app.ui.nearby.NearbyRoute
+import com.ukrailtracker.app.ui.search.SearchRoute
 import com.ukrailtracker.app.ui.station.StationDetailRoute
 import com.ukrailtracker.app.ui.theme.NeonBackground
 import com.ukrailtracker.app.ui.theme.NeonCyan
@@ -43,6 +44,7 @@ object Routes {
     const val Nearby = "nearby"
     const val Journeys = "journeys"
     const val Settings = "settings"
+    const val Search = "search"
     const val StationDetail = "station/{crs}"
     fun stationDetail(crs: String) = "station/$crs"
 }
@@ -116,6 +118,9 @@ fun AppNavHost() {
                     onStationClick = { crs ->
                         navController.navigate(Routes.stationDetail(crs))
                     },
+                    onSearchClick = {
+                        navController.navigate(Routes.Search)
+                    },
                 )
             }
             composable(Routes.Journeys) {
@@ -123,6 +128,14 @@ fun AppNavHost() {
             }
             composable(Routes.Settings) {
                 PlaceholderScreen(stringResource(R.string.placeholder_settings))
+            }
+            composable(Routes.Search) {
+                SearchRoute(
+                    onBack = { navController.popBackStack() },
+                    onStationClick = { crs ->
+                        navController.navigate(Routes.stationDetail(crs))
+                    },
+                )
             }
             composable(
                 route = Routes.StationDetail,

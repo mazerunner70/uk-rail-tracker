@@ -188,32 +188,25 @@ flowchart LR
 | M4 | Historic Service Performance (HSP) | HSP JSON API |
 | Later | Darwin Push Port | Only with a backend consumer |
 
-3. Copy API credentials from **My Feeds** (OpenLDBWS uses an **AccessToken** in the SOAP header — `TokenValue`).
+3. Copy the **consumer key** from the product **Specification** tab (sent as `x-apikey`).
 4. Store in `android/local.properties` (gitignored):
 
 ```properties
-DARWIN_LDB_TOKEN=your_token_from_my_feeds
+DARWIN_LDB_API_KEY=your_consumer_key_from_specification
 # Add other keys if RTJP/OJP / HSP use separate credentials
 ```
 
-5. Expose via `BuildConfig` in `app/build.gradle.kts`:
-
-```kotlin
-android {
-    defaultConfig {
-        buildConfigField("String", "DARWIN_LDB_TOKEN",
-            "\"${project.findProperty("DARWIN_LDB_TOKEN") ?: ""}\"")
-    }
-    buildFeatures { buildConfig = true }
-}
-```
+5. Expose via `BuildConfig` in `app/build.gradle.kts` (read only in `data/remote/`).
 
 **Never** pass `BuildConfig` values into Composables or domain models — only into `data/remote/` client factories.
 
 ### Primary train-movement call: `GetArrDepBoardWithDetails`
 
-**Docs**: [OpenLDBWS](https://lite.realtime.nationalrail.co.uk/OpenLDBWS/) · [Wiki](https://wiki.openraildata.com/index.php/GetArrDepBoardWithDetails)  
-**Endpoint**: `https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx` (use the version listed on your My Feeds / current WSDL — historically `ldb9`–`ldb11`)
+**Product**: Rail Data Marketplace — Live Arrival and Departure Boards  
+**Host**: `https://api1.raildata.org.uk`  
+**Path**: `/1010-live-arrival-and-departure-boards-arr-and-dep1_1/LDBWS/api/20220120/GetArrDepBoardWithDetails/{crs}`  
+**Auth**: `x-apikey: <consumer key>`  
+**Response**: JSON `StationBoardWithDetails` (also accepts XML)
 
 Returns a **`StationBoardWithDetails`**: public arrivals **and** departures for a CRS within a time window, **including service details** (calling points, delays, cancellation reasons) on each row.
 
@@ -296,7 +289,7 @@ Optional TransportAPI / Huxley implementations must still parse into the **same*
 
 - **`GetArrDepBoardWithDetails` is the default train-movement path** for boards and per-service calling points.
 - Parse SOAP XML only in `data/parse` / `data/mapper` — never in Composables.
-- Prefer OkHttp + hand-built SOAP envelope (or a thin wrapper) over a heavyweight SOAP stack on Android; keep the AccessToken out of logs.
+- Prefer OkHttp GET + JSON parse on Android; keep the `x-apikey` out of logs.
 - **Rate / volume**: poll while foregrounded; 15 min background for favourites; board responses are larger than plain boards — cache the parsed store, not raw XML, where possible.
 - **Attribution**: show “Powered by National Rail” in Settings / About per NRE developer guidelines.
 

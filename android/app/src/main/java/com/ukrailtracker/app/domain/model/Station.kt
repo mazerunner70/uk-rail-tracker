@@ -9,6 +9,16 @@ data class Station(
     val operatorCode: String,
     val addressLines: List<String> = emptyList(),
     val postcode: String? = null,
+    val accessibility: StationAccessibility = StationAccessibility(),
+    val stationMapUrl: String? = null,
+)
+
+data class StationAccessibility(
+    val stepFreeCategory: String? = null,
+    val rampAvailable: Boolean? = null,
+    val tactilePaving: String? = null,
+    val wheelchairsAvailable: Boolean? = null,
+    val accessibleToiletsAvailable: Boolean? = null,
 )
 
 data class StationWithDistance(

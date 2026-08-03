@@ -299,7 +299,18 @@ adb emu geo fix -0.177 51.517
 
 ## Next after this slice
 
-1. Wire OpenLDBWS **`GetArrDepBoardWithDetails`** behind `DepartureRepository` ([data-sources.md](data-sources.md)).
-2. Station detail live board + pull-to-refresh / staleness.
-3. Search across all stations; favourites DataStore.
-4. Finish remaining M0 placeholders (Home / Journeys / Settings behaviour).
+1. ~~Wire OpenLDBWS **`GetArrDepBoardWithDetails`** behind `DepartureRepository`~~ — done (M1 remainder)
+2. ~~Station detail live board + pull-to-refresh / staleness~~ — done
+3. ~~Search across all stations; recent searches DataStore~~ — done
+4. Finish remaining M0 placeholders (Home / Journeys / Settings behaviour) — M2+
+5. Favourites DataStore + WorkManager background refresh — M2
+
+### M1 remainder status (2026-08-03)
+
+| Deliverable | Status |
+|-------------|--------|
+| OpenLDBWS `GetArrDepBoardWithDetails` + Room `departure_cache` | Done |
+| Station detail live board + refresh + stale badge | Done |
+| Accessibility + station map from bundled asset | Done |
+| Station search by name/CRS + recent searches | Done |
+| Requires `DARWIN_LDB_TOKEN` in `android/local.properties` | Setup |

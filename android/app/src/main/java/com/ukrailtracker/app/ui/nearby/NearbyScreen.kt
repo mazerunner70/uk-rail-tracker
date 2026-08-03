@@ -24,12 +24,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +54,7 @@ import com.ukrailtracker.app.ui.theme.UkRailTrackerTheme
 @Composable
 fun NearbyRoute(
     onStationClick: (String) -> Unit,
+    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -112,6 +115,7 @@ fun NearbyRoute(
             context.startActivity(intent)
         },
         onStationClick = onStationClick,
+        onSearchClick = onSearchClick,
         modifier = modifier,
     )
 }
@@ -123,6 +127,7 @@ fun NearbyScreen(
     onRefresh: () -> Unit,
     onOpenSettings: () -> Unit,
     onStationClick: (String) -> Unit,
+    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -142,6 +147,13 @@ fun NearbyScreen(
                 color = NeonCyan,
                 modifier = Modifier.weight(1f),
             )
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = stringResource(R.string.search_title),
+                    tint = NeonCyan,
+                )
+            }
             if (state is NearbyUiState.Content || state is NearbyUiState.LocationUnavailable) {
                 IconButton(onClick = onRefresh) {
                     Icon(
@@ -167,22 +179,30 @@ fun NearbyScreen(
                 body = stringResource(R.string.nearby_permission_body),
                 primaryLabel = stringResource(R.string.nearby_permission_allow),
                 onPrimary = onAllowLocation,
+                secondaryLabel = stringResource(R.string.search_title),
+                onSecondary = onSearchClick,
             )
             NearbyUiState.PermissionDenied -> PermissionPane(
                 title = stringResource(R.string.nearby_permission_title),
                 body = stringResource(R.string.nearby_permission_denied),
                 primaryLabel = stringResource(R.string.nearby_open_settings),
                 onPrimary = onOpenSettings,
+                secondaryLabel = stringResource(R.string.search_title),
+                onSecondary = onSearchClick,
             )
             NearbyUiState.LocationUnavailable -> StatusPane(
                 message = stringResource(R.string.nearby_location_unavailable),
                 actionLabel = stringResource(R.string.nearby_refresh),
                 onAction = onRefresh,
+                secondaryLabel = stringResource(R.string.search_title),
+                onSecondary = onSearchClick,
             )
             is NearbyUiState.Error -> StatusPane(
                 message = state.message ?: stringResource(R.string.nearby_error),
                 actionLabel = stringResource(R.string.nearby_refresh),
                 onAction = onRefresh,
+                secondaryLabel = stringResource(R.string.search_title),
+                onSecondary = onSearchClick,
             )
             is NearbyUiState.Content -> NearbyContent(
                 state = state,
@@ -323,6 +343,8 @@ private fun StatusPane(
     showSpinner: Boolean = false,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -346,6 +368,11 @@ private fun StatusPane(
                     Text(actionLabel)
                 }
             }
+            if (secondaryLabel != null && onSecondary != null) {
+                TextButton(onClick = onSecondary) {
+                    Text(secondaryLabel, color = NeonCyan)
+                }
+            }
         }
     }
 }
@@ -356,6 +383,8 @@ private fun PermissionPane(
     body: String,
     primaryLabel: String,
     onPrimary: () -> Unit,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -384,6 +413,11 @@ private fun PermissionPane(
             Button(onClick = onPrimary) {
                 Text(primaryLabel)
             }
+            if (secondaryLabel != null && onSecondary != null) {
+                TextButton(onClick = onSecondary) {
+                    Text(secondaryLabel, color = NeonCyan)
+                }
+            }
         }
     }
 }
@@ -409,6 +443,7 @@ private fun NearbyContentPreview() {
             onRefresh = {},
             onOpenSettings = {},
             onStationClick = {},
+            onSearchClick = {},
             modifier = Modifier.background(MaterialTheme.colorScheme.background),
         )
     }
