@@ -11,3 +11,6 @@
 *.apk
 *.ap_
 *.dex
+
+# Generated from repo-root stations.xml by copyStationsAsset
+/app/src/main/assets/stations.json
