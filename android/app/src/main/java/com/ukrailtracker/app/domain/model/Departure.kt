@@ -19,6 +19,7 @@ data class Departure(
     val delayMinutes: Int?,
     val serviceId: String?,
     val isArrival: Boolean = false,
+    val callingPoints: List<CallingPoint> = emptyList(),
 )
 
 data class DepartureBoard(

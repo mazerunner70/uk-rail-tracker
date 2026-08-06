@@ -87,34 +87,70 @@ interface StationDao {
     suspend fun insertAll(stations: List<StationEntity>)
 }
 
+@Entity(tableName = "journey_log")
+data class JourneyLogEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(name = "date") val dateIso: String,
+    @ColumnInfo(name = "origin_crs") val originCrs: String,
+    @ColumnInfo(name = "destination_crs") val destinationCrs: String,
+    @ColumnInfo(name = "operator_name") val operatorName: String,
+    @ColumnInfo(name = "operator_code") val operatorCode: String?,
+    @ColumnInfo(name = "scheduled_departure") val scheduledDepartureLabel: String,
+    @ColumnInfo(name = "scheduled_arrival") val scheduledArrivalLabel: String?,
+    @ColumnInfo(name = "actual_arrival") val expectedArrivalLabel: String?,
+    @ColumnInfo(name = "delay_minutes") val delayMinutes: Int?,
+    @ColumnInfo(name = "was_cancelled") val wasCancelled: Boolean,
+    @ColumnInfo(name = "service_id") val serviceId: String,
+    @ColumnInfo(name = "claim_status") val claimStatus: String,
+)
+
 @Dao
 interface DepartureCacheDao {
     @Query(
         """
         SELECT * FROM departure_cache
-        WHERE crs_code = :crs AND board_type = :boardType
+        WHERE crs_code = :crs
+          AND board_type = :boardType
+          AND IFNULL(filter_crs, '') = IFNULL(:filterCrs, '')
         ORDER BY fetched_at DESC
         LIMIT 1
         """,
     )
-    suspend fun getLatest(crs: String, boardType: String): DepartureCacheEntity?
+    suspend fun getLatest(crs: String, boardType: String, filterCrs: String?): DepartureCacheEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: DepartureCacheEntity)
 
-    @Query("DELETE FROM departure_cache WHERE crs_code = :crs AND board_type = :boardType")
-    suspend fun deleteFor(crs: String, boardType: String)
+    @Query(
+        """
+        DELETE FROM departure_cache
+        WHERE crs_code = :crs
+          AND board_type = :boardType
+          AND IFNULL(filter_crs, '') = IFNULL(:filterCrs, '')
+        """,
+    )
+    suspend fun deleteFor(crs: String, boardType: String, filterCrs: String?)
 
     @Query("DELETE FROM departure_cache WHERE fetched_at < :beforeEpochMs")
     suspend fun deleteOlderThan(beforeEpochMs: Long)
 }
 
+@Dao
+interface JourneyLogDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: JourneyLogEntity): Long
+
+    @Query("SELECT * FROM journey_log ORDER BY id DESC LIMIT :limit")
+    suspend fun recent(limit: Int = 50): List<JourneyLogEntity>
+}
+
 @Database(
-    entities = [StationEntity::class, DepartureCacheEntity::class],
-    version = 2,
+    entities = [StationEntity::class, DepartureCacheEntity::class, JourneyLogEntity::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun stationDao(): StationDao
     abstract fun departureCacheDao(): DepartureCacheDao
+    abstract fun journeyLogDao(): JourneyLogDao
 }

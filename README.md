@@ -4,7 +4,7 @@ A native Android app for live UK rail information — nearby stations, contextua
 
 ## Status
 
-**M1 in progress / nearly complete:** nearby stations (GPS), station search, static detail with accessibility, and live departure boards via Darwin OpenLDBWS. Home / Journeys / Settings remain placeholders for M2+.
+**M3 in progress:** journey planner (direct services via LDB `filterCrs`), live journey detail with calling points, “My train” pin with 45s polling, favourite/recent routes, and `journey_log` writes for M4.
 
 ## Documentation
 

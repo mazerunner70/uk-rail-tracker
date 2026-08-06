@@ -23,6 +23,9 @@ class ArrDepBoardWithDetailsParserTest {
         assertEquals(TrainStatus.Delayed, xc.status)
         assertEquals(14, xc.delayMinutes)
         assertEquals(false, xc.isArrival)
+        assertEquals(2, xc.callingPoints.size)
+        assertEquals("YRK", xc.callingPoints[0].crs)
+        assertEquals("EDB", xc.callingPoints[1].crs)
     }
 
     @Test
@@ -78,7 +81,15 @@ class ArrDepBoardWithDetailsParserTest {
                   "operatorCode": "XC",
                   "serviceID": "AMQxIFns3fc8Q4+ZeM3xmw==",
                   "origin": [{"locationName": "Plymouth", "crs": "PLY"}],
-                  "destination": [{"locationName": "Edinburgh", "crs": "EDB"}]
+                  "destination": [{"locationName": "Edinburgh", "crs": "EDB"}],
+                  "subsequentCallingPoints": [
+                    {
+                      "callingPoint": [
+                        {"locationName": "York", "crs": "YRK", "st": "19:45", "et": "19:55"},
+                        {"locationName": "Edinburgh", "crs": "EDB", "st": "22:10", "et": "On time"}
+                      ]
+                    }
+                  ]
                 }
               ]
             }

@@ -55,9 +55,12 @@ Delay Repay rules differ by train operating company. The app applies the correct
 | P0 | Nearest stations + station detail + departures | M1 |
 | P0 | Contextual "my stations now" + disruption | M2 |
 | P1 | Journey tracking A→B with live status | M3 |
-| P1 | Disruption history + compensation assist | M4 |
-| P2 | Notifications, widgets, polish | M5 |
-| P2 | Play Store release | M6 |
+| P0 | Walk-up arrival at station → trains to favourites (next hour) | M4 |
+| P0 | Detect boarding via GPS + confirm service | M5 |
+| P0 | On-train progress, ETA refresh, arrival buzz | M6 |
+| P1 | Disruption history + compensation assist | M7 |
+| P2 | Notifications, widgets, polish | M8 |
+| P2 | Play Store release | M9 |
 
 See [milestone-roadmap.md](milestone-roadmap.md) for full delivery schedule.
 
@@ -71,7 +74,7 @@ Ideas beyond v1.0, roughly prioritised:
 | **Line / route status dashboard** | "Is my line disrupted?" overview across operators | Reuses disruption API from M2 |
 | **Platform predictions** | Show likely platform before it's announced | Needs historical data or heuristics |
 | **Live train map** | "Where is my train?" on a map | Limited free APIs; consider OpenTrainMap or Darwin TRUST |
-| **Season ticket ROI tracker** | Compare cumulative Delay Repay against season ticket cost | Extension of M4 |
+| **Season ticket ROI tracker** | Compare cumulative Delay Repay against season ticket cost | Extension of M7 |
 | **Accessibility-first mode** | Step-free routes, lift outages, accessible toilets | Rich data already in `stations.xml` |
 | **Share journey status** | Send "running 12 min late" link to colleagues | Lightweight; pairs with M3 |
 | **Wear OS complication** | Next departure on watch face | Post-release |

@@ -14,18 +14,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,13 +32,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ukrailtracker.app.R
 import com.ukrailtracker.app.appContainer
-import com.ukrailtracker.app.ui.theme.NeonBackground
+import com.ukrailtracker.app.ui.components.AppScreen
 import com.ukrailtracker.app.ui.theme.NeonCyan
 import com.ukrailtracker.app.ui.theme.NeonMuted
 import com.ukrailtracker.app.ui.theme.NeonOutline
 import com.ukrailtracker.app.ui.theme.NeonSurface
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchRoute(
     onBack: () -> Unit,
@@ -60,26 +54,11 @@ fun SearchRoute(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(NeonBackground),
+    AppScreen(
+        title = stringResource(R.string.search_title),
+        modifier = modifier,
+        onBack = onBack,
     ) {
-        TopAppBar(
-            title = {
-                Text(text = stringResource(R.string.search_title), color = NeonCyan)
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.back),
-                        tint = NeonCyan,
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = NeonBackground),
-        )
         SearchScreen(
             state = state,
             onQueryChange = viewModel::onQueryChange,
