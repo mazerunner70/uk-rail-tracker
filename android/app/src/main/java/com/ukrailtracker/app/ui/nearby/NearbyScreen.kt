@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,6 +45,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ukrailtracker.app.R
 import com.ukrailtracker.app.appContainer
+import com.ukrailtracker.app.ui.components.AppBarIconButton
+import com.ukrailtracker.app.ui.components.AppScreen
 import com.ukrailtracker.app.ui.theme.NeonCyan
 import com.ukrailtracker.app.ui.theme.NeonMuted
 import com.ukrailtracker.app.ui.theme.NeonSurface
@@ -130,84 +131,73 @@ fun NearbyScreen(
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.nearby_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = NeonCyan,
-                modifier = Modifier.weight(1f),
+    AppScreen(
+        title = stringResource(R.string.nearby_title),
+        modifier = modifier,
+        actions = {
+            AppBarIconButton(
+                imageVector = Icons.Default.Search,
+                contentDescription = stringResource(R.string.search_title),
+                onClick = onSearchClick,
             )
-            IconButton(onClick = onSearchClick) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.search_title),
-                    tint = NeonCyan,
+            if (state is NearbyUiState.Content || state is NearbyUiState.LocationUnavailable) {
+                AppBarIconButton(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.nearby_refresh),
+                    onClick = onRefresh,
                 )
             }
-            if (state is NearbyUiState.Content || state is NearbyUiState.LocationUnavailable) {
-                IconButton(onClick = onRefresh) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = stringResource(R.string.nearby_refresh),
-                        tint = NeonCyan,
-                    )
-                }
+        },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+        ) {
+            when (state) {
+                NearbyUiState.Importing -> StatusPane(
+                    message = stringResource(R.string.nearby_importing),
+                    showSpinner = true,
+                )
+                NearbyUiState.Loading -> StatusPane(
+                    message = stringResource(R.string.nearby_loading),
+                    showSpinner = true,
+                )
+                NearbyUiState.NeedsPermission -> PermissionPane(
+                    title = stringResource(R.string.nearby_permission_title),
+                    body = stringResource(R.string.nearby_permission_body),
+                    primaryLabel = stringResource(R.string.nearby_permission_allow),
+                    onPrimary = onAllowLocation,
+                    secondaryLabel = stringResource(R.string.search_title),
+                    onSecondary = onSearchClick,
+                )
+                NearbyUiState.PermissionDenied -> PermissionPane(
+                    title = stringResource(R.string.nearby_permission_title),
+                    body = stringResource(R.string.nearby_permission_denied),
+                    primaryLabel = stringResource(R.string.nearby_open_settings),
+                    onPrimary = onOpenSettings,
+                    secondaryLabel = stringResource(R.string.search_title),
+                    onSecondary = onSearchClick,
+                )
+                NearbyUiState.LocationUnavailable -> StatusPane(
+                    message = stringResource(R.string.nearby_location_unavailable),
+                    actionLabel = stringResource(R.string.nearby_refresh),
+                    onAction = onRefresh,
+                    secondaryLabel = stringResource(R.string.search_title),
+                    onSecondary = onSearchClick,
+                )
+                is NearbyUiState.Error -> StatusPane(
+                    message = state.message ?: stringResource(R.string.nearby_error),
+                    actionLabel = stringResource(R.string.nearby_refresh),
+                    onAction = onRefresh,
+                    secondaryLabel = stringResource(R.string.search_title),
+                    onSecondary = onSearchClick,
+                )
+                is NearbyUiState.Content -> NearbyContent(
+                    state = state,
+                    onStationClick = onStationClick,
+                )
             }
-        }
-
-        when (state) {
-            NearbyUiState.Importing -> StatusPane(
-                message = stringResource(R.string.nearby_importing),
-                showSpinner = true,
-            )
-            NearbyUiState.Loading -> StatusPane(
-                message = stringResource(R.string.nearby_loading),
-                showSpinner = true,
-            )
-            NearbyUiState.NeedsPermission -> PermissionPane(
-                title = stringResource(R.string.nearby_permission_title),
-                body = stringResource(R.string.nearby_permission_body),
-                primaryLabel = stringResource(R.string.nearby_permission_allow),
-                onPrimary = onAllowLocation,
-                secondaryLabel = stringResource(R.string.search_title),
-                onSecondary = onSearchClick,
-            )
-            NearbyUiState.PermissionDenied -> PermissionPane(
-                title = stringResource(R.string.nearby_permission_title),
-                body = stringResource(R.string.nearby_permission_denied),
-                primaryLabel = stringResource(R.string.nearby_open_settings),
-                onPrimary = onOpenSettings,
-                secondaryLabel = stringResource(R.string.search_title),
-                onSecondary = onSearchClick,
-            )
-            NearbyUiState.LocationUnavailable -> StatusPane(
-                message = stringResource(R.string.nearby_location_unavailable),
-                actionLabel = stringResource(R.string.nearby_refresh),
-                onAction = onRefresh,
-                secondaryLabel = stringResource(R.string.search_title),
-                onSecondary = onSearchClick,
-            )
-            is NearbyUiState.Error -> StatusPane(
-                message = state.message ?: stringResource(R.string.nearby_error),
-                actionLabel = stringResource(R.string.nearby_refresh),
-                onAction = onRefresh,
-                secondaryLabel = stringResource(R.string.search_title),
-                onSecondary = onSearchClick,
-            )
-            is NearbyUiState.Content -> NearbyContent(
-                state = state,
-                onStationClick = onStationClick,
-            )
         }
     }
 }

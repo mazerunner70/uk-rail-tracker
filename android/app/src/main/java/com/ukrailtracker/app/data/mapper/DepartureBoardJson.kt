@@ -1,5 +1,6 @@
 package com.ukrailtracker.app.data.mapper
 
+import com.ukrailtracker.app.domain.model.CallingPoint
 import com.ukrailtracker.app.domain.model.Departure
 import com.ukrailtracker.app.domain.model.DepartureBoard
 import com.ukrailtracker.app.domain.model.TrainStatus
@@ -26,7 +27,8 @@ object DepartureBoardJson {
                     .put("status", d.status.name)
                     .put("delayMinutes", d.delayMinutes)
                     .put("serviceId", d.serviceId)
-                    .put("isArrival", d.isArrival),
+                    .put("isArrival", d.isArrival)
+                    .put("callingPoints", encodeCallingPoints(d.callingPoints)),
             )
         }
         root.put("departures", arr)
@@ -53,6 +55,7 @@ object DepartureBoardJson {
                         delayMinutes = if (o.isNull("delayMinutes")) null else o.optInt("delayMinutes"),
                         serviceId = o.optString("serviceId").takeIf { it.isNotBlank() },
                         isArrival = o.optBoolean("isArrival", false),
+                        callingPoints = decodeCallingPoints(o.optJSONArray("callingPoints")),
                     ),
                 )
             }
@@ -65,5 +68,40 @@ object DepartureBoardJson {
             departures = departures,
             fromCache = fromCache,
         )
+    }
+
+    private fun encodeCallingPoints(points: List<CallingPoint>): JSONArray {
+        val arr = JSONArray()
+        points.forEach { p ->
+            arr.put(
+                JSONObject()
+                    .put("locationName", p.locationName)
+                    .put("crs", p.crs)
+                    .put("scheduledTimeLabel", p.scheduledTimeLabel)
+                    .put("expectedLabel", p.expectedLabel)
+                    .put("isCancelled", p.isCancelled),
+            )
+        }
+        return arr
+    }
+
+    private fun decodeCallingPoints(arr: JSONArray?): List<CallingPoint> {
+        if (arr == null) return emptyList()
+        return buildList {
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val name = o.optString("locationName").trim()
+                if (name.isBlank()) continue
+                add(
+                    CallingPoint(
+                        locationName = name,
+                        crs = o.optString("crs").takeIf { it.isNotBlank() },
+                        scheduledTimeLabel = o.optString("scheduledTimeLabel").takeIf { it.isNotBlank() },
+                        expectedLabel = o.optString("expectedLabel").takeIf { it.isNotBlank() },
+                        isCancelled = o.optBoolean("isCancelled", false),
+                    ),
+                )
+            }
+        }
     }
 }

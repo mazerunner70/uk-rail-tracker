@@ -30,4 +30,7 @@ data class UserLocation(
     val latitude: Double,
     val longitude: Double,
     val accuracyMetres: Float? = null,
+    /** Instantaneous speed from the OS fix, when available (m/s). */
+    val speedMetresPerSecond: Float? = null,
+    val epochMs: Long = System.currentTimeMillis(),
 )

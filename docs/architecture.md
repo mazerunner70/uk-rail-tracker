@@ -40,7 +40,7 @@ com.ukrailtracker.app/
 │   ├── nearby/             # M1 nearby stations
 │   ├── station/            # M1 station detail + departures
 │   ├── journey/            # M3 journey planner + tracking
-│   ├── compensation/       # M4 disruption inbox
+│   ├── compensation/       # M7 disruption inbox
 │   └── settings/           # commute windows, favourites
 ├── domain/
 │   ├── model/              # Station, Departure, Journey, Disruption
@@ -112,7 +112,7 @@ TTL: 5 minutes while online; serve stale up to 30 minutes when offline.
 
 ### `journey_log` table
 
-Written by M3, read by M4.
+Written by M3/M6, read by M7.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -139,7 +139,7 @@ Written by M3, read by M4.
 | `favourite_journeys` | String | JSON array of `{origin, destination}` pairs |
 | `commute_windows` | String | JSON array of `{days, startTime, endTime, stationCrs}` |
 | `stations_db_version` | Int | Trigger re-import when asset changes |
-| `notification_enabled` | Boolean | M5 |
+| `notification_enabled` | Boolean | M8 |
 | `background_refresh_interval` | Int | Minutes (default 15) |
 
 ---
@@ -282,7 +282,7 @@ No user accounts in v1. No analytics SDK in v1 (add later with consent).
 | Repositories | Unit tests with fake DAO + mock API | M0 |
 | Use cases | Unit tests with fake repositories | M1 |
 | ViewModels | Unit tests with fake use cases + coroutine test rule | M1 |
-| UI | Compose UI tests for critical flows | M5 |
+| UI | Compose UI tests for critical flows | M8 |
 | Integration | MockWebServer for API client tests | M0 |
 
 Critical test flows:

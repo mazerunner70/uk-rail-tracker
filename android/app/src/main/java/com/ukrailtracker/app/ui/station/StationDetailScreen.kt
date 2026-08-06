@@ -17,17 +17,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -40,13 +34,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ukrailtracker.app.R
 import com.ukrailtracker.app.appContainer
 import com.ukrailtracker.app.domain.model.StationAccessibility
-import com.ukrailtracker.app.ui.theme.NeonBackground
+import com.ukrailtracker.app.ui.components.AppBarIconButton
+import com.ukrailtracker.app.ui.components.AppScreen
 import com.ukrailtracker.app.ui.theme.NeonCyan
 import com.ukrailtracker.app.ui.theme.NeonMagenta
 import com.ukrailtracker.app.ui.theme.NeonMuted
 import com.ukrailtracker.app.ui.theme.NeonSurface
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationDetailRoute(
     crsCode: String,
@@ -64,40 +58,25 @@ fun StationDetailRoute(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(NeonBackground),
-    ) {
-        val title = when (val s = state) {
-            is StationDetailUiState.Content -> s.detail.station.name
-            else -> stringResource(R.string.station_detail_title)
-        }
-        TopAppBar(
-            title = { Text(text = title, color = NeonCyan) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.back),
-                        tint = NeonCyan,
-                    )
-                }
-            },
-            actions = {
-                if (state is StationDetailUiState.Content) {
-                    IconButton(onClick = viewModel::refreshBoard) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.station_board_refresh),
-                            tint = NeonCyan,
-                        )
-                    }
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = NeonBackground),
-        )
+    val title = when (val s = state) {
+        is StationDetailUiState.Content -> s.detail.station.name
+        else -> stringResource(R.string.station_detail_title)
+    }
 
+    AppScreen(
+        title = title,
+        modifier = modifier,
+        onBack = onBack,
+        actions = {
+            if (state is StationDetailUiState.Content) {
+                AppBarIconButton(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.station_board_refresh),
+                    onClick = viewModel::refreshBoard,
+                )
+            }
+        },
+    ) {
         when (val s = state) {
             StationDetailUiState.Loading -> {
                 Column(

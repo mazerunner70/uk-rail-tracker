@@ -19,7 +19,7 @@ Static station metadata stays **bundled locally** (`stations.xml` → Room). Liv
 | Single-service deep detail (when board payload is insufficient) | OpenLDBWS `GetServiceDetails` | — | M3 (optional) |
 | Journey planning (A→B, realtime) | **RTJP Webservice** (OJP) | — | M3 |
 | Disruptions / incidents | **Knowledgebase Incidents XML** or **OJP Disruptions Webservice** | Cached last-known | M2+ |
-| Historic journey performance (delay minutes, cancellation) | **Historic Service Performance (HSP)** JSON | Local `journey_log` from M3 tracking | M4 |
+| Historic journey performance (delay minutes, cancellation) | **Historic Service Performance (HSP)** JSON | Local `journey_log` from M3/M6 tracking | M7 |
 | Full national movement stream | **Darwin Push Port** (STOMP/XML) | — | Backlog (server-side only) |
 | Static timetables | **Darwin Timetable** push feed | RTJP planned times | M3 (optional) |
 
@@ -146,7 +146,7 @@ flowchart LR
         Detail[Station detail M1]
         Home[Home M2]
         JTrack[Journey M3]
-        Inbox[Compensation M4]
+        Inbox[Compensation M7]
     end
     Stations --> Nearby
     Stations --> Detail
@@ -185,7 +185,7 @@ flowchart LR
 | M2 | Knowledgebase Incidents XML | Service Disruption (via Knowledgebase) |
 | M3 | RTJP Webservice | Real Time Journey Planner |
 | M3 (optional) | Same OpenLDBWS | `GetServiceDetails` when board-embedded details are not enough |
-| M4 | Historic Service Performance (HSP) | HSP JSON API |
+| M7 | Historic Service Performance (HSP) | HSP JSON API |
 | Later | Darwin Push Port | Only with a backend consumer |
 
 3. Copy the **consumer key** from the product **Specification** tab (sent as `x-apikey`).
@@ -265,24 +265,26 @@ Optional TransportAPI / Huxley implementations must still parse into the **same*
 | Operation | Feed | Notes |
 |-----------|------|-------|
 | Boards for favourite / commute stations | **`GetArrDepBoardWithDetails`** | WorkManager background refresh; prefer filtered boards where commute pair is known |
-| Active disruptions | KB **Incidents XML** (service disruption) | Poll every 5 min; map to `Disruption` domain model |
+| Active disruptions (v1) | **Same ArrDep board** | Derive green / amber / red from cancellations + delay minutes until KB Incidents is available |
+| Active disruptions (later) | KB **Incidents XML** (service disruption) | Poll every 5 min; map to `Disruption` domain model |
 | National overview (optional) | KB NSI XML | “X% of services on time” headline |
 
 #### M3 — Journey tracking A→B
 
 | Operation | Feed | Notes |
 |-----------|------|-------|
-| Journey options with realtime | **RTJP Webservice** | OJP engine; accounts for delays/cancellations |
-| Live status at origin / along route | **`GetArrDepBoardWithDetails`** | Prefer `filterCrs` for the destination; poll 30–60 s while pinned |
-| Deep service refresh | `GetServiceDetails` | Only if RID is no longer on the board or extra fields are needed |
-| Route disruption | KB Incidents or OJP Disruptions Webservice | Highlight affected legs |
+| Journey options (v1) | **`GetArrDepBoardWithDetails`** + `filterCrs` / `filterType=to` | Direct / through services only; maps calling points from WithDetails |
+| Journey options (later) | **RTJP Webservice** | OJP engine for multi-leg connections |
+| Live status / pin refresh | **`GetArrDepBoardWithDetails`** | Same filtered board; poll 30–60 s while detail is open |
+| Route disruption (v1) | Board-derived (`DeriveBoardDisruption`) | Same approach as Home M2 |
+| Route disruption (later) | KB Incidents or OJP Disruptions Webservice | Highlight affected legs |
 
-#### M4 — Compensation inbox
+#### M7 — Compensation inbox
 
 | Operation | Feed | Notes |
 |-----------|------|-------|
 | Completed journey delay proof | **HSP JSON** | Historic right-time / delay metrics |
-| In-app journey log | Room `journey_log` | Written during M3 live tracking |
+| In-app journey log | Room `journey_log` | Written during M3/M6 live tracking |
 | Operator rules | Bundled config | [compensation-guide.md](compensation-guide.md) — not a network feed |
 
 ### Integration notes

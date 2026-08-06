@@ -1,5 +1,6 @@
 package com.ukrailtracker.app.data.mapper
 
+import com.ukrailtracker.app.domain.model.CallingPoint
 import com.ukrailtracker.app.domain.model.Departure
 import com.ukrailtracker.app.domain.model.DepartureBoard
 import com.ukrailtracker.app.domain.model.TrainStatus
@@ -99,6 +100,7 @@ class ArrDepBoardWithDetailsParser {
 
         val status = resolveStatus(expected = expected, isCancelled = isCancelled)
         val delay = if (status == TrainStatus.Delayed) delayMinutes(scheduled, expected) else null
+        val callingPoints = parseCallingPoints(service)
 
         return Departure(
             destination = labelDestination,
@@ -111,6 +113,68 @@ class ArrDepBoardWithDetailsParser {
             delayMinutes = delay,
             serviceId = serviceId,
             isArrival = isArrival,
+            callingPoints = callingPoints,
+        )
+    }
+
+    private fun parseCallingPoints(service: JSONObject): List<CallingPoint> {
+        val previous = flattenCallingPointLists(service.opt("previousCallingPoints"))
+        val subsequent = flattenCallingPointLists(service.opt("subsequentCallingPoints"))
+        return previous + subsequent
+    }
+
+    /**
+     * LDB shapes vary:
+     * - `[ { callingPoint: [ ... ] }, ... ]`
+     * - `{ callingPointList: [ { callingPoint: [...] } ] }`
+     * - `{ callingPoint: [ ... ] }`
+     */
+    private fun flattenCallingPointLists(node: Any?): List<CallingPoint> {
+        if (node == null || node == JSONObject.NULL) return emptyList()
+        return when (node) {
+            is JSONArray -> (0 until node.length()).flatMap { i ->
+                flattenCallingPointLists(node.opt(i))
+            }
+            is JSONObject -> {
+                when {
+                    node.has("callingPointList") ->
+                        flattenCallingPointLists(node.opt("callingPointList"))
+                    node.has("callingPoint") ->
+                        parseCallingPointArray(node.opt("callingPoint"))
+                    node.has("locationName") ->
+                        listOfNotNull(parseCallingPoint(node))
+                    else -> emptyList()
+                }
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun parseCallingPointArray(node: Any?): List<CallingPoint> {
+        if (node == null || node == JSONObject.NULL) return emptyList()
+        return when (node) {
+            is JSONArray -> (0 until node.length()).mapNotNull { i ->
+                node.optJSONObject(i)?.let(::parseCallingPoint)
+            }
+            is JSONObject -> listOfNotNull(parseCallingPoint(node))
+            else -> emptyList()
+        }
+    }
+
+    private fun parseCallingPoint(obj: JSONObject): CallingPoint? {
+        val name = obj.optString("locationName").trim()
+        if (name.isBlank()) return null
+        val st = obj.optString("st").ifBlank { null }
+        val et = obj.optString("et").ifBlank { null }
+        val at = obj.optString("at").ifBlank { null }
+        val expected = et ?: at
+        return CallingPoint(
+            locationName = name,
+            crs = obj.optString("crs").ifBlank { null },
+            scheduledTimeLabel = st,
+            expectedLabel = expected,
+            isCancelled = obj.optBoolean("isCancelled", false) ||
+                expected.equals("Cancelled", ignoreCase = true),
         )
     }
 

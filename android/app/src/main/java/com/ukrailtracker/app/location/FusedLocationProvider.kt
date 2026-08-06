@@ -118,5 +118,7 @@ class FusedLocationProvider(
             latitude = latitude,
             longitude = longitude,
             accuracyMetres = if (hasAccuracy()) accuracy else null,
+            speedMetresPerSecond = if (hasSpeed()) speed else null,
+            epochMs = if (time > 0L) time else System.currentTimeMillis(),
         )
 }

@@ -16,10 +16,17 @@ class DepartureRepositoryImpl(
     private val clock: () -> Long = { System.currentTimeMillis() },
 ) : DepartureRepository {
 
-    override suspend fun getBoard(crs: String, forceRefresh: Boolean): DepartureBoard {
+    override suspend fun getBoard(
+        crs: String,
+        forceRefresh: Boolean,
+        filterCrs: String?,
+        filterType: String,
+        numRows: Int,
+    ): DepartureBoard {
         val normalised = crs.uppercase()
+        val filter = filterCrs?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
         val now = clock()
-        val cached = cacheDao.getLatest(normalised, BOARD_TYPE)?.let { entity ->
+        val cached = cacheDao.getLatest(normalised, BOARD_TYPE, filter)?.let { entity ->
             runCatching { DepartureBoardJson.decode(entity.dataJson, fromCache = true) }.getOrNull()
                 ?.takeIf { it.crsCode.isNotBlank() || entity.crsCode == normalised }
                 ?.copy(
@@ -35,22 +42,28 @@ class DepartureRepositoryImpl(
         }
 
         return try {
-            val payload = api.getArrDepBoardWithDetails(crs = normalised, numRows = 10)
+            val payload = api.getArrDepBoardWithDetails(
+                crs = normalised,
+                numRows = numRows.coerceIn(1, 10),
+                filterCrs = filter,
+                filterType = filterType,
+            )
             val board = parser.parse(payload, fetchedAtEpochMs = now)
             val toStore = board.copy(crsCode = normalised.ifBlank { board.crsCode })
-            cacheDao.deleteFor(normalised, BOARD_TYPE)
+            cacheDao.deleteFor(normalised, BOARD_TYPE, filter)
             cacheDao.insert(
                 DepartureCacheEntity(
                     crsCode = normalised,
                     boardType = BOARD_TYPE,
                     dataJson = DepartureBoardJson.encode(toStore),
                     fetchedAt = now,
+                    filterCrs = filter,
                 ),
             )
             cacheDao.deleteOlderThan(now - STALE_MAX_MS)
             toStore
         } catch (t: Throwable) {
-            Log.w(TAG, "Live board fetch failed for $normalised: ${t.message}")
+            Log.w(TAG, "Live board fetch failed for $normalised filter=$filter: ${t.message}")
             if (cached != null && now - cached.fetchedAtEpochMs <= STALE_MAX_MS) {
                 return cached.copy(fromCache = true)
             }
