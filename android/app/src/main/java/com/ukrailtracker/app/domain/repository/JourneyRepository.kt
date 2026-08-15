@@ -19,4 +19,15 @@ interface JourneyRepository {
         serviceId: String,
         forceRefresh: Boolean = false,
     ): JourneyOption?
+
+    /**
+     * Live single-service detail via LDB `GetServiceDetails` (timing + calling points).
+     * Used once a service is selected for an on-train journey.
+     */
+    suspend fun getServiceDetails(
+        serviceId: String,
+        originCrs: String,
+        destinationCrs: String,
+        destinationNameFallback: String = "",
+    ): JourneyOption
 }

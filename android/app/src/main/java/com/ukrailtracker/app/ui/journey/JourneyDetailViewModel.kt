@@ -10,6 +10,7 @@ import com.ukrailtracker.app.domain.model.PinnedJourney
 import com.ukrailtracker.app.domain.model.TrainStatus
 import com.ukrailtracker.app.domain.repository.JourneyRepository
 import com.ukrailtracker.app.domain.repository.StationRepository
+import com.ukrailtracker.app.domain.usecase.JourneyTimeUtils
 import com.ukrailtracker.app.ui.station.StatusKind
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -24,6 +25,8 @@ data class CallingPointRowUi(
     val crs: String?,
     val scheduledLabel: String,
     val expectedLabel: String,
+    val actualLabel: String? = null,
+    val scheduleVarianceMinutes: Int? = null,
     val isDestination: Boolean,
     val isCancelled: Boolean,
 )
@@ -149,11 +152,23 @@ class JourneyDetailViewModel(
                 option.status == TrainStatus.Cancelled ||
                 (option.delayMinutes ?: 0) >= 15
             val points = option.callingPoints.map { cp ->
+                val actual = JourneyTimeUtils.displayActualLabel(cp.actualTimeLabel)
+                val observed = when {
+                    JourneyTimeUtils.parseableClockLabel(cp.actualTimeLabel) != null ->
+                        JourneyTimeUtils.parseableClockLabel(cp.actualTimeLabel)
+                    JourneyTimeUtils.hasActualArrival(cp.actualTimeLabel) -> cp.scheduledTimeLabel
+                    else -> JourneyTimeUtils.parseableClockLabel(cp.expectedLabel)
+                }
                 CallingPointRowUi(
                     name = cp.locationName,
                     crs = cp.crs,
                     scheduledLabel = cp.scheduledTimeLabel ?: "—",
                     expectedLabel = cp.expectedLabel ?: "—",
+                    actualLabel = actual,
+                    scheduleVarianceMinutes = JourneyTimeUtils.scheduleVarianceMinutes(
+                        scheduledLabel = cp.scheduledTimeLabel,
+                        observedLabel = observed,
+                    ),
                     isDestination = cp.crs?.equals(destinationCrs, ignoreCase = true) == true,
                     isCancelled = cp.isCancelled,
                 )

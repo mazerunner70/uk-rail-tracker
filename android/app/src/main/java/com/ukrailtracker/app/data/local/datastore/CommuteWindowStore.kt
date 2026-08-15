@@ -37,6 +37,13 @@ class CommuteWindowStore(private val context: Context) {
         persist(getWindows().filterNot { it.id == id })
     }
 
+    /** Replace all commute windows (used by debug simulator seeding). */
+    suspend fun replaceAll(windows: List<CommuteWindow>) {
+        persist(
+            windows.map { it.copy(stationCrs = it.stationCrs.trim().uppercase()) },
+        )
+    }
+
     private suspend fun persist(windows: List<CommuteWindow>) {
         context.commuteDataStore.edit { prefs ->
             prefs[key] = encode(windows)

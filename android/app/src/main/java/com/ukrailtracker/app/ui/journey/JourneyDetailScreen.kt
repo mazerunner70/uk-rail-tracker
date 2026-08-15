@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -236,6 +237,19 @@ private fun CallingPointRow(point: CallingPointRowUi) {
         point.isDestination -> NeonCyan
         else -> NeonMuted
     }
+    val variance = point.scheduleVarianceMinutes
+    val observedLabel = point.actualLabel?.let { "act $it" } ?: point.expectedLabel
+    val varianceLabel = when {
+        variance == null || variance == 0 -> null
+        variance > 0 -> "+$variance"
+        else -> "−${-variance}"
+    }
+    val observedColor = when {
+        point.isCancelled -> NeonMagenta
+        (variance ?: 0) > 0 -> NeonAmber
+        (variance ?: 0) < 0 -> NeonGreen
+        else -> NeonMuted
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -252,11 +266,21 @@ private fun CallingPointRow(point: CallingPointRowUi) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(point.scheduledLabel, color = NeonCyan, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                point.expectedLabel,
-                color = if (point.isCancelled) NeonMagenta else NeonMuted,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    observedLabel,
+                    color = observedColor,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (varianceLabel != null) {
+                    Text(
+                        varianceLabel,
+                        color = observedColor,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
     }
 }

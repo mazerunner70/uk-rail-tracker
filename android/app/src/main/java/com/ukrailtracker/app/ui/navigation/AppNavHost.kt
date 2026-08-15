@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,6 +42,7 @@ import com.ukrailtracker.app.ui.theme.NeonBackground
 import com.ukrailtracker.app.ui.theme.NeonCyan
 import com.ukrailtracker.app.ui.theme.NeonMuted
 import com.ukrailtracker.app.ui.theme.NeonSurface
+import kotlinx.coroutines.yield
 
 object Routes {
     const val Home = "home"
@@ -66,6 +68,10 @@ object Routes {
         "journey_detail/${origin.uppercase()}/${dest.uppercase()}/${Uri.encode(serviceId)}"
 }
 
+sealed interface HomeLaunchAction {
+    data class FrequentLocationChecks(val hintCrs: String?) : HomeLaunchAction
+}
+
 private data class TopLevelDest(
     val route: String,
     val labelRes: Int,
@@ -73,7 +79,10 @@ private data class TopLevelDest(
 )
 
 @Composable
-fun AppNavHost() {
+fun AppNavHost(
+    homeLaunchAction: HomeLaunchAction? = null,
+    onHomeLaunchActionConsumed: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val topLevel = listOf(
         TopLevelDest(Routes.Home, R.string.nav_home, Icons.Default.Home),
@@ -85,6 +94,27 @@ fun AppNavHost() {
     val currentDestination = navBackStackEntry?.destination
     val showBottomBar = topLevel.any { dest ->
         currentDestination?.hierarchy?.any { it.route == dest.route } == true
+    }
+
+    LaunchedEffect(homeLaunchAction) {
+        val action = homeLaunchAction ?: return@LaunchedEffect
+        when (action) {
+            is HomeLaunchAction.FrequentLocationChecks -> {
+                navController.navigate(Routes.Home) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = false
+                }
+                yield()
+                runCatching {
+                    navController.getBackStackEntry(Routes.Home)
+                        .savedStateHandle["pending_frequent_checks"] = true
+                }
+                onHomeLaunchActionConsumed()
+            }
+        }
     }
 
     Scaffold(
@@ -131,6 +161,9 @@ fun AppNavHost() {
                 val pendingWalkUp by entry.savedStateHandle
                     .getStateFlow<String?>("pending_walkup_crs", null)
                     .collectAsStateWithLifecycle()
+                val pendingFrequentChecks by entry.savedStateHandle
+                    .getStateFlow("pending_frequent_checks", false)
+                    .collectAsStateWithLifecycle()
                 HomeRoute(
                     onStationClick = { crs ->
                         navController.navigate(Routes.stationDetail(crs))
@@ -150,6 +183,10 @@ fun AppNavHost() {
                     pendingWalkUpOverrideCrs = pendingWalkUp,
                     onWalkUpOverrideConsumed = {
                         entry.savedStateHandle["pending_walkup_crs"] = null
+                    },
+                    pendingFrequentLocationChecks = pendingFrequentChecks,
+                    onFrequentLocationChecksConsumed = {
+                        entry.savedStateHandle["pending_frequent_checks"] = false
                     },
                     onJourneyServiceClick = { origin, dest, serviceId ->
                         navController.navigate(Routes.journeyDetail(origin, dest, serviceId))

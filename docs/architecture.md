@@ -56,8 +56,13 @@ com.ukrailtracker.app/
 │   ├── repository/         # *RepositoryImpl — Darwin primary, TransportAPI fallback
 │   └── mapper/             # DTO/XML → domain model conversions
 ├── location/               # LocationProvider wrapper
+├── debug/                  # DebugWalkUp facade (wired via Gradle source sets)
 └── worker/                 # WorkManager background refresh
 ```
+
+Walk-up / on-train GPS simulation is **opt-in** via `-PincludeSimulator=true` or `INCLUDE_SIMULATOR=1` (also `--simulator` on `android/scripts/deploy-*.sh`). That selects `src/simulator/` (`WalkUpLocationSimulator` + real `DebugWalkUp`); otherwise `src/noSimulator/` provides a no-op facade and simulator classes are not compiled in.
+
+The simulator wraps **only** `LocationProvider`. Departure boards and `GetServiceDetails` stay on live Darwin so Home Refresh is accurate. Walk-up interpolates 300 m → APS over ~2 minutes; after a debug pin, GPS follows calling points on **real timetable gaps** (plus dwells). Full operator steps, dual clocks, and deferred time-scale work: [simulated-journey.md](simulated-journey.md).
 
 ## Key dependencies (M0)
 
@@ -191,12 +196,64 @@ flowchart TD
 
 - Use Fused Location Provider (Play Services) for battery efficiency
 - Request `ACCESS_COARSE_LOCATION` minimum; `ACCESS_FINE_LOCATION` for better accuracy
+- Optional `ACCESS_BACKGROUND_LOCATION` for idle OS geofence ENTER while the app is closed
 - Never send location to a server — all processing on-device
 - Show permission rationale dialog before system prompt
+
+### Station geofence wake (hybrid)
+
+While idle, WorkManager re-arms a moving window of OS geofences every 15 minutes (nearest 5 + favourites/commute, 300 m radius). ENTER posts a notification (and vibrates); tapping opens Home and elevates the in-app GPS poll so `DetectWalkUpArrival` can confirm presence. Soft geofence / walk / dwell / boarding logic remains in-app — OS ENTER is a hint only.
 
 ### Distance calculation
 
 Haversine formula on station lat/lng vs user lat/lng. No need for a spatial DB extension at 2,612 stations — linear scan with bounding-box pre-filter is fast enough.
+
+### On-train session (M6)
+
+While a journey is pinned after boarding confirm (or manual pin):
+
+- Home enters `WalkUpHomeUi.OnJourney` (progress diagram + countdown); walk-up detection is suppressed
+- `DetectStationStop` confirms calling-point stations via low speed + proximity; dwell triggers per-minute board refresh
+- `OnTrainTrackingService` (foreground, `location` type) keeps an ongoing notification with ETA
+- Arrival at the favourite CRS (or End trip) clears the pin, stops the service, and writes `journey_log`
+
+### Commute session design (recommendation)
+
+The M4–M6 pipeline is several **orthogonal** machines (walk-up, boarding, pin, station-stop), not one enum. Keep it that way.
+
+**Implement as:** events in, state out, effects as data.
+
+```text
+Event  →  reduce(session, event)  →  Transition(newSession, effects)
+                 │
+                 ▼
+         interpreter (Android) runs effects
+                 │
+                 ▼
+         map(session) → WalkUpHomeUi
+```
+
+`reduce` is a pure function with no Android types. Today that grain already exists as `DetectWalkUpArrival.next`, `DetectBoarding.next`, `DetectStationStop.next`. `HomeViewModel.sampleLocation` is the weak glue: it mutates several fields, starts jobs, and pins in the same function. The next step is one `CommuteSession` plus an effect list; the ViewModel only interprets.
+
+Classify every action before writing it:
+
+| Kind | Example | Where it lives |
+|------|---------|----------------|
+| Pure transition | Away → Dwelling after a GPS sample | `reduce` / `next()` |
+| Effect | Start FGS, pin DataStore, vibrate, `GetServiceDetails` | Interpreter after reduce |
+| UI projection | Status bar copy, progress diagram, `refreshing` | `session` → `WalkUpHomeUi` |
+
+If `DetectBoarding` starts a service, the domain is no longer testable. If Darwin latency is a sibling of `Away`, presence and networking are confused — `refreshing` / `error` are load state on the on-train *view*, not commute phases.
+
+**One writer.** GPS, Darwin, notification taps, and buttons all call the same `reduce`. Receivers and Workers **enqueue events** (`OsGeofenceEnter`, `OpenedForFrequentChecks`); they do not set presence. Split-brain is how ENTER and an on-train pin disagree.
+
+**Time is an input.** Pass `now` / `Tick` into reduce (dwells, 8 s boarding, 60 s auto-accept, 3/2/1 min buzz). Do not start a coroutine that later pokes fields. Detectors already compare `sample.epochMs`; boarding auto-accept and buzz-in-the-ViewModel are the weaker form.
+
+**Persist the trip, not the sensors.** Durable: `PinnedJourney`, `journey_log`. Ephemeral: walk-up / dwelling — GPS will say them again after process death.
+
+**Do not:** flatten into one mega-enum; require XState/Redux (the pattern matters, not a library); virtualize Darwin’s clock so countdown matches compressed GPS; treat OS ENTER as `Arrived`.
+
+`HomeViewModel` remains the interpreter until a `CommuteController` is extracted. Phases and thresholds: [state-model.md](state-model.md). Implementation slices (tick progress there): [commute-session-slices.md](commute-session-slices.md).
 
 ---
 

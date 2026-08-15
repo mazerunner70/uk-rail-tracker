@@ -14,9 +14,9 @@ gantt
     M2_ContextualHome       :done, m2, after m1, 21d
     M3_JourneyTracking      :done, m3, after m2, 21d
     section Live commute
-    M4_WalkUpArrival        :m4, after m3, 14d
-    M5_BoardingDetect       :m5, after m4, 14d
-    M6_OnTrainProgress      :m6, after m5, 21d
+    M4_WalkUpArrival        :done, m4, after m3, 14d
+    M5_BoardingDetect       :done, m5, after m4, 14d
+    M6_OnTrainProgress      :done, m6, after m5, 21d
     section Ship
     M7_Compensation         :m7, after m6, 21d
     M8_Notifications        :m8, after m7, 14d
@@ -239,17 +239,17 @@ gantt
 
 ### Acceptance criteria
 
-- [ ] Leaving the station geofence with GPS motion triggers boarding detection (not merely walking within the station footprint)
-- [ ] When one clear favourite-bound departure matches, that service is assumed and shown for confirmation
-- [ ] When several trains depart at the same time, default to the favourite-destination service and still offer Confirm / Choose another
-- [ ] Choosing another attaches the selected service as the active trip
-- [ ] False positive: user can dismiss without starting an on-train session
+- [x] Leaving the station geofence with GPS motion triggers boarding detection (not merely walking within the station footprint)
+- [x] When one clear favourite-bound departure matches, that service is assumed and shown for confirmation
+- [x] When several trains depart at the same time, default to the favourite-destination service and still offer Confirm / Choose another
+- [x] Choosing another attaches the selected service as the active trip
+- [x] False positive: user can dismiss without starting an on-train session
 
 ### Technical notes
 
 - Distinguish walking vs boarding: require distance from station centre beyond a threshold and/or speed above walking pace for a short window
 - Keep a short list of recent departures (from M4 board) so matching works offline-ish for a few minutes after leave
-- Foreground service / high-accuracy location only while "at station watching for board" or "boarding ambiguous" — not all day
+- M5 uses elevated in-app high-accuracy polling while Home is open and watching for board / boarding prompt (same lifecycle as M4). System foreground service deferred until M6 if background on-train tracking needs it.
 
 ### Sub-milestone M5.1 (optional)
 
@@ -284,12 +284,12 @@ gantt
 
 ### Acceptance criteria
 
-- [ ] After boarding confirm, on-train view shows progress diagram toward the favourite destination and a minutes countdown
-- [ ] While GPS indicates stopped and matches a station, ETA to favourite updates at least once per minute
-- [ ] Stopping at a station that is not the next expected calling point surfaces a clear highlight / warning
-- [ ] When next station is the favourite destination, device vibrates at 3, 2, and 1 minutes before ETA (each threshold fires once per trip)
-- [ ] Countdown and diagram update when live delay changes (board / service detail poll)
-- [ ] Completing arrival at favourite ends the on-train session and can write `journey_log` (for M7)
+- [x] After boarding confirm, on-train view shows progress diagram toward the favourite destination and a minutes countdown
+- [x] While GPS indicates stopped and matches a station, ETA to favourite updates at least once per minute
+- [x] Stopping at a station that is not the next expected calling point surfaces a clear highlight / warning
+- [x] When next station is the favourite destination, device vibrates at 3, 2, and 1 minutes before ETA (each threshold fires once per trip)
+- [x] Countdown and diagram update when live delay changes (board / service detail poll)
+- [x] Completing arrival at favourite ends the on-train session and can write `journey_log` (for M7)
 
 ### Technical notes
 
@@ -402,7 +402,7 @@ flowchart LR
 
 M2 can start before M1 is fully complete if station detail and departures are done, but M1's nearby/search should land first since M2 reuses those components.
 
-**Live commute chain (next up):** M4 (walk-up at station → favourite trains) → M5 (GPS boarding + confirm) → M6 (progress, ETA recalibration, 3/2/1 min buzz). Compensation (M7) consumes completed-trip logs from M6.
+**Live commute chain (next up):** M6 (on-train progress + arrival buzz) done → M7 (disruption history + compensation from `journey_log`).
 
 ---
 

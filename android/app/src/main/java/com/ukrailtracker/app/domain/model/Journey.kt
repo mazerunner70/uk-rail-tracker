@@ -11,6 +11,8 @@ data class CallingPoint(
     val scheduledTimeLabel: String?,
     val expectedLabel: String?,
     val isCancelled: Boolean = false,
+    /** Darwin `at` / `ata` / `atd` when the stop has already happened. */
+    val actualTimeLabel: String? = null,
 )
 
 data class JourneyOption(
