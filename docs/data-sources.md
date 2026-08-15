@@ -16,7 +16,7 @@ Static station metadata stays **bundled locally** (`stations.xml` → Room). Liv
 |-----------|---------------------------|----------|-----------|
 | Station metadata (name, CRS, lat/lng, accessibility) | Bundled `stations.xml` (from Knowledgebase Stations XML) | — | M0+ |
 | Live train movements (arrivals + departures + per-service calling points) | **OpenLDBWS** `GetArrDepBoardWithDetails` (SOAP) | Cached last-known in Room | M1+ |
-| Single-service deep detail (when board payload is insufficient) | OpenLDBWS `GetServiceDetails` | — | M3 (optional) |
+| Single-service deep detail (on-train / station-stop confirm) | OpenLDBWS `GetServiceDetails` | — | M6 |
 | Journey planning (A→B, realtime) | **RTJP Webservice** (OJP) | — | M3 |
 | Disruptions / incidents | **Knowledgebase Incidents XML** or **OJP Disruptions Webservice** | Cached last-known | M2+ |
 | Historic journey performance (delay minutes, cancellation) | **Historic Service Performance (HSP)** JSON | Local `journey_log` from M3/M6 tracking | M7 |
@@ -88,7 +88,8 @@ flowchart TB
 data/
 ├── remote/
 │   ├── darwin/
-│   │   ├── OpenLdbWsApi.kt        # GetArrDepBoardWithDetails (+ GetServiceDetails)
+│   │   ├── OpenLdbWsApi.kt              # GetArrDepBoardWithDetails
+│   │   ├── OpenLdbServiceDetailsApi.kt  # GetServiceDetails
 │   │   ├── KnowledgebaseApi.kt    # Incidents / engineering XML
 │   │   ├── RtjpApi.kt             # Real-time journey planner (OJP)
 │   │   └── HspApi.kt              # Historic service performance
@@ -184,7 +185,7 @@ flowchart LR
 | M1 | Darwin Webservice (Public) / OpenLDBWS | Live Departure Boards SOAP — includes `GetArrDepBoardWithDetails` |
 | M2 | Knowledgebase Incidents XML | Service Disruption (via Knowledgebase) |
 | M3 | RTJP Webservice | Real Time Journey Planner |
-| M3 (optional) | Same OpenLDBWS | `GetServiceDetails` when board-embedded details are not enough |
+| M6 | OpenLDBWS Service Details | `GetServiceDetails` for pinned on-train service (separate RDM product key) |
 | M7 | Historic Service Performance (HSP) | HSP JSON API |
 | Later | Darwin Push Port | Only with a backend consumer |
 
@@ -192,7 +193,8 @@ flowchart LR
 4. Store in `android/local.properties` (gitignored):
 
 ```properties
-DARWIN_LDB_API_KEY=your_consumer_key_from_specification
+DARWIN_LDB_API_KEY=your_arrdep_consumer_key_from_specification
+DARWIN_LDB_SERVICE_DETAILS_API_KEY=your_service_details_consumer_key
 # Add other keys if RTJP/OJP / HSP use separate credentials
 ```
 
@@ -235,14 +237,29 @@ OpenLdbWsApi.GetArrDepBoardWithDetails
   → DepartureRepository reads domain DepartureBoard / ArrivalBoard
 ```
 
-Use `GetServiceDetails` only when the user pins a service and you need a full refresh of that RID after it has left the board window.
+### On-train confirm: `GetServiceDetails`
+
+**Product**: Rail Data Marketplace — Service Details  
+**Host**: `https://api1.raildata.org.uk`  
+**Path**: `/1010-service-details1_2/LDBWS/api/20220120/GetServiceDetails/{serviceid}`  
+**Auth**: `x-apikey: <DARWIN_LDB_SERVICE_DETAILS_API_KEY>`  
+**Params**: path `serviceid` only (Darwin `serviceID` from the board row)  
+**Response**: JSON `ServiceDetails` (`previousCallingPoints` / `subsequentCallingPoints`, sta/eta/std/etd, platform, cancel/delay reasons)
+
+Called when a service is pinned for an on-train journey and again at each confirmed station stop to refresh timings and destination calling points.
+
+```text
+OpenLdbServiceDetailsApi.GetServiceDetails
+  → ServiceDetailsParser
+  → JourneyOption (via JourneyRepository.getServiceDetails)
+```
 
 ### Feed → repository mapping
 
 | Feed | Transport | Repository interface | Domain output |
 |------|-----------|---------------------|---------------|
-| OpenLDBWS `GetArrDepBoardWithDetails` | XML SOAP | `DepartureRepository` (arrivals + departures) | `StationBoard` / `DepartureBoard` |
-| OpenLDBWS `GetServiceDetails` | XML SOAP | `ServiceRepository` | `ServiceDetails` |
+| OpenLDBWS `GetArrDepBoardWithDetails` | JSON REST | `DepartureRepository` (arrivals + departures) | `StationBoard` / `DepartureBoard` |
+| OpenLDBWS `GetServiceDetails` | JSON REST | `JourneyRepository.getServiceDetails` | `JourneyOption` |
 | RTJP Webservice | SOAP/XML | `JourneyRepository` | `List<JourneyOption>` |
 | KB Incidents XML | XML REST | `DisruptionRepository` | `List<Disruption>` |
 | HSP JSON | JSON REST | `HistoricServiceRepository` | `HistoricServiceRecord` |

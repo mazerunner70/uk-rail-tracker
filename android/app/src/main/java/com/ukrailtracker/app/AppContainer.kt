@@ -14,6 +14,7 @@ import com.ukrailtracker.app.data.local.datastore.StationMetaStore
 import com.ukrailtracker.app.data.local.db.AppDatabase
 import com.ukrailtracker.app.data.mapper.ArrDepBoardWithDetailsParser
 import com.ukrailtracker.app.data.parse.StationsJsonParser
+import com.ukrailtracker.app.data.remote.darwin.OpenLdbServiceDetailsApi
 import com.ukrailtracker.app.data.remote.darwin.OpenLdbWsApi
 import com.ukrailtracker.app.data.repository.DepartureRepositoryImpl
 import com.ukrailtracker.app.data.repository.JourneyLogRepository
@@ -26,8 +27,15 @@ import com.ukrailtracker.app.domain.repository.DepartureRepository
 import com.ukrailtracker.app.domain.repository.JourneyRepository
 import com.ukrailtracker.app.domain.repository.StationRepository
 import com.ukrailtracker.app.domain.usecase.GetNearbyStationsUseCase
+import com.ukrailtracker.app.debug.DebugWalkUp
 import com.ukrailtracker.app.location.FusedLocationProvider
+import com.ukrailtracker.app.location.geofence.StationGeofenceController
+import com.ukrailtracker.app.worker.GeofenceRearmScheduler
 import com.ukrailtracker.app.worker.HomeRefreshScheduler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class UkRailTrackerApp : Application() {
     lateinit var container: AppContainer
@@ -37,10 +45,14 @@ class UkRailTrackerApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.homeRefreshScheduler.scheduleIfEnabled()
+        container.geofenceRearmScheduler.scheduleIfLocationGranted()
+        container.armStationGeofencesAsync(forceLocationRefresh = false)
     }
 }
 
 class AppContainer(app: Application) {
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val database: AppDatabase = Room.databaseBuilder(
         app,
         AppDatabase::class.java,
@@ -59,7 +71,8 @@ class AppContainer(app: Application) {
         metaStore = metaStore,
     )
 
-    val locationProvider: LocationProvider = FusedLocationProvider(app)
+    val locationProvider: LocationProvider =
+        DebugWalkUp.wrapLocation(FusedLocationProvider(app))
 
     val getNearbyStations: GetNearbyStationsUseCase = GetNearbyStationsUseCase(
         locationProvider = locationProvider,
@@ -67,6 +80,9 @@ class AppContainer(app: Application) {
     )
 
     private val openLdbWsApi = OpenLdbWsApi(apiKey = BuildConfig.DARWIN_LDB_API_KEY)
+    private val openLdbServiceDetailsApi = OpenLdbServiceDetailsApi(
+        apiKey = BuildConfig.DARWIN_LDB_SERVICE_DETAILS_API_KEY,
+    )
 
     val departureRepository: DepartureRepository = DepartureRepositoryImpl(
         api = openLdbWsApi,
@@ -76,6 +92,7 @@ class AppContainer(app: Application) {
 
     val journeyRepository: JourneyRepository = JourneyRepositoryImpl(
         departureRepository = departureRepository,
+        serviceDetailsApi = openLdbServiceDetailsApi,
     )
 
     val journeyLogRepository = JourneyLogRepository(database.journeyLogDao())
@@ -88,6 +105,21 @@ class AppContainer(app: Application) {
     val commuteWindowStore = CommuteWindowStore(app)
     val appPreferencesStore = AppPreferencesStore(app)
     val homeRefreshScheduler = HomeRefreshScheduler(app)
+    val geofenceRearmScheduler = GeofenceRearmScheduler(app)
+    val stationGeofenceController = StationGeofenceController(
+        appContext = app,
+        locationProvider = locationProvider,
+        stationRepository = stationRepository,
+        favouritesStore = favouritesStore,
+        commuteWindowStore = commuteWindowStore,
+    )
+
+    fun armStationGeofencesAsync(forceLocationRefresh: Boolean = true) {
+        geofenceRearmScheduler.scheduleNow()
+        ioScope.launch {
+            stationGeofenceController.armFromCurrentLocation(forceLocationRefresh)
+        }
+    }
 }
 
 fun Context.appContainer(): AppContainer =

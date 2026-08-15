@@ -14,7 +14,7 @@ object JourneyTimeUtils {
     private val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm")
 
     fun parseTimeLabel(label: String?): LocalTime? {
-        val trimmed = label?.trim().orEmpty()
+        val trimmed = label?.trim()?.removeSuffix("*")?.trim().orEmpty()
         if (trimmed.isEmpty()) return null
         val candidate = trimmed.take(5)
         return runCatching { LocalTime.parse(candidate, TIME) }.getOrNull()
@@ -77,4 +77,151 @@ object JourneyTimeUtils {
                     windowMinutes = windowMinutes,
                 )
         }
+
+    /**
+     * Prefer a parseable expected HH:mm over scheduled when the expected label is not
+     * a status phrase like "On time" / "Delayed".
+     */
+    fun effectiveDepartureLabel(
+        scheduledDepartureLabel: String,
+        expectedDepartureLabel: String?,
+    ): String {
+        val expected = expectedDepartureLabel?.trim().orEmpty()
+        if (expected.isNotEmpty() &&
+            !expected.equals("On time", ignoreCase = true) &&
+            !expected.equals("Delayed", ignoreCase = true) &&
+            parseTimeLabel(expected) != null
+        ) {
+            return expected
+        }
+        return scheduledDepartureLabel
+    }
+
+    /**
+     * Minutes from [now] to the nearest calendar occurrence of [departureLabel].
+     * Negative when the departure is in the past. Null if the label is not parseable.
+     */
+    fun minutesUntilDeparture(
+        departureLabel: String,
+        now: LocalDateTime = LocalDateTime.now(),
+    ): Long? {
+        val time = parseTimeLabel(departureLabel) ?: return null
+        val today = LocalDateTime.of(now.toLocalDate(), time)
+        val candidates = listOf(today.minusDays(1), today, today.plusDays(1))
+        val nearest = candidates.minBy { kotlin.math.abs(ChronoUnit.MINUTES.between(now, it)) }
+        return ChronoUnit.MINUTES.between(now, nearest)
+    }
+
+    /**
+     * True when departure falls in [[-pastMinutes], [futureMinutes]] relative to [now].
+     */
+    fun isDepartureAroundNow(
+        departureLabel: String,
+        now: LocalDateTime = LocalDateTime.now(),
+        pastMinutes: Long = 8,
+        futureMinutes: Long = 3,
+    ): Boolean {
+        val delta = minutesUntilDeparture(departureLabel, now) ?: return false
+        return delta in -pastMinutes..futureMinutes
+    }
+
+    /**
+     * Minutes from [now] to the nearest calendar occurrence of an HH:mm [label].
+     * Negative when that time is in the past. Null if not parseable.
+     */
+    fun minutesUntilArrivalLabel(
+        label: String?,
+        now: LocalDateTime = LocalDateTime.now(),
+    ): Long? {
+        val time = parseTimeLabel(label) ?: return null
+        val today = LocalDateTime.of(now.toLocalDate(), time)
+        val candidates = listOf(today.minusDays(1), today, today.plusDays(1))
+        val nearest = candidates.minBy { kotlin.math.abs(ChronoUnit.MINUTES.between(now, it)) }
+        return ChronoUnit.MINUTES.between(now, nearest)
+    }
+
+    /**
+     * Prefers a parseable expected arrival label over scheduled for countdown / ETA.
+     */
+    fun minutesUntilArrival(
+        scheduledArrivalLabel: String?,
+        expectedArrivalLabel: String?,
+        now: LocalDateTime = LocalDateTime.now(),
+    ): Long? {
+        val expected = expectedArrivalLabel?.trim().orEmpty()
+        if (expected.isNotEmpty() &&
+            !expected.equals("On time", ignoreCase = true) &&
+            !expected.equals("Delayed", ignoreCase = true) &&
+            parseTimeLabel(expected) != null
+        ) {
+            return minutesUntilArrivalLabel(expected, now)
+        }
+        return minutesUntilArrivalLabel(scheduledArrivalLabel, now)
+            ?: minutesUntilArrivalLabel(expectedArrivalLabel, now)
+    }
+
+    /**
+     * Minutes until destination ET. "On time" / "Delayed" / blank ET use scheduled (ST).
+     * Never treats an actual (AT) clock as the countdown target.
+     */
+    fun minutesUntilExpectedArrival(
+        scheduledArrivalLabel: String?,
+        expectedArrivalLabel: String?,
+        now: LocalDateTime = LocalDateTime.now(),
+    ): Long? = minutesUntilArrival(
+        scheduledArrivalLabel = scheduledArrivalLabel,
+        expectedArrivalLabel = expectedArrivalLabel,
+        now = now,
+    )
+
+    /**
+     * Signed minutes of [observedLabel] vs [scheduledLabel] (positive = late).
+     * Handles midnight wrap for small overnight deltas.
+     */
+    fun scheduleVarianceMinutes(
+        scheduledLabel: String?,
+        observedLabel: String?,
+    ): Int? {
+        val scheduled = parseTimeLabel(scheduledLabel) ?: return null
+        val observed = parseTimeLabel(parseableClockLabel(observedLabel)) ?: return null
+        var diff = ChronoUnit.MINUTES.between(scheduled, observed).toInt()
+        if (diff < -12 * 60) diff += 24 * 60
+        if (diff > 12 * 60) diff -= 24 * 60
+        return diff
+    }
+
+    /** HH:mm clock labels only — rejects status phrases like "On time". */
+    fun parseableClockLabel(label: String?): String? {
+        val trimmed = label?.trim()?.removeSuffix("*")?.trim().orEmpty()
+        if (trimmed.isEmpty()) return null
+        if (trimmed.equals("On time", ignoreCase = true) ||
+            trimmed.equals("Delayed", ignoreCase = true) ||
+            trimmed.equals("Cancelled", ignoreCase = true) ||
+            trimmed.equals("Departed", ignoreCase = true) ||
+            trimmed.equals("No report", ignoreCase = true)
+        ) {
+            return null
+        }
+        return trimmed.takeIf { parseTimeLabel(it) != null }
+    }
+
+    /**
+     * True when Darwin has published an actual (`at` / `ata` / `atd`) for a stop.
+     * Includes HH:mm and "On time" (arrived to timetable); excludes "No report" / blank.
+     */
+    fun hasActualArrival(label: String?): Boolean {
+        val trimmed = label?.trim()?.removeSuffix("*")?.trim().orEmpty()
+        if (trimmed.isEmpty()) return false
+        if (trimmed.equals("No report", ignoreCase = true)) return false
+        if (trimmed.equals("Delayed", ignoreCase = true)) return false
+        if (trimmed.equals("Cancelled", ignoreCase = true)) return false
+        if (trimmed.equals("On time", ignoreCase = true)) return true
+        return parseTimeLabel(trimmed) != null
+    }
+
+    /** Display form of an actual time label, or null when [hasActualArrival] is false. */
+    fun displayActualLabel(label: String?): String? {
+        if (!hasActualArrival(label)) return null
+        return label?.trim()?.removeSuffix("*")?.trim()?.takeIf { it.isNotEmpty() }
+    }
 }

@@ -10,7 +10,10 @@ Product and engineering documentation for the UK Rail Tracker Android app.
 | [Milestone roadmap](milestone-roadmap.md) | Phased delivery plan (M0–M9) with acceptance criteria |
 | [M0 + M1 Nearby plan](m0-m1-nearby-plan.md) | Stations + GPS closest-station slice; emulator & phone deploy |
 | [Data sources](data-sources.md) | Live rail APIs, credentials, and endpoint mapping |
-| [Architecture](architecture.md) | App layers, local storage, offline strategy, privacy |
+| [Architecture](architecture.md) | App layers, commute session design, local storage, offline, privacy |
+| [State model](state-model.md) | Walk-up → boarding → on-train → finish (geofence to journey_log) |
+| [Commute session slices](commute-session-slices.md) | Vertical-slice progress: reduce / effects / HomeViewModel |
+| [Simulated test journey](simulated-journey.md) | In-app GPS sim + live Darwin Refresh (`includeSimulator`) |
 | [Compensation guide](compensation-guide.md) | UK Delay Repay rules by operator (M7 support) |
 
 ## Android build docs
@@ -32,7 +35,7 @@ uk-rail-tracker/
 
 ## Current status
 
-- **Android app**: v0.6.0 — Nearby, Home (M4 walk-up + favourite destinations), Journeys (M3 v1), Settings
+- **Android app**: v0.7.0 — Nearby, Home (M4–M6 walk-up → boarding → on-train), Journeys (M3 v1), Settings
 - **Station data**: 2,612 stations bundled at repo root (`stations.xml`)
 - **Live rail APIs**: OpenLDBWS `GetArrDepBoardWithDetails` only
-- **Next milestone**: [M5 — Boarding detection + service confirmation](milestone-roadmap.md#m5--boarding-detection--service-confirmation)
+- **Next milestone**: [M7 — Disruption history + compensation](milestone-roadmap.md#m7--disruption-history--compensation)

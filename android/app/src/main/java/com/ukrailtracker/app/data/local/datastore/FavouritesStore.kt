@@ -34,6 +34,17 @@ class FavouritesStore(private val context: Context) {
         }
     }
 
+    /** Replace the favourite set (used by debug simulator seeding). */
+    suspend fun replaceAll(crsList: Collection<String>) {
+        val next = crsList
+            .map { it.trim().uppercase() }
+            .filter { it.isNotBlank() }
+            .toSet()
+        context.favouritesDataStore.edit { prefs ->
+            prefs[key] = next
+        }
+    }
+
     suspend fun remove(crs: String) {
         val normalised = crs.trim().uppercase()
         context.favouritesDataStore.edit { prefs ->

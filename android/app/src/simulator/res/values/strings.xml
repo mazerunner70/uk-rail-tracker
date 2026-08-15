@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_debug_sim_start_walk">Start simulated walk to station</string>
+    <string name="home_debug_sim_walking">Simulated walk in progress</string>
+    <string name="home_debug_sim_board_train">Board selected service (simulator)</string>
+    <string name="home_debug_sim_on_train">Simulated train journey in progress</string>
+    <string name="home_debug_sim_disembark">Start simulated disembark walk</string>
+    <string name="home_debug_sim_disembarking">Simulated disembark walk in progress</string>
+    <string name="home_debug_sim_select_service">Select a service before boarding</string>
+</resources>

@@ -1,5 +1,7 @@
 package com.ukrailtracker.app.data.repository
 
+import com.ukrailtracker.app.data.mapper.ServiceDetailsParser
+import com.ukrailtracker.app.data.remote.darwin.OpenLdbServiceDetailsApi
 import com.ukrailtracker.app.domain.model.JourneyOption
 import com.ukrailtracker.app.domain.repository.DepartureRepository
 import com.ukrailtracker.app.domain.repository.JourneyRepository
@@ -7,6 +9,8 @@ import com.ukrailtracker.app.domain.usecase.MapBoardToJourneyOptions
 
 class JourneyRepositoryImpl(
     private val departureRepository: DepartureRepository,
+    private val serviceDetailsApi: OpenLdbServiceDetailsApi,
+    private val serviceDetailsParser: ServiceDetailsParser = ServiceDetailsParser(),
 ) : JourneyRepository {
 
     override suspend fun getOptions(
@@ -37,4 +41,20 @@ class JourneyRepositoryImpl(
     ): JourneyOption? =
         getOptions(originCrs, destinationCrs, forceRefresh)
             .firstOrNull { it.serviceId == serviceId }
+
+    override suspend fun getServiceDetails(
+        serviceId: String,
+        originCrs: String,
+        destinationCrs: String,
+        destinationNameFallback: String,
+    ): JourneyOption {
+        val payload = serviceDetailsApi.getServiceDetails(serviceId)
+        return serviceDetailsParser.parseToOption(
+            payload = payload,
+            serviceId = serviceId,
+            originCrs = originCrs,
+            destinationCrs = destinationCrs,
+            destinationNameFallback = destinationNameFallback,
+        )
+    }
 }

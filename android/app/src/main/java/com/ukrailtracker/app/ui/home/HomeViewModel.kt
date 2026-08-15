@@ -1,40 +1,68 @@
 package com.ukrailtracker.app.ui.home
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ukrailtracker.app.data.local.datastore.CommuteWindowStore
 import com.ukrailtracker.app.data.local.datastore.FavouritesStore
+import com.ukrailtracker.app.data.local.datastore.PinnedJourneyStore
+import com.ukrailtracker.app.data.repository.JourneyLogRepository
 import com.ukrailtracker.app.domain.geo.GeoUtils
 import com.ukrailtracker.app.domain.location.LocationProvider
 import com.ukrailtracker.app.domain.model.Departure
 import com.ukrailtracker.app.domain.model.DisruptionSeverity
 import com.ukrailtracker.app.domain.model.DisruptionSummary
+import com.ukrailtracker.app.domain.model.JourneyOption
+import com.ukrailtracker.app.domain.model.PinnedJourney
 import com.ukrailtracker.app.domain.model.TrainStatus
 import com.ukrailtracker.app.domain.repository.DepartureRepository
 import com.ukrailtracker.app.domain.repository.JourneyRepository
 import com.ukrailtracker.app.domain.repository.StationRepository
+import com.ukrailtracker.app.domain.usecase.ArrivalBuzzTracker
+import com.ukrailtracker.app.domain.usecase.BoardingConfig
+import com.ukrailtracker.app.domain.usecase.BoardingPhase
+import com.ukrailtracker.app.domain.usecase.BoardingServiceSnapshot
+import com.ukrailtracker.app.domain.usecase.ComputeJourneyProgress
 import com.ukrailtracker.app.domain.usecase.DeriveBoardDisruption
+import com.ukrailtracker.app.domain.usecase.DetectBoarding
+import com.ukrailtracker.app.domain.usecase.DetectStationStop
 import com.ukrailtracker.app.domain.usecase.DetectWalkUpArrival
 import com.ukrailtracker.app.domain.usecase.FavouriteDestinationServices
 import com.ukrailtracker.app.domain.usecase.FavouriteServiceUiModel
 import com.ukrailtracker.app.domain.usecase.GetContextualStationsUseCase
+import com.ukrailtracker.app.domain.usecase.JourneyTimeUtils
 import com.ukrailtracker.app.domain.usecase.LoadFavouriteBoundDepartures
+import com.ukrailtracker.app.domain.usecase.MatchBoardingCandidates
+import com.ukrailtracker.app.domain.usecase.ProgressPointUiModel
+import com.ukrailtracker.app.domain.usecase.RouteStation
+import com.ukrailtracker.app.domain.usecase.StationStopConfig
+import com.ukrailtracker.app.domain.usecase.StationStopPhase
 import com.ukrailtracker.app.domain.usecase.WalkUpPhase
 import com.ukrailtracker.app.domain.usecase.WalkUpSample
+import com.ukrailtracker.app.debug.DebugWalkUp
+import com.ukrailtracker.app.service.OnTrainTrackingService
 import com.ukrailtracker.app.ui.station.StatusKind
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -63,10 +91,37 @@ data class WalkUpDestinationUi(
     val errorMessage: String? = null,
 )
 
+/** Selected favourite-bound service being polled until a departure platform appears. */
+data class PlatformWatchUi(
+    val serviceId: String,
+    val originCrs: String,
+    val destinationCrs: String,
+    val destinationName: String,
+    val scheduledDepartureLabel: String,
+    val expectedDepartureLabel: String = "",
+    val platform: String?,
+    /** Clock time (HH:mm) of the last successful board refresh. */
+    val checkedAtLabel: String? = null,
+    val polling: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+data class BoardingCandidateUi(
+    val serviceId: String,
+    val originCrs: String,
+    val destinationCrs: String,
+    val destinationName: String,
+    val originName: String,
+    val operatorName: String,
+    val scheduledDepartureLabel: String,
+    val expectedDepartureLabel: String,
+    val platform: String?,
+)
+
 /**
  * Presence used by the Home status bar.
  * Default / sensing / permission issues keep the usual home body.
- * [AtStation] (and later on-journey) replaces the home body with trip-focused content.
+ * [AtStation] / [BoardingPrompt] replace the home body with trip-focused content.
  */
 sealed interface WalkUpHomeUi {
     data object NeedsPermission : WalkUpHomeUi
@@ -87,13 +142,55 @@ sealed interface WalkUpHomeUi {
         val destinations: List<WalkUpDestinationUi>,
         val destinationsLoading: Boolean,
         val noFavouritesConfigured: Boolean,
+        val platformWatch: PlatformWatchUi? = null,
     ) : WalkUpHomeUi
 
-    // M6: OnJourney(currentStop, nextStop, destination) for way-station status-bar updates
+    data class BoardingPrompt(
+        val originCrs: String,
+        val originName: String,
+        val assumed: BoardingCandidateUi,
+        val alternatives: List<BoardingCandidateUi>,
+        val showPicker: Boolean,
+    ) : WalkUpHomeUi
+
+    data class OnJourney(
+        val serviceId: String,
+        val originCrs: String,
+        val destinationCrs: String,
+        val destinationName: String,
+        val scheduledDepartureLabel: String,
+        val minutesRemaining: Long?,
+        val nextStopName: String?,
+        val currentStopName: String?,
+        val delayMinutes: Int?,
+        val statusKind: StatusKind,
+        val routeMismatch: Boolean,
+        val mismatchStationName: String?,
+        val expectedNextStopName: String?,
+        val points: List<ProgressPointUiModel>,
+        val fractionComplete: Float,
+        val stoppedAtStation: Boolean = false,
+        val refreshing: Boolean = false,
+        val errorMessage: String? = null,
+        val serviceMissing: Boolean = false,
+    ) : WalkUpHomeUi
 }
 
 val WalkUpHomeUi?.focusesAtStation: Boolean
-    get() = this is WalkUpHomeUi.AtStation
+    get() = this is WalkUpHomeUi.AtStation || this is WalkUpHomeUi.BoardingPrompt
+
+val WalkUpHomeUi?.focusesTripUi: Boolean
+    get() = focusesAtStation || this is WalkUpHomeUi.OnJourney
+
+val WalkUpHomeUi?.focusesOnTrain: Boolean
+    get() = this is WalkUpHomeUi.OnJourney
+
+private data class LockedOrigin(
+    val crs: String,
+    val name: String,
+    val latitude: Double,
+    val longitude: Double,
+)
 
 sealed interface HomeUiState {
     data object Loading : HomeUiState
@@ -114,29 +211,64 @@ enum class EmptyReason {
 }
 
 class HomeViewModel(
+    private val appContext: Context,
     private val stationRepository: StationRepository,
     private val departureRepository: DepartureRepository,
     private val journeyRepository: JourneyRepository,
+    private val journeyLogRepository: JourneyLogRepository,
     private val locationProvider: LocationProvider,
     private val commuteWindowStore: CommuteWindowStore,
     private val favouritesStore: FavouritesStore,
+    private val pinnedJourneyStore: PinnedJourneyStore,
     private val getContextualStations: GetContextualStationsUseCase = GetContextualStationsUseCase(),
     private val loadFavouriteBoundDepartures: LoadFavouriteBoundDepartures =
         LoadFavouriteBoundDepartures(journeyRepository, stationRepository),
+    private val boardingConfig: BoardingConfig = BoardingConfig(),
+    private val stationStopConfig: StationStopConfig = StationStopConfig(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _openJourney = MutableSharedFlow<OpenJourneyEvent>(extraBufferCapacity = 1)
+    val openJourney: SharedFlow<OpenJourneyEvent> = _openJourney.asSharedFlow()
+
+    private val _platformAppeared = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    /** Emits the platform label when it first appears for the watched service. */
+    val platformAppeared: SharedFlow<String> = _platformAppeared.asSharedFlow()
+
+    private val _arrivalBuzz = MutableSharedFlow<Int>(extraBufferCapacity = 3)
+    /** Emits a minute threshold (3, 2, or 1) when the final-approach buzz should fire. */
+    val arrivalBuzz: SharedFlow<Int> = _arrivalBuzz.asSharedFlow()
+
     private var walkUpPhase: WalkUpPhase = WalkUpPhase.Away
+    private var boardingPhase: BoardingPhase = BoardingPhase.Idle
     private var previousSample: WalkUpSample? = null
     private var locationWatchJob: Job? = null
     private var destinationLoadJob: Job? = null
+    private var boardingAutoAcceptJob: Job? = null
+    private var platformWatchJob: Job? = null
+    private var onTrainPollJob: Job? = null
     private var permissionGranted: Boolean = false
     private var originOverrideCrs: String? = null
     private var lastLoadedOriginCrs: String? = null
     /** First GPS fix after start may lock "already at station" without a walk-up sequence. */
     private var alreadyPresentOk: Boolean = true
+    private var lockedOrigin: LockedOrigin? = null
+    private var cachedBoardingServices: List<BoardingServiceSnapshot> = emptyList()
+    private var lastAtStationUi: WalkUpHomeUi.AtStation? = null
+    private var platformNotified: Boolean = false
+
+    private var activePinned: PinnedJourney? = null
+    private var latestOnTrainOption: JourneyOption? = null
+    private var routeStations: List<RouteStation> = emptyList()
+    private var stationStopPhase: StationStopPhase = StationStopPhase.Moving
+    private var confirmedStopCrs: String? = null
+    /** CRS of the last stop that triggered a GetServiceDetails confirm refresh. */
+    private var lastServiceDetailsStopCrs: String? = null
+    private var buzzedThresholds: Set<Int> = emptySet()
+    private var onTrainServiceStarted: Boolean = false
+    private var frequentChecksUntilEpochMs: Long = 0L
 
     init {
         viewModelScope.launch {
@@ -153,6 +285,17 @@ class HomeViewModel(
                     reloadDestinationsIfAtStation(forceRefresh = false)
                 }
         }
+        viewModelScope.launch {
+            pinnedJourneyStore.pinnedFlow.collect { pinned ->
+                if (pinned == null) {
+                    if (activePinned != null) {
+                        tearDownOnTrainSession(clearPin = false, logJourney = false)
+                    }
+                } else if (pinned.serviceId != activePinned?.serviceId) {
+                    beginOnTrainSession(pinned)
+                }
+            }
+        }
     }
 
     fun onNeedsPermission() {
@@ -166,6 +309,38 @@ class HomeViewModel(
         startLocationWatch()
     }
 
+    /** Notification tap / deep wake — elevate GPS poll for walk-up confirmation. */
+    fun onOpenedForFrequentChecks() {
+        frequentChecksUntilEpochMs = System.currentTimeMillis() + FREQUENT_CHECKS_TTL_MS
+        if (!permissionGranted) return
+        startLocationWatch(forceRefresh = true)
+    }
+
+    /**
+     * Resets walk-up sensing so an external debug location override can drive Away → Near → At.
+     * Used by [com.ukrailtracker.app.debug.DebugWalkUp] (debug builds only).
+     */
+    fun prepareForDebugWalkUp(elevatePollForMs: Long) {
+        viewModelScope.launch {
+            if (activePinned != null) {
+                tearDownOnTrainSession(clearPin = true, logJourney = false)
+            }
+            clearBoardingSession(keepUi = false)
+            cancelBoardingAutoAccept()
+            stopPlatformWatch()
+            originOverrideCrs = null
+            lastLoadedOriginCrs = null
+            walkUpPhase = WalkUpPhase.Away
+            previousSample = null
+            alreadyPresentOk = false
+            boardingPhase = BoardingPhase.Idle
+            frequentChecksUntilEpochMs = System.currentTimeMillis() + elevatePollForMs.coerceAtLeast(0L)
+            permissionGranted = true
+            patchWalkUp(WalkUpHomeUi.NotAtStation)
+            startLocationWatch(forceRefresh = true)
+        }
+    }
+
     fun onPermissionDenied() {
         permissionGranted = false
         stopLocationWatch()
@@ -176,21 +351,25 @@ class HomeViewModel(
         viewModelScope.launch {
             val normalised = crs.trim().uppercase()
             if (normalised.isBlank()) return@launch
+            clearBoardingSession(keepUi = false)
             originOverrideCrs = normalised
             val station = stationRepository.getByCrs(normalised)
             val name = station?.name ?: normalised
             lastLoadedOriginCrs = null
-            patchWalkUp(
-                WalkUpHomeUi.AtStation(
-                    crsCode = normalised,
-                    stationName = name,
-                    distanceLabel = null,
-                    manualOverride = true,
-                    destinations = emptyList(),
-                    destinationsLoading = true,
-                    noFavouritesConfigured = false,
-                ),
+            stopPlatformWatch()
+            platformNotified = false
+            val at = WalkUpHomeUi.AtStation(
+                crsCode = normalised,
+                stationName = name,
+                distanceLabel = null,
+                manualOverride = true,
+                destinations = emptyList(),
+                destinationsLoading = true,
+                noFavouritesConfigured = false,
+                platformWatch = null,
             )
+            lastAtStationUi = at
+            patchWalkUp(at)
             loadDestinations(originCrs = normalised, forceRefresh = true)
         }
     }
@@ -201,11 +380,120 @@ class HomeViewModel(
         walkUpPhase = WalkUpPhase.Away
         previousSample = null
         alreadyPresentOk = true
+        clearBoardingSession(keepUi = false)
         if (permissionGranted) {
             patchWalkUp(WalkUpHomeUi.NotAtStation)
             startLocationWatch(forceRefresh = true)
         } else {
             patchWalkUp(WalkUpHomeUi.NeedsPermission)
+        }
+    }
+
+    fun confirmBoarding() {
+        val prompt = currentBoardingPrompt() ?: return
+        pinAndOpen(prompt.assumed)
+    }
+
+    fun rejectAssumedBoarding() {
+        val prompt = currentBoardingPrompt() ?: return
+        patchWalkUp(prompt.copy(showPicker = true))
+        // Keep auto-accept on assumed until user picks another or dismisses.
+    }
+
+    fun selectBoardingCandidate(serviceId: String) {
+        val prompt = currentBoardingPrompt() ?: return
+        val chosen = sequenceOf(prompt.assumed)
+            .plus(prompt.alternatives)
+            .firstOrNull { it.serviceId == serviceId }
+            ?: return
+        pinAndOpen(chosen)
+    }
+
+    fun dismissBoarding() {
+        cancelBoardingAutoAccept()
+        clearBoardingSession(keepUi = false)
+        walkUpPhase = WalkUpPhase.Away
+        previousSample = null
+        alreadyPresentOk = true
+        patchWalkUp(WalkUpHomeUi.NotAtStation)
+    }
+
+    fun endOnTrainTrip() {
+        viewModelScope.launch {
+            tearDownOnTrainSession(clearPin = true, logJourney = true)
+        }
+    }
+
+    fun openOnTrainServiceDetail() {
+        val pinned = activePinned ?: return
+        viewModelScope.launch {
+            _openJourney.emit(
+                OpenJourneyEvent(
+                    originCrs = pinned.originCrs,
+                    destinationCrs = pinned.destinationCrs,
+                    serviceId = pinned.serviceId,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Select a favourite-bound service at the station and poll until a departure platform appears.
+     * Vibrates (via [platformAppeared]) when the platform first shows up.
+     */
+    fun selectServiceForPlatformWatch(
+        originCrs: String,
+        destinationCrs: String,
+        serviceId: String,
+    ) {
+        val at = currentAtStation() ?: return
+        val dest = at.destinations.find { it.destinationCrs.equals(destinationCrs, ignoreCase = true) }
+        val service = dest?.services?.find { it.serviceId == serviceId } ?: return
+        val watch = PlatformWatchUi(
+            serviceId = serviceId,
+            originCrs = originCrs.uppercase(),
+            destinationCrs = destinationCrs.uppercase(),
+            destinationName = dest.destinationName,
+            scheduledDepartureLabel = service.scheduledDepartureLabel,
+            expectedDepartureLabel = service.expectedDepartureLabel,
+            platform = service.platform?.takeIf { it.isNotBlank() },
+            checkedAtLabel = formatCheckedNow(),
+            polling = true,
+        )
+        platformNotified = false
+        updateAtStation { it.copy(platformWatch = watch) }
+        startPlatformWatch(watch)
+        val already = watch.platform
+        if (already != null) {
+            platformNotified = true
+            _platformAppeared.tryEmit(already)
+        }
+    }
+
+    fun clearPlatformWatch() {
+        stopPlatformWatch()
+        platformNotified = false
+        updateAtStation { it.copy(platformWatch = null) }
+    }
+
+    /** Manual refresh of the selected service (platform / departure countdown). */
+    fun refreshPlatformWatch() {
+        val watch = currentAtStation()?.platformWatch ?: return
+        viewModelScope.launch {
+            pingPlatform(watch)
+        }
+    }
+
+    fun openWatchedService() {
+        val watch = currentAtStation()?.platformWatch ?: return
+        viewModelScope.launch {
+            _openJourney.emit(
+                OpenJourneyEvent(
+                    originCrs = watch.originCrs,
+                    destinationCrs = watch.destinationCrs,
+                    serviceId = watch.serviceId,
+                ),
+            )
         }
     }
 
@@ -227,6 +515,9 @@ class HomeViewModel(
                 .ifEmpty { crsList }
             loadBoards(selected, forceRefresh = true)
             reloadDestinationsIfAtStation(forceRefresh = true)
+            if (activePinned != null) {
+                refreshOnTrainOption()
+            }
             if (permissionGranted && originOverrideCrs == null) {
                 sampleLocation(forceRefresh = true)
             }
@@ -247,22 +538,161 @@ class HomeViewModel(
         _uiState.value = content.copy(selectedDisruption = null, selectedStationName = null)
     }
 
+    private fun currentBoardingPrompt(): WalkUpHomeUi.BoardingPrompt? =
+        (_uiState.value as? HomeUiState.Content)?.walkUp as? WalkUpHomeUi.BoardingPrompt
+
+    private fun currentAtStation(): WalkUpHomeUi.AtStation? =
+        (_uiState.value as? HomeUiState.Content)?.walkUp as? WalkUpHomeUi.AtStation
+
+    private fun startPlatformWatch(initial: PlatformWatchUi) {
+        stopPlatformWatch()
+        platformWatchJob = viewModelScope.launch {
+            // Immediate force refresh, then keep pinging (faster near departure).
+            pingPlatform(initial)
+            while (isActive) {
+                val watch = currentAtStation()?.platformWatch ?: break
+                if (watch.serviceId != initial.serviceId) break
+                val departureLabel = JourneyTimeUtils.effectiveDepartureLabel(
+                    scheduledDepartureLabel = watch.scheduledDepartureLabel,
+                    expectedDepartureLabel = watch.expectedDepartureLabel,
+                )
+                val minutesLeft = JourneyTimeUtils.minutesUntilDeparture(departureLabel)
+                delay(platformPollIntervalMs(minutesLeft))
+                val still = currentAtStation()?.platformWatch ?: break
+                if (still.serviceId != initial.serviceId) break
+                pingPlatform(still)
+            }
+        }
+    }
+
+    private suspend fun pingPlatform(watch: PlatformWatchUi) {
+        updateAtStation { at ->
+            val current = at.platformWatch?.takeIf { it.serviceId == watch.serviceId } ?: return@updateAtStation at
+            at.copy(platformWatch = current.copy(polling = true, errorMessage = null))
+        }
+        try {
+            val option = journeyRepository.getOption(
+                originCrs = watch.originCrs,
+                destinationCrs = watch.destinationCrs,
+                serviceId = watch.serviceId,
+                forceRefresh = true,
+            )
+            val platform = option?.platform?.trim()?.takeIf { it.isNotEmpty() }
+            val checked = formatCheckedNow()
+            updateAtStation { at ->
+                val current = at.platformWatch?.takeIf { it.serviceId == watch.serviceId }
+                    ?: return@updateAtStation at
+                val destinations = at.destinations.map { dest ->
+                    if (!dest.destinationCrs.equals(watch.destinationCrs, ignoreCase = true)) {
+                        dest
+                    } else {
+                        dest.copy(
+                            services = dest.services.map { svc ->
+                                if (svc.serviceId == watch.serviceId && platform != null) {
+                                    svc.copy(platform = platform)
+                                } else {
+                                    svc
+                                }
+                            },
+                        )
+                    }
+                }
+                at.copy(
+                    destinations = destinations,
+                    platformWatch = current.copy(
+                        platform = platform ?: current.platform,
+                        scheduledDepartureLabel = option?.scheduledDepartureLabel
+                            ?.takeIf { it.isNotBlank() }
+                            ?: current.scheduledDepartureLabel,
+                        expectedDepartureLabel = option?.expectedDepartureLabel
+                            ?: current.expectedDepartureLabel,
+                        checkedAtLabel = checked,
+                        polling = false,
+                        errorMessage = if (option == null) "Service not found on board" else null,
+                    ),
+                )
+            }
+            if (platform != null && !platformNotified) {
+                platformNotified = true
+                _platformAppeared.emit(platform)
+            }
+        } catch (t: Throwable) {
+            updateAtStation { at ->
+                val current = at.platformWatch?.takeIf { it.serviceId == watch.serviceId }
+                    ?: return@updateAtStation at
+                at.copy(
+                    platformWatch = current.copy(
+                        polling = false,
+                        errorMessage = t.message ?: "Could not refresh service",
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun stopPlatformWatch() {
+        platformWatchJob?.cancel()
+        platformWatchJob = null
+    }
+
+    private fun pinAndOpen(candidate: BoardingCandidateUi) {
+        cancelBoardingAutoAccept()
+        viewModelScope.launch {
+            clearBoardingSession(keepUi = false)
+            walkUpPhase = WalkUpPhase.Away
+            previousSample = null
+            alreadyPresentOk = false
+            pinnedJourneyStore.pin(
+                PinnedJourney(
+                    serviceId = candidate.serviceId,
+                    originCrs = candidate.originCrs,
+                    destinationCrs = candidate.destinationCrs,
+                    originName = candidate.originName,
+                    destinationName = candidate.destinationName,
+                    operatorName = candidate.operatorName,
+                    scheduledDepartureLabel = candidate.scheduledDepartureLabel,
+                    pinnedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+            // pinnedFlow collector starts the on-train session on Home.
+        }
+    }
+
     private fun startLocationWatch(forceRefresh: Boolean = false) {
         if (locationWatchJob?.isActive == true && !forceRefresh) return
         locationWatchJob?.cancel()
         alreadyPresentOk = true
         locationWatchJob = viewModelScope.launch {
-            if (originOverrideCrs == null) {
+            if (originOverrideCrs == null &&
+                currentBoardingPrompt() == null &&
+                activePinned == null
+            ) {
                 patchWalkUp(WalkUpHomeUi.NotAtStation)
             }
             sampleLocation(forceRefresh = true)
             while (isActive) {
-                delay(LOCATION_POLL_MS)
+                delay(currentPollIntervalMs())
                 if (originOverrideCrs == null) {
-                    sampleLocation(forceRefresh = false)
+                    val watching = activePinned != null ||
+                        lockedOrigin != null ||
+                        walkUpPhase is WalkUpPhase.Arrived ||
+                        currentBoardingPrompt() != null ||
+                        System.currentTimeMillis() < frequentChecksUntilEpochMs
+                    sampleLocation(forceRefresh = watching)
                 }
             }
         }
+    }
+
+    private fun currentPollIntervalMs(): Long {
+        if (activePinned != null) return LOCATION_POLL_ON_TRAIN_MS
+        if (System.currentTimeMillis() < frequentChecksUntilEpochMs) {
+            return LOCATION_POLL_WATCHING_MS
+        }
+        val watching = lockedOrigin != null ||
+            walkUpPhase is WalkUpPhase.Arrived ||
+            currentBoardingPrompt() != null
+        return if (watching) LOCATION_POLL_WATCHING_MS else LOCATION_POLL_MS
     }
 
     private fun stopLocationWatch() {
@@ -272,11 +702,32 @@ class HomeViewModel(
 
     private suspend fun sampleLocation(forceRefresh: Boolean) {
         if (originOverrideCrs != null) return
+        // Freeze walk-up overwrites while the user is confirming boarding.
+        if (currentBoardingPrompt() != null) return
+
         val location = locationProvider.currentLocation(forceRefresh = forceRefresh)
         if (location == null) {
-            if (walkUpPhase !is WalkUpPhase.Arrived) {
+            if (activePinned == null &&
+                walkUpPhase !is WalkUpPhase.Arrived &&
+                lockedOrigin == null
+            ) {
                 patchWalkUp(WalkUpHomeUi.LocationUnavailable)
             }
+            return
+        }
+
+        val sample = WalkUpSample(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            speedMps = location.speedMetresPerSecond?.toDouble(),
+            epochMs = location.epochMs,
+        )
+        val speed = DetectWalkUpArrival.resolveSpeed(sample, previousSample)
+        previousSample = sample
+
+        // M6 on-train session owns GPS — do not let walk-up steal focus.
+        if (activePinned != null) {
+            sampleOnTrainLocation(sample, speed)
             return
         }
 
@@ -285,24 +736,169 @@ class HomeViewModel(
             lng = location.longitude,
             limit = 5,
         )
-        val sample = WalkUpSample(
-            latitude = location.latitude,
-            longitude = location.longitude,
-            speedMps = location.speedMetresPerSecond?.toDouble(),
-            epochMs = location.epochMs,
-        )
-        val speed = DetectWalkUpArrival.resolveSpeed(sample, previousSample)
+
+        val locked = lockedOrigin
+        if (locked != null) {
+            boardingPhase = DetectBoarding.next(
+                phase = boardingPhase,
+                sample = sample,
+                originLatitude = locked.latitude,
+                originLongitude = locked.longitude,
+                speedMps = speed,
+                config = boardingConfig,
+            )
+            if (boardingPhase is BoardingPhase.Triggered) {
+                val triggered = boardingPhase as BoardingPhase.Triggered
+                enterBoardingPrompt(triggered.triggeredAtEpochMs)
+                return
+            }
+        }
+
         val next = DetectWalkUpArrival.next(
             phase = walkUpPhase,
             sample = sample,
             nearest = nearby.firstOrNull(),
             speedMps = speed,
-            alreadyPresentOk = alreadyPresentOk && walkUpPhase == WalkUpPhase.Away,
+            alreadyPresentOk = alreadyPresentOk && walkUpPhase == WalkUpPhase.Away && lockedOrigin == null,
         )
-        previousSample = sample
-        walkUpPhase = next
         alreadyPresentOk = false
-        applyWalkUpPhase(next)
+
+        val leftArrived = walkUpPhase is WalkUpPhase.Arrived && next !is WalkUpPhase.Arrived
+        walkUpPhase = next
+
+        when {
+            next is WalkUpPhase.Arrived -> {
+                val station = nearby.firstOrNull()?.station
+                if (station != null &&
+                    (lockedOrigin == null || lockedOrigin?.crs != next.crs)
+                ) {
+                    lockedOrigin = LockedOrigin(
+                        crs = next.crs,
+                        name = next.stationName,
+                        latitude = station.latitude,
+                        longitude = station.longitude,
+                    )
+                    boardingPhase = BoardingPhase.Idle
+                }
+                applyArrived(next)
+            }
+
+            leftArrived || locked != null -> {
+                handleLeftOrWatching(
+                    next = next,
+                    sample = sample,
+                    speedMps = speed,
+                )
+            }
+
+            else -> {
+                clearBoardingSession(keepUi = false)
+                applyWalkUpPhase(next)
+            }
+        }
+    }
+
+    private suspend fun handleLeftOrWatching(
+        next: WalkUpPhase,
+        sample: WalkUpSample,
+        speedMps: Double?,
+    ) {
+        val locked = lockedOrigin ?: run {
+            applyWalkUpPhase(next)
+            return
+        }
+        val distance = GeoUtils.haversineMetres(
+            locked.latitude,
+            locked.longitude,
+            sample.latitude,
+            sample.longitude,
+        )
+
+        when (boardingPhase) {
+            is BoardingPhase.Sustaining -> {
+                // Keep last at-station UI while motion is still qualifying.
+                lastAtStationUi?.let { patchWalkUp(it) }
+            }
+
+            BoardingPhase.Idle -> {
+                val walkedAway =
+                    distance >= boardingConfig.leaveMetres &&
+                        (speedMps == null || speedMps < boardingConfig.boardMinMps)
+                val stillNear = distance < boardingConfig.leaveMetres
+                when {
+                    walkedAway -> {
+                        clearBoardingSession(keepUi = false)
+                        walkUpPhase = WalkUpPhase.Away
+                        applyWalkUpPhase(WalkUpPhase.Away)
+                    }
+                    stillNear -> {
+                        // Vehicle leave / platform motion before leave threshold — keep watching.
+                        lastAtStationUi?.let { patchWalkUp(it) }
+                            ?: applyWalkUpPhase(next)
+                    }
+                    else -> {
+                        clearBoardingSession(keepUi = false)
+                        applyWalkUpPhase(next)
+                    }
+                }
+            }
+
+            is BoardingPhase.Triggered -> {
+                enterBoardingPrompt((boardingPhase as BoardingPhase.Triggered).triggeredAtEpochMs)
+            }
+        }
+    }
+
+    private fun enterBoardingPrompt(triggeredAtEpochMs: Long) {
+        val locked = lockedOrigin ?: return
+        val match = MatchBoardingCandidates.match(
+            cached = cachedBoardingServices,
+            boardedAtEpochMs = triggeredAtEpochMs,
+            pastMinutes = boardingConfig.matchPastMinutes,
+            futureMinutes = boardingConfig.matchFutureMinutes,
+        )
+        if (match == null) {
+            clearBoardingSession(keepUi = false)
+            walkUpPhase = WalkUpPhase.Away
+            patchWalkUp(WalkUpHomeUi.NotAtStation)
+            return
+        }
+        val prompt = WalkUpHomeUi.BoardingPrompt(
+            originCrs = locked.crs,
+            originName = locked.name,
+            assumed = match.assumed.toUi(),
+            alternatives = match.alternatives.map { it.toUi() },
+            showPicker = false,
+        )
+        patchWalkUp(prompt)
+        startBoardingAutoAccept()
+    }
+
+    private fun startBoardingAutoAccept() {
+        cancelBoardingAutoAccept()
+        boardingAutoAcceptJob = viewModelScope.launch {
+            delay(BOARDING_AUTO_ACCEPT_MS)
+            if (currentBoardingPrompt() != null) {
+                confirmBoarding()
+            }
+        }
+    }
+
+    private fun cancelBoardingAutoAccept() {
+        boardingAutoAcceptJob?.cancel()
+        boardingAutoAcceptJob = null
+    }
+
+    private fun clearBoardingSession(keepUi: Boolean) {
+        cancelBoardingAutoAccept()
+        stopPlatformWatch()
+        platformNotified = false
+        lockedOrigin = null
+        boardingPhase = BoardingPhase.Idle
+        cachedBoardingServices = emptyList()
+        if (!keepUi) {
+            lastAtStationUi = null
+        }
     }
 
     private suspend fun applyWalkUpPhase(phase: WalkUpPhase) {
@@ -315,34 +911,41 @@ class HomeViewModel(
                     distanceLabel = GeoUtils.formatDistance(phase.distanceMetres),
                 ),
             )
-            is WalkUpPhase.Arrived -> {
-                val existing = (_uiState.value as? HomeUiState.Content)?.walkUp as? WalkUpHomeUi.AtStation
-                val keepDestinations = existing
-                    ?.takeIf { it.crsCode == phase.crs && !it.manualOverride }
-                    ?.destinations
-                    .orEmpty()
-                val loading = phase.crs != lastLoadedOriginCrs
-                patchWalkUp(
-                    WalkUpHomeUi.AtStation(
-                        crsCode = phase.crs,
-                        stationName = phase.stationName,
-                        distanceLabel = GeoUtils.formatDistance(phase.distanceMetres),
-                        manualOverride = false,
-                        destinations = keepDestinations,
-                        destinationsLoading = loading || (existing?.destinationsLoading == true),
-                        noFavouritesConfigured = existing?.noFavouritesConfigured == true,
-                    ),
-                )
-                if (loading) {
-                    loadDestinations(originCrs = phase.crs, forceRefresh = false)
-                }
-            }
+            is WalkUpPhase.Arrived -> applyArrived(phase)
+        }
+    }
+
+    private suspend fun applyArrived(phase: WalkUpPhase.Arrived) {
+        val existing = (_uiState.value as? HomeUiState.Content)?.walkUp as? WalkUpHomeUi.AtStation
+        val sameStation = existing?.crsCode == phase.crs && existing?.manualOverride != true
+        val keepDestinations = existing?.takeIf { sameStation }?.destinations.orEmpty()
+        val keepWatch = existing?.takeIf { sameStation }?.platformWatch
+        if (!sameStation) {
+            stopPlatformWatch()
+            platformNotified = false
+        }
+        val loading = phase.crs != lastLoadedOriginCrs
+        val at = WalkUpHomeUi.AtStation(
+            crsCode = phase.crs,
+            stationName = phase.stationName,
+            distanceLabel = GeoUtils.formatDistance(phase.distanceMetres),
+            manualOverride = false,
+            destinations = keepDestinations,
+            destinationsLoading = loading || (existing?.destinationsLoading == true),
+            noFavouritesConfigured = existing?.noFavouritesConfigured == true,
+            platformWatch = keepWatch,
+        )
+        lastAtStationUi = at
+        patchWalkUp(at)
+        if (loading) {
+            loadDestinations(originCrs = phase.crs, forceRefresh = false)
         }
     }
 
     private fun reloadDestinationsIfAtStation(forceRefresh: Boolean) {
         val at = when (val walkUp = (_uiState.value as? HomeUiState.Content)?.walkUp) {
             is WalkUpHomeUi.AtStation -> walkUp.crsCode
+            is WalkUpHomeUi.BoardingPrompt -> null
             else -> originOverrideCrs
         } ?: return
         loadDestinations(originCrs = at, forceRefresh = forceRefresh)
@@ -360,12 +963,18 @@ class HomeViewModel(
                 )
             }
             if (noFavourites) {
+                cachedBoardingServices = emptyList()
+                stopPlatformWatch()
+                platformNotified = false
                 updateAtStation { current ->
-                    current.copy(
+                    val updated = current.copy(
                         destinations = emptyList(),
                         destinationsLoading = false,
                         noFavouritesConfigured = true,
+                        platformWatch = null,
                     )
+                    lastAtStationUi = updated
+                    updated
                 }
                 lastLoadedOriginCrs = originCrs.uppercase()
                 return@launch
@@ -376,12 +985,48 @@ class HomeViewModel(
                 forceRefresh = forceRefresh,
             )
             lastLoadedOriginCrs = originCrs.uppercase()
+            val originName = lockedOrigin?.name
+                ?: lastAtStationUi?.stationName
+                ?: originCrs
+            cachedBoardingServices = MatchBoardingCandidates.snapshotsFromDestinations(
+                originCrs = originCrs,
+                originName = originName,
+                destinations = rows,
+                favouriteDestinationOrder = favourites,
+            )
             updateAtStation { current ->
-                current.copy(
-                    destinations = rows.map { it.toUi() },
+                val mapped = rows.map { it.toUi() }
+                val watch = current.platformWatch?.let { existingWatch ->
+                    val refreshedPlatform = mapped
+                        .flatMap { it.services }
+                        .find { it.serviceId == existingWatch.serviceId }
+                        ?.platform
+                        ?.takeIf { it.isNotBlank() }
+                    existingWatch.copy(platform = refreshedPlatform ?: existingWatch.platform)
+                }
+                val destinations = if (watch?.platform != null) {
+                    mapped.map { dest ->
+                        dest.copy(
+                            services = dest.services.map { svc ->
+                                if (svc.serviceId == watch.serviceId) {
+                                    svc.copy(platform = watch.platform)
+                                } else {
+                                    svc
+                                }
+                            },
+                        )
+                    }
+                } else {
+                    mapped
+                }
+                val updated = current.copy(
+                    destinations = destinations,
                     destinationsLoading = false,
                     noFavouritesConfigured = false,
+                    platformWatch = watch,
                 )
+                lastAtStationUi = updated
+                updated
             }
         }
     }
@@ -394,17 +1039,31 @@ class HomeViewModel(
             errorMessage = errorMessage,
         )
 
+    private fun BoardingServiceSnapshot.toUi(): BoardingCandidateUi =
+        BoardingCandidateUi(
+            serviceId = serviceId,
+            originCrs = originCrs,
+            destinationCrs = destinationCrs,
+            destinationName = destinationName,
+            originName = originName,
+            operatorName = operatorName,
+            scheduledDepartureLabel = scheduledDepartureLabel,
+            expectedDepartureLabel = expectedDepartureLabel,
+            platform = platform,
+        )
+
     private fun updateAtStation(transform: (WalkUpHomeUi.AtStation) -> WalkUpHomeUi.AtStation) {
         val content = _uiState.value as? HomeUiState.Content ?: return
         val at = content.walkUp as? WalkUpHomeUi.AtStation ?: return
-        _uiState.value = content.copy(walkUp = transform(at))
+        val updated = transform(at)
+        lastAtStationUi = updated
+        _uiState.value = content.copy(walkUp = updated)
     }
 
     private fun patchWalkUp(walkUp: WalkUpHomeUi?) {
         when (val current = _uiState.value) {
             is HomeUiState.Content -> _uiState.value = current.copy(walkUp = walkUp)
             is HomeUiState.Empty -> {
-                // Still surface walk-up even when commute/favourites boards are empty.
                 _uiState.value = HomeUiState.Content(
                     walkUp = walkUp,
                     stations = emptyList(),
@@ -536,32 +1195,372 @@ class HomeViewModel(
         )
     }
 
+    private suspend fun beginOnTrainSession(pinned: PinnedJourney) {
+        clearBoardingSession(keepUi = false)
+        walkUpPhase = WalkUpPhase.Away
+        originOverrideCrs = null
+        activePinned = pinned
+        stationStopPhase = StationStopPhase.Moving
+        confirmedStopCrs = null
+        lastServiceDetailsStopCrs = null
+        buzzedThresholds = emptySet()
+        latestOnTrainOption = null
+        routeStations = emptyList()
+
+        patchWalkUp(
+            WalkUpHomeUi.OnJourney(
+                serviceId = pinned.serviceId,
+                originCrs = pinned.originCrs,
+                destinationCrs = pinned.destinationCrs,
+                destinationName = pinned.destinationName,
+                scheduledDepartureLabel = pinned.scheduledDepartureLabel,
+                minutesRemaining = null,
+                nextStopName = null,
+                currentStopName = null,
+                delayMinutes = null,
+                statusKind = StatusKind.Other,
+                routeMismatch = false,
+                mismatchStationName = null,
+                expectedNextStopName = null,
+                points = emptyList(),
+                fractionComplete = 0f,
+                refreshing = true,
+            ),
+        )
+        startOnTrainService(pinned.destinationName, null)
+        if (permissionGranted) {
+            startLocationWatch(forceRefresh = true)
+        }
+        refreshOnTrainOption()
+        startOnTrainPolling()
+    }
+
+    private suspend fun tearDownOnTrainSession(clearPin: Boolean, logJourney: Boolean) {
+        onTrainPollJob?.cancel()
+        onTrainPollJob = null
+        val option = latestOnTrainOption
+        val wasActive = activePinned != null
+        // Clear session flag first so pinnedFlow(null) does not re-enter teardown.
+        activePinned = null
+        latestOnTrainOption = null
+        routeStations = emptyList()
+        stationStopPhase = StationStopPhase.Moving
+        confirmedStopCrs = null
+        lastServiceDetailsStopCrs = null
+        buzzedThresholds = emptySet()
+        alreadyPresentOk = true
+        if (logJourney && option != null) {
+            runCatching { journeyLogRepository.logFromOption(option) }
+        }
+        stopOnTrainService()
+        if (clearPin) {
+            pinnedJourneyStore.clear()
+        }
+        if (wasActive &&
+            (_uiState.value as? HomeUiState.Content)?.walkUp is WalkUpHomeUi.OnJourney
+        ) {
+            patchWalkUp(WalkUpHomeUi.NotAtStation)
+        }
+    }
+
+    private fun startOnTrainPolling() {
+        onTrainPollJob?.cancel()
+        onTrainPollJob = viewModelScope.launch {
+            while (isActive && activePinned != null) {
+                val stopped = stationStopPhase is StationStopPhase.Confirmed ||
+                    stationStopPhase is StationStopPhase.Dwelling
+                // Between stops we keep a light heartbeat; at a stop we refresh more often
+                // so GetServiceDetails can confirm timings while dwelling.
+                delay(if (stopped) ON_TRAIN_POLL_STOPPED_MS else ON_TRAIN_POLL_MS)
+                if (activePinned == null) break
+                refreshOnTrainOption()
+            }
+        }
+    }
+
+    private suspend fun refreshOnTrainOption() {
+        val pinned = activePinned ?: return
+        updateOnJourney { it.copy(refreshing = true, errorMessage = null) }
+        try {
+            val option = journeyRepository.getServiceDetails(
+                serviceId = pinned.serviceId,
+                originCrs = pinned.originCrs,
+                destinationCrs = pinned.destinationCrs,
+                destinationNameFallback = pinned.destinationName,
+            )
+            latestOnTrainOption = option
+            routeStations = buildRouteStations(option)
+            applyOnTrainProgress(option)
+        } catch (t: Throwable) {
+            val missing = t.message?.contains("not found", ignoreCase = true) == true ||
+                t.message?.contains("HTTP 404", ignoreCase = true) == true
+            updateOnJourney {
+                it.copy(
+                    refreshing = false,
+                    serviceMissing = missing || it.serviceMissing,
+                    errorMessage = t.message ?: "Could not refresh service",
+                    minutesRemaining = null,
+                    points = emptyList(),
+                    fractionComplete = 0f,
+                )
+            }
+        }
+    }
+
+    private suspend fun buildRouteStations(option: JourneyOption): List<RouteStation> {
+        val result = ArrayList<RouteStation>()
+        val seen = HashSet<String>()
+        for (cp in option.callingPoints) {
+            val crs = cp.crs?.trim()?.uppercase().orEmpty()
+            if (crs.isEmpty() || !seen.add(crs)) continue
+            val station = stationRepository.getByCrs(crs) ?: continue
+            result += RouteStation(
+                crs = crs,
+                name = station.name.ifBlank { cp.locationName },
+                latitude = station.latitude,
+                longitude = station.longitude,
+            )
+        }
+        return result
+    }
+
+    private suspend fun sampleOnTrainLocation(sample: WalkUpSample, speedMps: Double?) {
+        val pinned = activePinned ?: return
+        stationStopPhase = DetectStationStop.next(
+            phase = stationStopPhase,
+            sample = sample,
+            speedMps = speedMps,
+            routeStations = routeStations,
+            config = stationStopConfig,
+        )
+        when (val phase = stationStopPhase) {
+            is StationStopPhase.Confirmed -> {
+                confirmedStopCrs = phase.crs
+                val isNewStop = !phase.crs.equals(lastServiceDetailsStopCrs, ignoreCase = true)
+                if (isNewStop) {
+                    lastServiceDetailsStopCrs = phase.crs
+                    // Confirm timing + destination against Darwin for this stop.
+                    refreshOnTrainOption()
+                    if (phase.crs.equals(pinned.destinationCrs, ignoreCase = true)) {
+                        tearDownOnTrainSession(clearPin = true, logJourney = true)
+                    }
+                    return
+                }
+                if (phase.crs.equals(pinned.destinationCrs, ignoreCase = true)) {
+                    tearDownOnTrainSession(clearPin = true, logJourney = true)
+                    return
+                }
+            }
+            is StationStopPhase.Dwelling -> {
+                // Keep last confirmed until a new confirmation replaces it.
+            }
+            StationStopPhase.Moving -> {
+                // Retain confirmedStopCrs for progress until the next confirm.
+            }
+        }
+        latestOnTrainOption?.let { applyOnTrainProgress(it) }
+            ?: refreshOnTrainOption()
+    }
+
+    private suspend fun applyOnTrainProgress(option: JourneyOption) {
+        val pinned = activePinned ?: return
+        val progress = ComputeJourneyProgress.compute(
+            callingPoints = option.callingPoints,
+            originCrs = pinned.originCrs,
+            destinationCrs = pinned.destinationCrs,
+            destinationNameFallback = pinned.destinationName,
+            confirmedStopCrs = confirmedStopCrs,
+            now = LocalDateTime.now(),
+        )
+        // Darwin AT at the destination means the train has arrived — end the live trip.
+        if (progress.destinationArrived) {
+            tearDownOnTrainSession(clearPin = true, logJourney = true)
+            return
+        }
+        val statusKind = when (option.status) {
+            TrainStatus.OnTime -> StatusKind.OnTime
+            TrainStatus.Delayed -> StatusKind.Delayed
+            TrainStatus.Cancelled -> StatusKind.Cancelled
+            else -> StatusKind.Other
+        }
+        val stopped = stationStopPhase is StationStopPhase.Confirmed ||
+            stationStopPhase is StationStopPhase.Dwelling
+        val mismatchName = if (progress.routeMismatch) {
+            (stationStopPhase as? StationStopPhase.Confirmed)?.name
+                ?: progress.currentStopName
+        } else {
+            null
+        }
+
+        patchWalkUp(
+            WalkUpHomeUi.OnJourney(
+                serviceId = pinned.serviceId,
+                originCrs = pinned.originCrs,
+                destinationCrs = pinned.destinationCrs,
+                destinationName = progress.destinationName,
+                scheduledDepartureLabel = pinned.scheduledDepartureLabel,
+                minutesRemaining = progress.minutesToDestination,
+                nextStopName = progress.nextStopName,
+                currentStopName = progress.currentStopName,
+                delayMinutes = option.delayMinutes,
+                statusKind = statusKind,
+                routeMismatch = progress.routeMismatch,
+                mismatchStationName = mismatchName,
+                expectedNextStopName = progress.timetableNextStopName,
+                points = progress.points,
+                fractionComplete = progress.fractionComplete,
+                stoppedAtStation = stopped,
+                refreshing = false,
+                errorMessage = null,
+                serviceMissing = false,
+            ),
+        )
+        updateOnTrainService(progress.destinationName, progress.minutesToDestination)
+        fireArrivalBuzzIfNeeded(progress.minutesToDestination, progress.approachingDestination)
+    }
+
+    private fun fireArrivalBuzzIfNeeded(minutesRemaining: Long?, approaching: Boolean) {
+        val due = ArrivalBuzzTracker.thresholdsToFire(
+            minutesRemaining = minutesRemaining,
+            alreadyFired = buzzedThresholds,
+            approachingDestination = approaching,
+        )
+        if (due.isEmpty()) return
+        buzzedThresholds = ArrivalBuzzTracker.withFired(buzzedThresholds, due)
+        due.forEach { threshold -> _arrivalBuzz.tryEmit(threshold) }
+    }
+
+    private fun startOnTrainService(destinationName: String, minutes: Long?) {
+        val simulating = DebugWalkUp.isSimulatingLocation()
+        if (!hasOsLocationPermission() && !simulating) {
+            Log.w(TAG, "Skip on-train FGS — no location permission and not simulating")
+            return
+        }
+        runCatching {
+            OnTrainTrackingService.start(
+                context = appContext,
+                destinationName = destinationName,
+                minutesRemaining = minutes?.toInt(),
+                allowWithoutLocation = simulating,
+            )
+            onTrainServiceStarted = true
+        }
+    }
+
+    private fun updateOnTrainService(destinationName: String, minutes: Long?) {
+        if (!onTrainServiceStarted) {
+            startOnTrainService(destinationName, minutes)
+            return
+        }
+        val simulating = DebugWalkUp.isSimulatingLocation()
+        if (!hasOsLocationPermission() && !simulating) {
+            stopOnTrainService()
+            return
+        }
+        runCatching {
+            OnTrainTrackingService.update(
+                context = appContext,
+                destinationName = destinationName,
+                minutesRemaining = minutes?.toInt(),
+                allowWithoutLocation = simulating,
+            )
+        }
+    }
+
+    private fun hasOsLocationPermission(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(
+            appContext, Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(
+            appContext, Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
+
+    private fun stopOnTrainService() {
+        if (!onTrainServiceStarted) return
+        runCatching { OnTrainTrackingService.stop(appContext) }
+        onTrainServiceStarted = false
+    }
+
+    private fun updateOnJourney(transform: (WalkUpHomeUi.OnJourney) -> WalkUpHomeUi.OnJourney) {
+        val content = _uiState.value as? HomeUiState.Content ?: return
+        val onJourney = content.walkUp as? WalkUpHomeUi.OnJourney ?: return
+        _uiState.value = content.copy(walkUp = transform(onJourney))
+    }
+
+    override fun onCleared() {
+        onTrainPollJob?.cancel()
+        // Leave the foreground service running if a pin is still active — Home will
+        // re-attach on the next open. Stop it only when the session itself ends.
+        super.onCleared()
+    }
+
+    data class OpenJourneyEvent(
+        val originCrs: String,
+        val destinationCrs: String,
+        val serviceId: String,
+    )
+
     companion object {
+        private const val TAG = "UkRailTracker"
         private const val LOCATION_POLL_MS = 10_000L
+        private const val LOCATION_POLL_WATCHING_MS = 4_000L
+        private const val LOCATION_POLL_ON_TRAIN_MS = 5_000L
+        private const val FREQUENT_CHECKS_TTL_MS = 5 * 60_000L
+        private const val BOARDING_AUTO_ACCEPT_MS = 60_000L
+        private const val ON_TRAIN_POLL_MS = 45_000L
+        /** Per-minute ETA refresh while dwelling / stopped at a station. */
+        private const val ON_TRAIN_POLL_STOPPED_MS = 60_000L
 
         private val FETCHED_FMT: DateTimeFormatter =
             DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
 
+        private val CHECKED_FMT: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault())
+
         private fun formatFetched(epochMs: Long): String =
             "Updated ${FETCHED_FMT.format(Instant.ofEpochMilli(epochMs))}"
 
+        private fun formatCheckedNow(): String =
+            CHECKED_FMT.format(Instant.now())
+
+        /**
+         * Poll cadence for the selected departure — denser as the train approaches.
+         * Unknown ETA uses a moderate default.
+         */
+        internal fun platformPollIntervalMs(minutesUntilDeparture: Long?): Long = when {
+            minutesUntilDeparture == null -> 20_000L
+            minutesUntilDeparture > 20L -> 60_000L
+            minutesUntilDeparture > 10L -> 30_000L
+            minutesUntilDeparture > 5L -> 15_000L
+            minutesUntilDeparture >= 0L -> 10_000L
+            else -> 30_000L // already departed — keep a light watch
+        }
+
         fun factory(
+            appContext: Context,
             stationRepository: StationRepository,
             departureRepository: DepartureRepository,
             journeyRepository: JourneyRepository,
+            journeyLogRepository: JourneyLogRepository,
             locationProvider: LocationProvider,
             commuteWindowStore: CommuteWindowStore,
             favouritesStore: FavouritesStore,
+            pinnedJourneyStore: PinnedJourneyStore,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return HomeViewModel(
+                    appContext = appContext.applicationContext,
                     stationRepository = stationRepository,
                     departureRepository = departureRepository,
                     journeyRepository = journeyRepository,
+                    journeyLogRepository = journeyLogRepository,
                     locationProvider = locationProvider,
                     commuteWindowStore = commuteWindowStore,
                     favouritesStore = favouritesStore,
+                    pinnedJourneyStore = pinnedJourneyStore,
                 ) as T
             }
         }

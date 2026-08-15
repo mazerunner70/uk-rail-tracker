@@ -79,6 +79,7 @@ object DepartureBoardJson {
                     .put("crs", p.crs)
                     .put("scheduledTimeLabel", p.scheduledTimeLabel)
                     .put("expectedLabel", p.expectedLabel)
+                    .put("actualTimeLabel", p.actualTimeLabel)
                     .put("isCancelled", p.isCancelled),
             )
         }
@@ -99,6 +100,7 @@ object DepartureBoardJson {
                         scheduledTimeLabel = o.optString("scheduledTimeLabel").takeIf { it.isNotBlank() },
                         expectedLabel = o.optString("expectedLabel").takeIf { it.isNotBlank() },
                         isCancelled = o.optBoolean("isCancelled", false),
+                        actualTimeLabel = o.optString("actualTimeLabel").takeIf { it.isNotBlank() },
                     ),
                 )
             }

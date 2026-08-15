@@ -1,11 +1,50 @@
 #!/usr/bin/env bash
 # Build, install, and launch the debug app on the Pixel 8 Pro emulator AVD.
+#
+# Usage:
+#   ./scripts/deploy-emulator.sh              # production-like debug (no simulator)
+#   ./scripts/deploy-emulator.sh --simulator  # include APS walk-up GPS simulator
+#   INCLUDE_SIMULATOR=1 ./scripts/deploy-emulator.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AVD_NAME="${AVD_NAME:-ukrail_pixel8pro_api35}"
 PACKAGE="com.ukrailtracker.app"
 ACTIVITY="${PACKAGE}/.MainActivity"
+WITH_SIMULATOR=0
+
+usage() {
+  cat <<'EOF'
+Usage: deploy-emulator.sh [--simulator|-s] [--help]
+
+  --simulator, -s   Build with the APS walk-up GPS simulator (-PincludeSimulator=true)
+  INCLUDE_SIMULATOR=1 in the environment has the same effect.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --simulator|-s) WITH_SIMULATOR=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *)
+      echo "error: unknown argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "${INCLUDE_SIMULATOR:-}" == "1" ]]; then
+  WITH_SIMULATOR=1
+fi
+
+GRADLE_PROPS=()
+if [[ "$WITH_SIMULATOR" -eq 1 ]]; then
+  GRADLE_PROPS+=(-PincludeSimulator=true)
+  echo "Walk-up GPS simulator: ON"
+else
+  echo "Walk-up GPS simulator: off (pass --simulator to enable)"
+fi
 
 if [[ -n "${ANDROID_HOME:-}" ]]; then
   export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator"
@@ -52,7 +91,7 @@ else
 fi
 
 echo "Installing debug build on $SERIAL…"
-ANDROID_SERIAL="$SERIAL" ./gradlew :app:installDebug
+ANDROID_SERIAL="$SERIAL" ./gradlew :app:installDebug "${GRADLE_PROPS[@]+"${GRADLE_PROPS[@]}"}"
 
 echo "Launching $ACTIVITY"
 adb -s "$SERIAL" shell am start -n "$ACTIVITY"

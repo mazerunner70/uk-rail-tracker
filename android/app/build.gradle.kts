@@ -12,6 +12,15 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use(::load)
 }
 
+/**
+ * Opt-in walk-up GPS simulator (APS approach).
+ * Enable with `-PincludeSimulator=true` or env `INCLUDE_SIMULATOR=1`.
+ * When off, [com.ukrailtracker.app.debug.DebugWalkUp] is a no-op and simulator classes are omitted.
+ */
+val includeSimulator: Boolean =
+    (findProperty("includeSimulator") as String?)?.equals("true", ignoreCase = true) == true ||
+        System.getenv("INCLUDE_SIMULATOR") == "1"
+
 android {
     namespace = "com.ukrailtracker.app"
     compileSdk = 35
@@ -20,16 +29,20 @@ android {
         applicationId = "com.ukrailtracker.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.6.0"
+        versionCode = 7
+        versionName = "0.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Rail Data Marketplace consumer key (x-apikey). Falls back to legacy DARWIN_LDB_TOKEN.
+        // Rail Data Marketplace consumer keys (x-apikey). Board key falls back to legacy DARWIN_LDB_TOKEN.
         val ldbApiKey = localProperties.getProperty("DARWIN_LDB_API_KEY")
             ?: localProperties.getProperty("DARWIN_LDB_TOKEN")
             ?: ""
+        val serviceDetailsApiKey =
+            localProperties.getProperty("DARWIN_LDB_SERVICE_DETAILS_API_KEY") ?: ""
         buildConfigField("String", "DARWIN_LDB_API_KEY", "\"$ldbApiKey\"")
+        buildConfigField("String", "DARWIN_LDB_SERVICE_DETAILS_API_KEY", "\"$serviceDetailsApiKey\"")
+        buildConfigField("boolean", "INCLUDE_SIMULATOR", includeSimulator.toString())
     }
 
     buildTypes {
@@ -58,6 +71,30 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    sourceSets {
+        fun applySimulatorSources(name: String) {
+            getByName(name) {
+                if (includeSimulator) {
+                    java.srcDir("src/simulator/java")
+                    res.srcDir("src/simulator/res")
+                } else {
+                    java.srcDir("src/noSimulator/java")
+                }
+            }
+        }
+        applySimulatorSources("debug")
+        applySimulatorSources("release")
+        if (includeSimulator) {
+            getByName("testDebug") {
+                java.srcDir("src/testSimulator/java")
+            }
+        }
+    }
+}
+
+if (includeSimulator) {
+    logger.lifecycle("includeSimulator=true — packaging walk-up GPS simulator")
 }
 
 dependencies {

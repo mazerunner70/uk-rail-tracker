@@ -175,6 +175,7 @@ class ArrDepBoardWithDetailsParser {
             expectedLabel = expected,
             isCancelled = obj.optBoolean("isCancelled", false) ||
                 expected.equals("Cancelled", ignoreCase = true),
+            actualTimeLabel = at,
         )
     }
 

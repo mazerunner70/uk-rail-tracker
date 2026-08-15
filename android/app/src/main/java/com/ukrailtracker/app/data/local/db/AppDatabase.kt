@@ -10,6 +10,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import kotlinx.coroutines.flow.Flow
 
 @Entity(
     tableName = "stations",
@@ -142,6 +143,9 @@ interface JourneyLogDao {
 
     @Query("SELECT * FROM journey_log ORDER BY id DESC LIMIT :limit")
     suspend fun recent(limit: Int = 50): List<JourneyLogEntity>
+
+    @Query("SELECT * FROM journey_log ORDER BY id DESC LIMIT :limit")
+    fun observeRecent(limit: Int = 100): Flow<List<JourneyLogEntity>>
 }
 
 @Database(
