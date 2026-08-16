@@ -93,6 +93,15 @@ android {
     }
 }
 
+// Cursor / IntelliJ Gradle import calls .get() on androidTest BuildConfig output dirs
+// (generate*AndroidTestBuildConfig) during configuration, which Gradle 8.9 rejects.
+// This project has no instrumented tests, so disable the variant.
+androidComponents {
+    beforeVariants { builder ->
+        builder.enableAndroidTest = false
+    }
+}
+
 if (includeSimulator) {
     logger.lifecycle("includeSimulator=true — packaging walk-up GPS simulator")
 }
@@ -100,7 +109,6 @@ if (includeSimulator) {
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
     implementation(composeBom)
-    androidTestImplementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.9.3")

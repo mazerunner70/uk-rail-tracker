@@ -79,6 +79,8 @@ The simulator wraps **only** `LocationProvider`. Departure boards and `GetServic
 
 ---
 
+Live inventory of domain types vs Room / DataStore / in-memory session: [data-model.md](data-model.md).
+
 ## Room database schema
 
 ### `stations` table

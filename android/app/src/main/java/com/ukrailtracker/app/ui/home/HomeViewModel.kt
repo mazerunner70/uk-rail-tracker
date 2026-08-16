@@ -27,6 +27,14 @@ import com.ukrailtracker.app.domain.usecase.ArrivalBuzzTracker
 import com.ukrailtracker.app.domain.usecase.BoardingConfig
 import com.ukrailtracker.app.domain.usecase.BoardingPhase
 import com.ukrailtracker.app.domain.usecase.BoardingServiceSnapshot
+import com.ukrailtracker.app.domain.usecase.CommuteEffect
+import com.ukrailtracker.app.domain.usecase.CommuteEvent
+import com.ukrailtracker.app.domain.usecase.CommuteSession
+import com.ukrailtracker.app.domain.usecase.CommuteTransition
+import com.ukrailtracker.app.domain.usecase.LockedOrigin
+import com.ukrailtracker.app.domain.usecase.isManualOriginOverride
+import com.ukrailtracker.app.domain.usecase.lockedOriginOrNull
+import com.ukrailtracker.app.domain.usecase.reduce
 import com.ukrailtracker.app.domain.usecase.ComputeJourneyProgress
 import com.ukrailtracker.app.domain.usecase.DeriveBoardDisruption
 import com.ukrailtracker.app.domain.usecase.DetectBoarding
@@ -42,7 +50,6 @@ import com.ukrailtracker.app.domain.usecase.ProgressPointUiModel
 import com.ukrailtracker.app.domain.usecase.RouteStation
 import com.ukrailtracker.app.domain.usecase.StationStopConfig
 import com.ukrailtracker.app.domain.usecase.StationStopPhase
-import com.ukrailtracker.app.domain.usecase.WalkUpPhase
 import com.ukrailtracker.app.domain.usecase.WalkUpSample
 import com.ukrailtracker.app.debug.DebugWalkUp
 import com.ukrailtracker.app.service.OnTrainTrackingService
@@ -185,13 +192,6 @@ val WalkUpHomeUi?.focusesTripUi: Boolean
 val WalkUpHomeUi?.focusesOnTrain: Boolean
     get() = this is WalkUpHomeUi.OnJourney
 
-private data class LockedOrigin(
-    val crs: String,
-    val name: String,
-    val latitude: Double,
-    val longitude: Double,
-)
-
 sealed interface HomeUiState {
     data object Loading : HomeUiState
     data class Empty(val messageKey: EmptyReason) : HomeUiState
@@ -241,7 +241,7 @@ class HomeViewModel(
     /** Emits a minute threshold (3, 2, or 1) when the final-approach buzz should fire. */
     val arrivalBuzz: SharedFlow<Int> = _arrivalBuzz.asSharedFlow()
 
-    private var walkUpPhase: WalkUpPhase = WalkUpPhase.Away
+    private var commuteSession: CommuteSession = CommuteSession.Idle
     private var boardingPhase: BoardingPhase = BoardingPhase.Idle
     private var previousSample: WalkUpSample? = null
     private var locationWatchJob: Job? = null
@@ -250,11 +250,9 @@ class HomeViewModel(
     private var platformWatchJob: Job? = null
     private var onTrainPollJob: Job? = null
     private var permissionGranted: Boolean = false
-    private var originOverrideCrs: String? = null
     private var lastLoadedOriginCrs: String? = null
     /** First GPS fix after start may lock "already at station" without a walk-up sequence. */
     private var alreadyPresentOk: Boolean = true
-    private var lockedOrigin: LockedOrigin? = null
     private var cachedBoardingServices: List<BoardingServiceSnapshot> = emptyList()
     private var lastAtStationUi: WalkUpHomeUi.AtStation? = null
     private var platformNotified: Boolean = false
@@ -301,6 +299,7 @@ class HomeViewModel(
     fun onNeedsPermission() {
         permissionGranted = false
         stopLocationWatch()
+        applyTransition(reduce(commuteSession, CommuteEvent.PermissionLost))
         patchWalkUp(WalkUpHomeUi.NeedsPermission)
     }
 
@@ -309,11 +308,39 @@ class HomeViewModel(
         startLocationWatch()
     }
 
-    /** Notification tap / deep wake — elevate GPS poll for walk-up confirmation. */
-    fun onOpenedForFrequentChecks() {
+    /**
+     * Notification tap / deep wake — focus the ENTER station and load boards immediately,
+     * then elevate GPS poll so walk-up can confirm.
+     */
+    fun onOpenedForFrequentChecks(hintCrs: String? = null) {
         frequentChecksUntilEpochMs = System.currentTimeMillis() + FREQUENT_CHECKS_TTL_MS
-        if (!permissionGranted) return
-        startLocationWatch(forceRefresh = true)
+        viewModelScope.launch {
+            if (activePinned == null) {
+                val crs = hintCrs?.trim()?.uppercase().orEmpty()
+                if (crs.isNotEmpty()) {
+                    val station = stationRepository.getByCrs(crs)
+                    applyTransition(
+                        reduce(
+                            commuteSession,
+                            CommuteEvent.OpenedForFrequentChecks(
+                                LockedOrigin(
+                                    crs = crs,
+                                    name = station?.name ?: crs,
+                                    latitude = station?.latitude ?: 0.0,
+                                    longitude = station?.longitude ?: 0.0,
+                                    lockedAtEpochMs = System.currentTimeMillis(),
+                                    distanceMetres = 0.0,
+                                    manualOverride = false,
+                                ),
+                            ),
+                        ),
+                    )
+                }
+            }
+            if (permissionGranted) {
+                startLocationWatch(forceRefresh = true)
+            }
+        }
     }
 
     /**
@@ -328,9 +355,8 @@ class HomeViewModel(
             clearBoardingSession(keepUi = false)
             cancelBoardingAutoAccept()
             stopPlatformWatch()
-            originOverrideCrs = null
             lastLoadedOriginCrs = null
-            walkUpPhase = WalkUpPhase.Away
+            commuteSession = CommuteSession.Idle
             previousSample = null
             alreadyPresentOk = false
             boardingPhase = BoardingPhase.Idle
@@ -344,6 +370,7 @@ class HomeViewModel(
     fun onPermissionDenied() {
         permissionGranted = false
         stopLocationWatch()
+        applyTransition(reduce(commuteSession, CommuteEvent.PermissionLost))
         patchWalkUp(WalkUpHomeUi.NeedsPermission)
     }
 
@@ -352,37 +379,37 @@ class HomeViewModel(
             val normalised = crs.trim().uppercase()
             if (normalised.isBlank()) return@launch
             clearBoardingSession(keepUi = false)
-            originOverrideCrs = normalised
             val station = stationRepository.getByCrs(normalised)
             val name = station?.name ?: normalised
             lastLoadedOriginCrs = null
             stopPlatformWatch()
             platformNotified = false
-            val at = WalkUpHomeUi.AtStation(
-                crsCode = normalised,
-                stationName = name,
-                distanceLabel = null,
-                manualOverride = true,
-                destinations = emptyList(),
-                destinationsLoading = true,
-                noFavouritesConfigured = false,
-                platformWatch = null,
+            applyTransition(
+                reduce(
+                    commuteSession,
+                    CommuteEvent.SetOriginOverride(
+                        LockedOrigin(
+                            crs = normalised,
+                            name = name,
+                            latitude = station?.latitude ?: 0.0,
+                            longitude = station?.longitude ?: 0.0,
+                            lockedAtEpochMs = System.currentTimeMillis(),
+                            distanceMetres = 0.0,
+                            manualOverride = true,
+                        ),
+                    ),
+                ),
             )
-            lastAtStationUi = at
-            patchWalkUp(at)
-            loadDestinations(originCrs = normalised, forceRefresh = true)
         }
     }
 
     fun clearOriginOverride() {
-        originOverrideCrs = null
         lastLoadedOriginCrs = null
-        walkUpPhase = WalkUpPhase.Away
         previousSample = null
-        alreadyPresentOk = true
+        alreadyPresentOk = false
         clearBoardingSession(keepUi = false)
+        applyTransition(reduce(commuteSession, CommuteEvent.ClearOverride))
         if (permissionGranted) {
-            patchWalkUp(WalkUpHomeUi.NotAtStation)
             startLocationWatch(forceRefresh = true)
         } else {
             patchWalkUp(WalkUpHomeUi.NeedsPermission)
@@ -412,7 +439,7 @@ class HomeViewModel(
     fun dismissBoarding() {
         cancelBoardingAutoAccept()
         clearBoardingSession(keepUi = false)
-        walkUpPhase = WalkUpPhase.Away
+        commuteSession = CommuteSession.Idle
         previousSample = null
         alreadyPresentOk = true
         patchWalkUp(WalkUpHomeUi.NotAtStation)
@@ -518,7 +545,7 @@ class HomeViewModel(
             if (activePinned != null) {
                 refreshOnTrainOption()
             }
-            if (permissionGranted && originOverrideCrs == null) {
+            if (permissionGranted && !commuteSession.isManualOriginOverride()) {
                 sampleLocation(forceRefresh = true)
             }
         }
@@ -639,7 +666,7 @@ class HomeViewModel(
         cancelBoardingAutoAccept()
         viewModelScope.launch {
             clearBoardingSession(keepUi = false)
-            walkUpPhase = WalkUpPhase.Away
+            commuteSession = CommuteSession.Idle
             previousSample = null
             alreadyPresentOk = false
             pinnedJourneyStore.pin(
@@ -663,19 +690,19 @@ class HomeViewModel(
         locationWatchJob?.cancel()
         alreadyPresentOk = true
         locationWatchJob = viewModelScope.launch {
-            if (originOverrideCrs == null &&
+            if (!commuteSession.isManualOriginOverride() &&
                 currentBoardingPrompt() == null &&
-                activePinned == null
+                activePinned == null &&
+                commuteSession is CommuteSession.Idle
             ) {
                 patchWalkUp(WalkUpHomeUi.NotAtStation)
             }
             sampleLocation(forceRefresh = true)
             while (isActive) {
                 delay(currentPollIntervalMs())
-                if (originOverrideCrs == null) {
+                if (!commuteSession.isManualOriginOverride()) {
                     val watching = activePinned != null ||
-                        lockedOrigin != null ||
-                        walkUpPhase is WalkUpPhase.Arrived ||
+                        commuteSession is CommuteSession.AtStation ||
                         currentBoardingPrompt() != null ||
                         System.currentTimeMillis() < frequentChecksUntilEpochMs
                     sampleLocation(forceRefresh = watching)
@@ -689,8 +716,7 @@ class HomeViewModel(
         if (System.currentTimeMillis() < frequentChecksUntilEpochMs) {
             return LOCATION_POLL_WATCHING_MS
         }
-        val watching = lockedOrigin != null ||
-            walkUpPhase is WalkUpPhase.Arrived ||
+        val watching = commuteSession is CommuteSession.AtStation ||
             currentBoardingPrompt() != null
         return if (watching) LOCATION_POLL_WATCHING_MS else LOCATION_POLL_MS
     }
@@ -701,16 +727,13 @@ class HomeViewModel(
     }
 
     private suspend fun sampleLocation(forceRefresh: Boolean) {
-        if (originOverrideCrs != null) return
+        if (commuteSession.isManualOriginOverride()) return
         // Freeze walk-up overwrites while the user is confirming boarding.
         if (currentBoardingPrompt() != null) return
 
         val location = locationProvider.currentLocation(forceRefresh = forceRefresh)
         if (location == null) {
-            if (activePinned == null &&
-                walkUpPhase !is WalkUpPhase.Arrived &&
-                lockedOrigin == null
-            ) {
+            if (activePinned == null && commuteSession !is CommuteSession.AtStation) {
                 patchWalkUp(WalkUpHomeUi.LocationUnavailable)
             }
             return
@@ -737,7 +760,7 @@ class HomeViewModel(
             limit = 5,
         )
 
-        val locked = lockedOrigin
+        val locked = commuteSession.lockedOriginOrNull()
         if (locked != null) {
             boardingPhase = DetectBoarding.next(
                 phase = boardingPhase,
@@ -754,37 +777,34 @@ class HomeViewModel(
             }
         }
 
-        val next = DetectWalkUpArrival.next(
-            phase = walkUpPhase,
-            sample = sample,
-            nearest = nearby.firstOrNull(),
-            speedMps = speed,
-            alreadyPresentOk = alreadyPresentOk && walkUpPhase == WalkUpPhase.Away && lockedOrigin == null,
+        val previous = commuteSession
+        val transition = reduce(
+            previous,
+            CommuteEvent.Location(
+                sample = sample,
+                nearest = nearby.firstOrNull(),
+                speedMps = speed,
+                alreadyPresentOk = alreadyPresentOk && previous is CommuteSession.Idle,
+            ),
         )
         alreadyPresentOk = false
 
-        val leftArrived = walkUpPhase is WalkUpPhase.Arrived && next !is WalkUpPhase.Arrived
-        walkUpPhase = next
+        val next = transition.session
+        val leftAt = previous is CommuteSession.AtStation && next !is CommuteSession.AtStation
 
         when {
-            next is WalkUpPhase.Arrived -> {
-                val station = nearby.firstOrNull()?.station
-                if (station != null &&
-                    (lockedOrigin == null || lockedOrigin?.crs != next.crs)
+            next is CommuteSession.AtStation -> {
+                if (previous !is CommuteSession.AtStation ||
+                    !previous.origin.crs.equals(next.origin.crs, ignoreCase = true)
                 ) {
-                    lockedOrigin = LockedOrigin(
-                        crs = next.crs,
-                        name = next.stationName,
-                        latitude = station.latitude,
-                        longitude = station.longitude,
-                    )
                     boardingPhase = BoardingPhase.Idle
                 }
-                applyArrived(next)
+                applyTransition(transition)
             }
 
-            leftArrived || locked != null -> {
+            leftAt || locked != null -> {
                 handleLeftOrWatching(
+                    previousOrigin = locked ?: previous.lockedOriginOrNull(),
                     next = next,
                     sample = sample,
                     speedMps = speed,
@@ -793,18 +813,21 @@ class HomeViewModel(
 
             else -> {
                 clearBoardingSession(keepUi = false)
-                applyWalkUpPhase(next)
+                applyTransition(transition)
             }
         }
     }
 
     private suspend fun handleLeftOrWatching(
-        next: WalkUpPhase,
+        previousOrigin: LockedOrigin?,
+        next: CommuteSession,
         sample: WalkUpSample,
         speedMps: Double?,
     ) {
-        val locked = lockedOrigin ?: run {
-            applyWalkUpPhase(next)
+        val locked = previousOrigin ?: run {
+            clearBoardingSession(keepUi = false)
+            commuteSession = next
+            applyPresenceUi(next)
             return
         }
         val distance = GeoUtils.haversineMetres(
@@ -828,17 +851,18 @@ class HomeViewModel(
                 when {
                     walkedAway -> {
                         clearBoardingSession(keepUi = false)
-                        walkUpPhase = WalkUpPhase.Away
-                        applyWalkUpPhase(WalkUpPhase.Away)
+                        commuteSession = CommuteSession.Idle
+                        applyPresenceUi(CommuteSession.Idle)
                     }
                     stillNear -> {
                         // Vehicle leave / platform motion before leave threshold — keep watching.
                         lastAtStationUi?.let { patchWalkUp(it) }
-                            ?: applyWalkUpPhase(next)
+                            ?: applyPresenceUi(next)
                     }
                     else -> {
                         clearBoardingSession(keepUi = false)
-                        applyWalkUpPhase(next)
+                        commuteSession = next
+                        applyPresenceUi(next)
                     }
                 }
             }
@@ -850,7 +874,7 @@ class HomeViewModel(
     }
 
     private fun enterBoardingPrompt(triggeredAtEpochMs: Long) {
-        val locked = lockedOrigin ?: return
+        val locked = commuteSession.lockedOriginOrNull() ?: return
         val match = MatchBoardingCandidates.match(
             cached = cachedBoardingServices,
             boardedAtEpochMs = triggeredAtEpochMs,
@@ -859,7 +883,7 @@ class HomeViewModel(
         )
         if (match == null) {
             clearBoardingSession(keepUi = false)
-            walkUpPhase = WalkUpPhase.Away
+            commuteSession = CommuteSession.Idle
             patchWalkUp(WalkUpHomeUi.NotAtStation)
             return
         }
@@ -893,7 +917,6 @@ class HomeViewModel(
         cancelBoardingAutoAccept()
         stopPlatformWatch()
         platformNotified = false
-        lockedOrigin = null
         boardingPhase = BoardingPhase.Idle
         cachedBoardingServices = emptyList()
         if (!keepUi) {
@@ -901,21 +924,33 @@ class HomeViewModel(
         }
     }
 
-    private suspend fun applyWalkUpPhase(phase: WalkUpPhase) {
-        when (phase) {
-            WalkUpPhase.Away -> patchWalkUp(WalkUpHomeUi.NotAtStation)
-            is WalkUpPhase.Dwelling -> patchWalkUp(
-                WalkUpHomeUi.NearStation(
-                    crsCode = phase.crs,
-                    stationName = phase.stationName,
-                    distanceLabel = GeoUtils.formatDistance(phase.distanceMetres),
-                ),
-            )
-            is WalkUpPhase.Arrived -> applyArrived(phase)
+    private fun applyTransition(transition: CommuteTransition) {
+        commuteSession = transition.session
+        applyPresenceUi(transition.session)
+        for (effect in transition.effects) {
+            when (effect) {
+                is CommuteEffect.LoadFavouriteBoundDepartures ->
+                    loadDestinations(originCrs = effect.originCrs, forceRefresh = effect.forceRefresh)
+            }
         }
     }
 
-    private suspend fun applyArrived(phase: WalkUpPhase.Arrived) {
+    private fun applyPresenceUi(session: CommuteSession) {
+        when (session) {
+            CommuteSession.Idle -> patchWalkUp(WalkUpHomeUi.NotAtStation)
+            is CommuteSession.Near -> patchWalkUp(
+                WalkUpHomeUi.NearStation(
+                    crsCode = session.dwelling.crs,
+                    stationName = session.dwelling.stationName,
+                    distanceLabel = GeoUtils.formatDistance(session.dwelling.distanceMetres),
+                ),
+            )
+            is CommuteSession.AtStation -> applyArrived(session)
+        }
+    }
+
+    private fun applyArrived(session: CommuteSession.AtStation) {
+        val phase = session.origin
         val existing = (_uiState.value as? HomeUiState.Content)?.walkUp as? WalkUpHomeUi.AtStation
         val sameStation = existing?.crsCode == phase.crs && existing?.manualOverride != true
         val keepDestinations = existing?.takeIf { sameStation }?.destinations.orEmpty()
@@ -927,9 +962,13 @@ class HomeViewModel(
         val loading = phase.crs != lastLoadedOriginCrs
         val at = WalkUpHomeUi.AtStation(
             crsCode = phase.crs,
-            stationName = phase.stationName,
-            distanceLabel = GeoUtils.formatDistance(phase.distanceMetres),
-            manualOverride = false,
+            stationName = phase.name,
+            distanceLabel = if (phase.manualOverride) {
+                null
+            } else {
+                GeoUtils.formatDistance(phase.distanceMetres)
+            },
+            manualOverride = phase.manualOverride,
             destinations = keepDestinations,
             destinationsLoading = loading || (existing?.destinationsLoading == true),
             noFavouritesConfigured = existing?.noFavouritesConfigured == true,
@@ -937,16 +976,13 @@ class HomeViewModel(
         )
         lastAtStationUi = at
         patchWalkUp(at)
-        if (loading) {
-            loadDestinations(originCrs = phase.crs, forceRefresh = false)
-        }
     }
 
     private fun reloadDestinationsIfAtStation(forceRefresh: Boolean) {
         val at = when (val walkUp = (_uiState.value as? HomeUiState.Content)?.walkUp) {
             is WalkUpHomeUi.AtStation -> walkUp.crsCode
             is WalkUpHomeUi.BoardingPrompt -> null
-            else -> originOverrideCrs
+            else -> commuteSession.lockedOriginOrNull()?.crs
         } ?: return
         loadDestinations(originCrs = at, forceRefresh = forceRefresh)
     }
@@ -985,7 +1021,7 @@ class HomeViewModel(
                 forceRefresh = forceRefresh,
             )
             lastLoadedOriginCrs = originCrs.uppercase()
-            val originName = lockedOrigin?.name
+            val originName = commuteSession.lockedOriginOrNull()?.name
                 ?: lastAtStationUi?.stationName
                 ?: originCrs
             cachedBoardingServices = MatchBoardingCandidates.snapshotsFromDestinations(
@@ -1197,8 +1233,7 @@ class HomeViewModel(
 
     private suspend fun beginOnTrainSession(pinned: PinnedJourney) {
         clearBoardingSession(keepUi = false)
-        walkUpPhase = WalkUpPhase.Away
-        originOverrideCrs = null
+        commuteSession = CommuteSession.Idle
         activePinned = pinned
         stationStopPhase = StationStopPhase.Moving
         confirmedStopCrs = null

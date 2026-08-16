@@ -1,0 +1,8 @@
+{
+  "intellij.projects": [
+    {
+      "type": "gradle",
+      "path": "file:///home/william/code/personal/2025/uk-rail-tracker/android/build.gradle.kts"
+    }
+  ]
+}

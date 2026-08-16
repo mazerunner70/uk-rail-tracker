@@ -70,8 +70,7 @@
     <string name="home_presence_allow_background">Always</string>
     <string name="home_presence_background_hint">Allow always-on location for station alerts</string>
     <string name="home_presence_set_station">Set</string>
-    <string name="home_presence_change_station">Change</string>
-    <string name="home_presence_use_gps">GPS</string>
+    <string name="home_presence_cancel_station">Cancel</string>
     <string name="home_walkup_favourites_heading">Trains to favourites (next hour)</string>
     <string name="home_walkup_loading_destinations">Loading favourite destinations…</string>
     <string name="home_walkup_no_favourites">Add favourite stations in Settings to see trains from here.</string>

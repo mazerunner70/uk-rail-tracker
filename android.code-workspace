@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "name": "android",
+      "path": "android"
+    }
+  ],
+  "settings": {
+    "intellij.projects": [
+      {
+        "type": "gradle",
+        "path": "file:///$PROJECT_DIR$/build.gradle.kts"
+      }
+    ]
+  }
+}
