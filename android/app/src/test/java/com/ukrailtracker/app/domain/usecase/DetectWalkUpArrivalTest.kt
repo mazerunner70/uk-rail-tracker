@@ -75,16 +75,27 @@ class DetectWalkUpArrivalTest {
     }
 
     @Test
-    fun driveAndStopDoesNotPromoteWithoutWalking() {
+    fun standStillInsidePromotesAfterDwell() {
+        var phase: WalkUpPhase = WalkUpPhase.Away
+        phase = next(phase, speed = 0.0, distance = 40.0, t = 0)
+        assertTrue(phase is WalkUpPhase.Dwelling)
+
+        phase = next(phase, speed = 0.0, distance = 30.0, t = 11_000)
+        val arrived = phase as WalkUpPhase.Arrived
+        assertEquals("PAD", arrived.crs)
+    }
+
+    @Test
+    fun driveThenStopStillLocksAfterDwell() {
         var phase: WalkUpPhase = WalkUpPhase.Away
         phase = next(phase, speed = 14.0, distance = 40.0, t = 0)
         assertEquals(WalkUpPhase.Away, phase)
 
         phase = next(phase, speed = 0.0, distance = 30.0, t = 2_000)
-        assertEquals(WalkUpPhase.Away, phase)
+        assertTrue(phase is WalkUpPhase.Dwelling)
 
-        phase = next(phase, speed = 0.0, distance = 25.0, t = 20_000)
-        assertEquals(WalkUpPhase.Away, phase)
+        phase = next(phase, speed = 0.0, distance = 25.0, t = 13_000)
+        assertTrue(phase is WalkUpPhase.Arrived)
     }
 
     @Test

@@ -8,7 +8,7 @@ import com.ukrailtracker.app.domain.model.StationWithDistance
  *
  * - Cold start already inside a station geofence (not vehicle speed) → [WalkUpPhase.Arrived]
  *   immediately — no extra walking required.
- * - Later approach: pedestrian entry + short dwell → Arrived.
+ * - Later approach: inside the footprint and walking or standing still + short dwell → Arrived.
  * - Vehicle / train speeds inside the footprint do not count as walk-up.
  */
 data class WalkUpConfig(
@@ -103,22 +103,14 @@ object DetectWalkUpArrival {
                         lockedAtEpochMs = sample.epochMs,
                     )
                 } else {
-                    // Drive-and-stop (speed 0 after a vehicle sample already reset to Away):
-                    // require walking or unknown speed to start a walk-up dwell.
-                    val stoppedWithKnownSpeed =
-                        speedMps != null && speedMps < config.walkMinMps
-                    if (stoppedWithKnownSpeed && !walking) {
-                        WalkUpPhase.Away
-                    } else {
-                        WalkUpPhase.Dwelling(
-                            crs = crs,
-                            stationName = name,
-                            enteredAtEpochMs = sample.epochMs,
-                            distanceMetres = distance,
-                            sawWalkingPace = walking,
-                            hadSpeedReading = speedMps != null,
-                        )
-                    }
+                    WalkUpPhase.Dwelling(
+                        crs = crs,
+                        stationName = name,
+                        enteredAtEpochMs = sample.epochMs,
+                        distanceMetres = distance,
+                        sawWalkingPace = walking,
+                        hadSpeedReading = speedMps != null,
+                    )
                 }
             }
 
@@ -139,8 +131,9 @@ object DetectWalkUpArrival {
                 val sawWalking = phase.sawWalkingPace || walking
                 val hadSpeed = phase.hadSpeedReading || speedMps != null
                 val dwellElapsed = sample.epochMs - phase.enteredAtEpochMs >= config.dwellMillis
-                // Promote after dwell if we saw walking, or speed was never reported (emulator).
-                val canPromote = sawWalking || !hadSpeed
+                val stopped = isStationary(speedMps, config)
+                // Promote after dwell if walking, standing still, or speed never reported.
+                val canPromote = sawWalking || stopped || !hadSpeed
                 if (dwellElapsed && canPromote) {
                     WalkUpPhase.Arrived(
                         crs = crs,
@@ -196,4 +189,7 @@ object DetectWalkUpArrival {
 
     private fun isClearlyWalking(speedMps: Double?, config: WalkUpConfig): Boolean =
         speedMps != null && speedMps >= config.walkMinMps && speedMps <= config.walkMaxMps
+
+    private fun isStationary(speedMps: Double?, config: WalkUpConfig): Boolean =
+        speedMps != null && speedMps < config.walkMinMps
 }

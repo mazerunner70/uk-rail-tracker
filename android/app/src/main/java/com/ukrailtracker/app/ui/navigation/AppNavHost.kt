@@ -109,8 +109,9 @@ fun AppNavHost(
                 }
                 yield()
                 runCatching {
-                    navController.getBackStackEntry(Routes.Home)
-                        .savedStateHandle["pending_frequent_checks"] = true
+                    val home = navController.getBackStackEntry(Routes.Home)
+                    home.savedStateHandle["pending_frequent_checks"] = true
+                    home.savedStateHandle["pending_frequent_crs"] = action.hintCrs
                 }
                 onHomeLaunchActionConsumed()
             }
@@ -164,6 +165,9 @@ fun AppNavHost(
                 val pendingFrequentChecks by entry.savedStateHandle
                     .getStateFlow("pending_frequent_checks", false)
                     .collectAsStateWithLifecycle()
+                val pendingFrequentCrs by entry.savedStateHandle
+                    .getStateFlow<String?>("pending_frequent_crs", null)
+                    .collectAsStateWithLifecycle()
                 HomeRoute(
                     onStationClick = { crs ->
                         navController.navigate(Routes.stationDetail(crs))
@@ -185,8 +189,10 @@ fun AppNavHost(
                         entry.savedStateHandle["pending_walkup_crs"] = null
                     },
                     pendingFrequentLocationChecks = pendingFrequentChecks,
+                    pendingFrequentChecksCrs = pendingFrequentCrs,
                     onFrequentLocationChecksConsumed = {
                         entry.savedStateHandle["pending_frequent_checks"] = false
+                        entry.savedStateHandle["pending_frequent_crs"] = null
                     },
                     onJourneyServiceClick = { origin, dest, serviceId ->
                         navController.navigate(Routes.journeyDetail(origin, dest, serviceId))

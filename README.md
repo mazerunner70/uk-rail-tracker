@@ -19,6 +19,7 @@ A native Android app for live UK rail information — nearby stations, contextua
 | [M0+M1 nearby plan](docs/m0-m1-nearby-plan.md) | Nearby slice + M1 remainder |
 | [Product vision](docs/product-vision.md) | Goals, audience, design principles |
 | [Architecture](docs/architecture.md) | App layers, Room schema, privacy |
+| [Data model](docs/data-model.md) | Domain types, what is in-memory vs persisted |
 | [Data sources](docs/data-sources.md) | Darwin / TransportAPI setup |
 | [Compensation guide](docs/compensation-guide.md) | Delay Repay rules by operator |
 

@@ -89,6 +89,7 @@ fun HomeRoute(
     pendingWalkUpOverrideCrs: String? = null,
     onWalkUpOverrideConsumed: () -> Unit = {},
     pendingFrequentLocationChecks: Boolean = false,
+    pendingFrequentChecksCrs: String? = null,
     onFrequentLocationChecksConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -203,9 +204,9 @@ fun HomeRoute(
         onWalkUpOverrideConsumed()
     }
 
-    LaunchedEffect(pendingFrequentLocationChecks) {
+    LaunchedEffect(pendingFrequentLocationChecks, pendingFrequentChecksCrs) {
         if (!pendingFrequentLocationChecks) return@LaunchedEffect
-        viewModel.onOpenedForFrequentChecks()
+        viewModel.onOpenedForFrequentChecks(pendingFrequentChecksCrs)
         onFrequentLocationChecksConsumed()
     }
 
@@ -489,13 +490,8 @@ private fun PresenceStatusBar(
                 }
             }
             is WalkUpHomeUi.AtStation -> {
-                TextButton(onClick = onChangeStation) {
-                    Text(stringResource(R.string.home_presence_change_station), color = NeonCyan)
-                }
-                if (walkUp.manualOverride) {
-                    TextButton(onClick = onClearOverride) {
-                        Text(stringResource(R.string.home_presence_use_gps), color = NeonMuted)
-                    }
+                TextButton(onClick = onClearOverride) {
+                    Text(stringResource(R.string.home_presence_cancel_station), color = NeonCyan)
                 }
             }
             is WalkUpHomeUi.BoardingPrompt -> {

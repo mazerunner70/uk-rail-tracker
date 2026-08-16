@@ -381,23 +381,25 @@ Session
 └─ Ride         (only while Pinned) Moving | Dwelling | Confirmed
 ```
 
-Kotlin (illustrative — not implemented):
+Kotlin (slice 1 implemented in `CommuteSession.kt` / `reduce`; later slices add Confirming / OnTrain events):
 
 ```kotlin
 sealed interface CommuteSession {
     data object Idle : CommuteSession
-    data class AtStation(val origin: LockedOrigin, val boarding: BoardingPhase) : CommuteSession
-    data class Confirming(val origin: LockedOrigin, val match: BoardingMatchResult) : CommuteSession
-    data class OnTrain(val pin: PinnedJourney, val stop: StationStopPhase) : CommuteSession
+    data class Near(val dwelling: WalkUpPhase.Dwelling) : CommuteSession
+    data class AtStation(val origin: LockedOrigin, val boarding: BoardingPhase = BoardingPhase.Idle) : CommuteSession
 }
 
 sealed interface CommuteEvent {
-    data class Location(val sample: WalkUpSample, val nearest: StationWithDistance?) : CommuteEvent
-    data class ServiceDetails(val option: JourneyOption) : CommuteEvent
-    data object Confirm : CommuteEvent
-    data object Dismiss : CommuteEvent
-    data object EndTrip : CommuteEvent
-    data class Tick(val nowEpochMs: Long) : CommuteEvent
+    data class Location(
+        val sample: WalkUpSample,
+        val nearest: StationWithDistance?,
+        val speedMps: Double?,
+        val alreadyPresentOk: Boolean = false,
+    ) : CommuteEvent
+    data class SetOriginOverride(val origin: LockedOrigin) : CommuteEvent
+    data object ClearOverride : CommuteEvent
+    data object PermissionLost : CommuteEvent
 }
 ```
 
@@ -450,7 +452,7 @@ Compose tests only check that `BoardingPrompt` renders Confirm. In debug builds,
 - Treating OS geofence ENTER as Arrived (fences flap; dwell/speed filters exist for a reason).
 - Virtualizing Darwin time so a compressed GPS ride and the countdown stay in lockstep — Refresh would lie. See [simulated-journey.md](simulated-journey.md).
 
-`HomeViewModel` today is the bag of `walkUpPhase` / `boardingPhase` / `activePinned` / jobs. Extracting `reduce` does not require rewriting detectors; it requires stopping `sampleLocation` from also pinning and starting the FGS.
+`HomeViewModel` still holds `boardingPhase` / `activePinned` / jobs. Slice 1 moved walk-up presence into `reduce`; pinning and FGS stay in the interpreter until later slices.
 
 ---
 

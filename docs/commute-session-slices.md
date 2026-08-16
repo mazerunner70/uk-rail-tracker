@@ -35,7 +35,7 @@ Tick when the slice is merged and the listed `HomeViewModel` fields are gone.
 
 | Slice | Status | Notes |
 |-------|--------|-------|
-| 1 Presence | Not started | |
+| 1 Presence | Done | `reduce` owns Idle / Near / AtStation; `boardingPhase` still in VM |
 | 2 Boarding + pin effect | Not started | After 1 |
 | 3 On-train + finish | Not started | After 2 |
 | 4 Receivers enqueue events | Not started | Optional; after 1 |
@@ -76,11 +76,11 @@ Each PR: reduce + VM wiring + unit traces. No Compose rewrite beyond mapping if 
 
 ### Checklist
 
-- [ ] `CommuteSession` / `CommuteEvent` / `reduce` for presence only
-- [ ] `HomeViewModel.sampleLocation` uses reduce for walk-up
-- [ ] `walkUpPhase` and `lockedOrigin` removed
-- [ ] `CommuteReduceTest` Away → Near → At
-- [ ] Manual origin override still works
+- [x] `CommuteSession` / `CommuteEvent` / `reduce` for presence only
+- [x] `HomeViewModel.sampleLocation` uses reduce for walk-up
+- [x] `walkUpPhase` and `lockedOrigin` removed
+- [x] `CommuteReduceTest` Away → Near → At
+- [x] Manual origin override still works
 
 ---
 
