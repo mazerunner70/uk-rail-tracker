@@ -350,6 +350,50 @@ class CommuteReduceTest {
         )
     }
 
+    @Test
+    fun watchPlatformNestsUnderAtStation() {
+        val result = reduce(atStation(), watchEvent(), config)
+        val at = result.session as CommuteSession.AtStation
+        val watch = at.platformWatch as PlatformWatchPhase.Watching
+        assertEquals("svc-1", watch.serviceId)
+        assertEquals("RDG", watch.destinationCrs)
+        assertTrue(result.effects.isEmpty())
+    }
+
+    @Test
+    fun watchPlatformIgnoredWhenIdle() {
+        val result = reduce(CommuteSession.Idle, watchEvent(), config)
+        assertEquals(CommuteSession.Idle, result.session)
+    }
+
+    @Test
+    fun clearPlatformWatchReturnsToBrowsing() {
+        val watching = reduce(atStation(), watchEvent(), config).session
+        val cleared = reduce(watching, CommuteEvent.ClearPlatformWatch, config)
+        val at = cleared.session as CommuteSession.AtStation
+        assertEquals(PlatformWatchPhase.Idle, at.platformWatch)
+        assertEquals("PAD", at.origin.crs)
+    }
+
+    @Test
+    fun boardingSustainPreservesPlatformWatch() {
+        val watching = reduce(atStation(), watchEvent(), config).session as CommuteSession.AtStation
+        val sustaining = reduceFar(watching, speed = 12.0, t = t0)
+        val at = sustaining.session as CommuteSession.AtStation
+        assertTrue(at.boarding is BoardingPhase.Sustaining)
+        assertEquals("svc-1", (at.platformWatch as PlatformWatchPhase.Watching).serviceId)
+    }
+
+    private fun watchEvent() = CommuteEvent.WatchPlatform(
+        serviceId = "svc-1",
+        originCrs = "PAD",
+        destinationCrs = "RDG",
+        destinationName = "Reading",
+        scheduledDepartureLabel = "08:05",
+        expectedDepartureLabel = "On time",
+        platform = "1",
+    )
+
     private fun reduceToConfirming(
         services: List<BoardingServiceSnapshot> = cached,
     ): CommuteSession.Confirming {

@@ -139,6 +139,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     // Real org.json for JVM unit tests (android.jar stubs throw by default)
     testImplementation("org.json:json:20240303")
 }

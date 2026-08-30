@@ -63,6 +63,8 @@ fun reduce(
         CommuteEvent.EndTrip -> finishIfOnTrain(session, log = true, clearPin = true)
         CommuteEvent.DiscardTrip -> finishIfOnTrain(session, log = false, clearPin = true)
         is CommuteEvent.ServiceDetails -> reduceServiceDetails(session, event.option, progressNow)
+        is CommuteEvent.WatchPlatform -> reduceWatchPlatform(session, event)
+        CommuteEvent.ClearPlatformWatch -> reduceClearPlatformWatch(session)
     }
 }
 
@@ -196,6 +198,35 @@ private fun reduceOpenedForFrequentChecks(
         session = session,
         effects = listOf(CommuteEffect.ElevateFrequentChecks(event.untilEpochMs)),
     )
+}
+
+private fun reduceWatchPlatform(
+    session: CommuteSession,
+    event: CommuteEvent.WatchPlatform,
+): CommuteTransition {
+    val at = session as? CommuteSession.AtStation ?: return CommuteTransition(session)
+    if (!at.origin.crs.equals(event.originCrs, ignoreCase = true)) {
+        return CommuteTransition(session)
+    }
+    return CommuteTransition(
+        at.copy(
+            platformWatch = PlatformWatchPhase.Watching(
+                serviceId = event.serviceId,
+                originCrs = event.originCrs.uppercase(),
+                destinationCrs = event.destinationCrs.uppercase(),
+                destinationName = event.destinationName,
+                scheduledDepartureLabel = event.scheduledDepartureLabel,
+                expectedDepartureLabel = event.expectedDepartureLabel,
+                platform = event.platform?.takeIf { it.isNotBlank() },
+            ),
+        ),
+    )
+}
+
+private fun reduceClearPlatformWatch(session: CommuteSession): CommuteTransition {
+    val at = session as? CommuteSession.AtStation ?: return CommuteTransition(session)
+    if (at.platformWatch is PlatformWatchPhase.Idle) return CommuteTransition(session)
+    return CommuteTransition(at.copy(platformWatch = PlatformWatchPhase.Idle))
 }
 
 private fun reduceLocation(
@@ -390,10 +421,10 @@ private fun WalkUpPhase.toSession(
             previousOrigin != null -> previousOrigin.longitude
             else -> 0.0
         }
-        val boarding = (previous as? CommuteSession.AtStation)
+        val previousAt = (previous as? CommuteSession.AtStation)
             ?.takeIf { it.origin.crs.equals(crs, ignoreCase = true) }
-            ?.boarding
-            ?: BoardingPhase.Idle
+        val boarding = previousAt?.boarding ?: BoardingPhase.Idle
+        val platformWatch = previousAt?.platformWatch ?: PlatformWatchPhase.Idle
         CommuteSession.AtStation(
             origin = LockedOrigin(
                 crs = crs,
@@ -405,6 +436,7 @@ private fun WalkUpPhase.toSession(
                 manualOverride = false,
             ),
             boarding = boarding,
+            platformWatch = platformWatch,
         )
     }
 }

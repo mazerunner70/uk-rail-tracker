@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ukrailtracker.app.domain.commute.CommutePinStore
 import com.ukrailtracker.app.domain.model.PinnedJourney
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -16,22 +17,22 @@ private val Context.pinnedJourneyDataStore: DataStore<Preferences> by preference
     name = "pinned_journey",
 )
 
-class PinnedJourneyStore(private val context: Context) {
+class PinnedJourneyStore(private val context: Context) : CommutePinStore {
     private val key = stringPreferencesKey("pinned_journey")
 
-    val pinnedFlow: Flow<PinnedJourney?> = context.pinnedJourneyDataStore.data.map { prefs ->
+    override val pinnedFlow: Flow<PinnedJourney?> = context.pinnedJourneyDataStore.data.map { prefs ->
         decode(prefs[key].orEmpty())
     }
 
     suspend fun getPinned(): PinnedJourney? = pinnedFlow.first()
 
-    suspend fun pin(journey: PinnedJourney) {
+    override suspend fun pin(journey: PinnedJourney) {
         context.pinnedJourneyDataStore.edit { prefs ->
             prefs[key] = encode(journey)
         }
     }
 
-    suspend fun clear() {
+    override suspend fun clear() {
         context.pinnedJourneyDataStore.edit { prefs ->
             prefs.remove(key)
         }

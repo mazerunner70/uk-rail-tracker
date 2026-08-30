@@ -27,6 +27,7 @@ sealed interface CommuteSession {
     data class AtStation(
         val origin: LockedOrigin,
         val boarding: BoardingPhase = BoardingPhase.Idle,
+        val platformWatch: PlatformWatchPhase = PlatformWatchPhase.Idle,
     ) : CommuteSession
 
     /** Leave-station motion matched a favourite-bound service; waiting for confirm / picker / timeout. */
@@ -104,6 +105,20 @@ sealed interface CommuteEvent {
 
     /** Fresh Darwin service details for the pinned ride. */
     data class ServiceDetails(val option: JourneyOption) : CommuteEvent
+
+    /** Select a favourite-bound service to poll until its departure platform appears. */
+    data class WatchPlatform(
+        val serviceId: String,
+        val originCrs: String,
+        val destinationCrs: String,
+        val destinationName: String,
+        val scheduledDepartureLabel: String,
+        val expectedDepartureLabel: String,
+        val platform: String?,
+    ) : CommuteEvent
+
+    /** Stop polling the selected departure platform. */
+    data object ClearPlatformWatch : CommuteEvent
 }
 
 /** Side effect reduce cannot perform itself; the ViewModel interprets these. */
@@ -171,3 +186,21 @@ fun CommuteSession.lockedOriginOrNull(): LockedOrigin? = when (this) {
 fun CommuteSession.onTrainOrNull(): CommuteSession.OnTrain? = this as? CommuteSession.OnTrain
 
 fun CommuteSession.pinnedJourneyOrNull(): PinnedJourney? = onTrainOrNull()?.pin
+
+/** Nested at-station sub-phase: idle browsing vs watching one departure for its platform. */
+sealed interface PlatformWatchPhase {
+    data object Idle : PlatformWatchPhase
+
+    data class Watching(
+        val serviceId: String,
+        val originCrs: String,
+        val destinationCrs: String,
+        val destinationName: String,
+        val scheduledDepartureLabel: String,
+        val expectedDepartureLabel: String,
+        val platform: String?,
+    ) : PlatformWatchPhase
+}
+
+fun CommuteSession.platformWatchOrNull(): PlatformWatchPhase.Watching? =
+    (this as? CommuteSession.AtStation)?.platformWatch as? PlatformWatchPhase.Watching
