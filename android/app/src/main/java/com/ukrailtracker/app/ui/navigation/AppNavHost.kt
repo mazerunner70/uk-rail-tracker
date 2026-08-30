@@ -1,6 +1,7 @@
 package com.ukrailtracker.app.ui.navigation
 
 import android.net.Uri
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -18,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -29,6 +31,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ukrailtracker.app.R
+import com.ukrailtracker.app.appContainer
+import com.ukrailtracker.app.ui.components.SpeedStatusBar
 import com.ukrailtracker.app.ui.home.HomeRoute
 import com.ukrailtracker.app.ui.journey.JourneyDetailRoute
 import com.ukrailtracker.app.ui.journey.JourneyOptionsRoute
@@ -95,6 +99,7 @@ fun AppNavHost(
     val showBottomBar = topLevel.any { dest ->
         currentDestination?.hierarchy?.any { it.route == dest.route } == true
     }
+    val speedMps by LocalContext.current.appContainer().latestSpeedMps.collectAsStateWithLifecycle()
 
     LaunchedEffect(homeLaunchAction) {
         val action = homeLaunchAction ?: return@LaunchedEffect
@@ -122,32 +127,35 @@ fun AppNavHost(
         containerColor = NeonBackground,
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(containerColor = NeonSurface) {
-                    topLevel.forEach { dest ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(dest.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                Column {
+                    SpeedStatusBar(speedMps = speedMps)
+                    NavigationBar(containerColor = NeonSurface) {
+                        topLevel.forEach { dest ->
+                            val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(dest.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = {
-                                Icon(dest.icon, contentDescription = stringResource(dest.labelRes))
-                            },
-                            label = { Text(stringResource(dest.labelRes)) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = NeonCyan,
-                                selectedTextColor = NeonCyan,
-                                unselectedIconColor = NeonMuted,
-                                unselectedTextColor = NeonMuted,
-                                indicatorColor = NeonBackground,
-                            ),
-                        )
+                                },
+                                icon = {
+                                    Icon(dest.icon, contentDescription = stringResource(dest.labelRes))
+                                },
+                                label = { Text(stringResource(dest.labelRes)) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = NeonCyan,
+                                    selectedTextColor = NeonCyan,
+                                    unselectedIconColor = NeonMuted,
+                                    unselectedTextColor = NeonMuted,
+                                    indicatorColor = NeonBackground,
+                                ),
+                            )
+                        }
                     }
                 }
             }

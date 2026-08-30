@@ -169,23 +169,143 @@ class ComputeJourneyProgressTest {
     }
 
     @Test
-    fun fractionIncreasesAlongRoute() {
-        val atOrigin = ComputeJourneyProgress.compute(
+    fun predictedDurationUsesOriginActualAndDestExpected() {
+        val progress = ComputeJourneyProgress.compute(
             callingPoints = points,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "SLO",
+            now = now,
+        )
+        // PAD actual 09:31 → DID expected 10:35.
+        assertEquals(64, progress.predictedDurationMinutes)
+    }
+
+    @Test
+    fun fractionCompleteIsElapsedOverPredictedDuration() {
+        val early = ComputeJourneyProgress.compute(
+            callingPoints = points,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "SLO",
+            now = LocalDateTime.of(2026, 8, 6, 10, 0),
+        )
+        val later = ComputeJourneyProgress.compute(
+            callingPoints = points,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "SLO",
+            now = LocalDateTime.of(2026, 8, 6, 10, 8),
+        )
+        // 09:31 → 10:00 = 29 min / 64; 09:31 → 10:08 = 37 / 64.
+        assertEquals(29f / 64f, early.fractionComplete, 0.002f)
+        assertEquals(37f / 64f, later.fractionComplete, 0.002f)
+        assertTrue(later.fractionComplete > early.fractionComplete)
+    }
+
+    @Test
+    fun fractionAlongPlacesStopsOnPredictedAxis() {
+        val progress = ComputeJourneyProgress.compute(
+            callingPoints = points,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "SLO",
+            now = now,
+        )
+        assertEquals(0f, progress.points[0].fractionAlong!!, 0.001f)
+        // SLO is current — expected 09:52, not actual. 09:31 → 09:52 = 21 / 64.
+        assertEquals(21f / 64f, progress.points[1].fractionAlong!!, 0.002f)
+        // RDG expected 10:15. 09:31 → 10:15 = 44 / 64.
+        assertEquals(44f / 64f, progress.points[2].fractionAlong!!, 0.002f)
+        assertEquals(1f, progress.points[3].fractionAlong!!, 0.001f)
+    }
+
+    @Test
+    fun laterDestEtaLowersFill() {
+        val slipped = points.dropLast(1) + CallingPoint(
+            locationName = "Didcot Parkway",
+            crs = "DID",
+            scheduledTimeLabel = "10:30",
+            expectedLabel = "10:45",
+        )
+        val onTime = ComputeJourneyProgress.compute(
+            callingPoints = points,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "SLO",
+            now = now,
+        )
+        val delayed = ComputeJourneyProgress.compute(
+            callingPoints = slipped,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "SLO",
+            now = now,
+        )
+        assertEquals(74, delayed.predictedDurationMinutes)
+        assertTrue(delayed.fractionComplete < onTime.fractionComplete)
+        assertEquals(29f / 74f, delayed.fractionComplete, 0.002f)
+    }
+
+    @Test
+    fun fractionStaysAtStopBeforeHopStart() {
+        val waiting = ComputeJourneyProgress.compute(
+            callingPoints = points,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "PAD",
+            now = LocalDateTime.of(2026, 8, 6, 9, 20),
+        )
+        assertEquals(0f, waiting.fractionComplete, 0.001f)
+        assertEquals(64, waiting.predictedDurationMinutes)
+    }
+
+    @Test
+    fun fractionAtDestinationIsOne() {
+        val arrived = points.dropLast(1) + CallingPoint(
+            locationName = "Didcot Parkway",
+            crs = "DID",
+            scheduledTimeLabel = "10:30",
+            expectedLabel = "10:35",
+            actualTimeLabel = "10:38",
+        )
+        val progress = ComputeJourneyProgress.compute(
+            callingPoints = arrived,
+            originCrs = "PAD",
+            destinationCrs = "DID",
+            destinationNameFallback = "Didcot",
+            confirmedStopCrs = "DID",
+            now = now,
+        )
+        assertEquals(1f, progress.fractionComplete, 0.001f)
+        assertEquals(1f, progress.points.last().fractionAlong!!, 0.001f)
+        // Dest AT is ignored for duration — still PAD 09:31 → DID ST 10:30.
+        assertEquals(59, progress.predictedDurationMinutes)
+    }
+
+    @Test
+    fun missingClocksLeaveDurationNullAndSkipAlong() {
+        val noTimes = listOf(
+            CallingPoint("Paddington", "PAD", null, null),
+            CallingPoint("Didcot Parkway", "DID", null, null),
+        )
+        val progress = ComputeJourneyProgress.compute(
+            callingPoints = noTimes,
             originCrs = "PAD",
             destinationCrs = "DID",
             destinationNameFallback = "Didcot",
             confirmedStopCrs = "PAD",
             now = now,
         )
-        val mid = ComputeJourneyProgress.compute(
-            callingPoints = points,
-            originCrs = "PAD",
-            destinationCrs = "DID",
-            destinationNameFallback = "Didcot",
-            confirmedStopCrs = "RDG",
-            now = now,
-        )
-        assertTrue(mid.fractionComplete > atOrigin.fractionComplete)
+        assertNull(progress.predictedDurationMinutes)
+        assertTrue(progress.points.all { it.fractionAlong == null })
+        assertEquals(0f, progress.fractionComplete, 0.001f)
     }
 }

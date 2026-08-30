@@ -331,7 +331,7 @@ class WalkUpLocationSimulator {
     )
 
     companion object {
-        const val DEFAULT_TARGET_CRS = "APS"
+        const val DEFAULT_TARGET_CRS = "WFJ"
         const val DEFAULT_START_OFFSET_METRES = 300.0
         const val DEFAULT_DURATION_MS = 120_000L
         const val DEFAULT_APPROACH_BEARING_DEGREES = 180.0

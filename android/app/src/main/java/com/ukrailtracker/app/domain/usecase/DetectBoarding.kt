@@ -20,6 +20,8 @@ data class BoardingConfig(
     val matchPastMinutes: Long = 8,
     /** Departure match: minutes after board signal. */
     val matchFutureMinutes: Long = 3,
+    /** Prompt timeout before auto-accepting the assumed service. */
+    val autoAcceptMillis: Long = 60_000L,
 )
 
 sealed interface BoardingPhase {

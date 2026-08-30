@@ -35,6 +35,7 @@ import com.ukrailtracker.app.worker.HomeRefreshScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class UkRailTrackerApp : Application() {
@@ -73,6 +74,9 @@ class AppContainer(app: Application) {
 
     val locationProvider: LocationProvider =
         DebugWalkUp.wrapLocation(FusedLocationProvider(app))
+
+    /** Latest resolved GPS speed (m/s) from the home location poll; null before first fix. */
+    val latestSpeedMps = MutableStateFlow<Double?>(null)
 
     val getNearbyStations: GetNearbyStationsUseCase = GetNearbyStationsUseCase(
         locationProvider = locationProvider,

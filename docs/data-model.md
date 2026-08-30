@@ -88,10 +88,10 @@ These types describe **this commute**, not the station catalogue. See [state-mod
 
 | Type | Role | Persisted? |
 |------|------|------------|
-| `CommuteSession` | `Idle` / `Near` / `AtStation` (slice 1) | No |
+| `CommuteSession` | `Idle` / `Near` / `AtStation` / `Confirming` / `OnTrain` | No |
 | `LockedOrigin` | Locked CRS, name, lat/lng, lock time, distance, manual override | No |
 | `WalkUpPhase` | Detector internal: Away / Dwelling / Arrived | No |
-| `BoardingPhase` | Idle / Sustaining / Triggered | No (still in `HomeViewModel` until slice 2) |
+| `BoardingPhase` | Idle / Sustaining / Triggered (nested on `AtStation`) | No |
 | `BoardingServiceSnapshot` | Cached favourite-bound services for match-at-board | No |
 | `StationStopPhase` | Moving / Dwelling / Confirmed on the route | No |
 | `WalkUpHomeUi` | Home projection: permission, near, at, boarding prompt, on-journey | No |
@@ -189,14 +189,14 @@ Lost when the process dies unless noted.
 | Data | Holder | After kill |
 |------|--------|------------|
 | Walk-up / `CommuteSession` presence | `reduce` + `HomeViewModel` | Recompute from GPS (`alreadyPresentOk` can lock immediately if already in the footprint) |
-| Boarding phase, auto-accept timer, service snapshots | `HomeViewModel` | Prompt does not resume; user is Away until GPS re-locks |
+| Boarding phase, auto-accept timer, service snapshots | `reduce` + `HomeViewModel` (`Confirming` / cached snapshots) | Prompt does not resume; user is Away until GPS re-locks |
 | Platform watch (selected service, vibration once) | `HomeViewModel` | Lost |
-| Station-stop phase, confirmed stop CRS, arrival buzz flags | `HomeViewModel` | On-train **session** resumes from pin; stop confirm and 3/2/1 buzz start fresh |
+| Station-stop phase, confirmed stop CRS, arrival buzz flags | `reduce` (`OnTrain`) | On-train **session** resumes from pin; stop confirm and 3/2/1 buzz start fresh |
 | Darwin `GetServiceDetails` calling points / ETAs | Memory after fetch | Re-fetched when on-train starts |
 | `JourneyProgress` diagram / countdown | Computed | Recomputed from details + GPS |
 | Current GPS sample | Location provider / VM | New fused fix |
 | `DisruptionSummary` | Derived from board | Recalculated |
-| Frequent-checks 5 min TTL | `HomeViewModel` | Lost (OS fences still armed) |
+| Frequent-checks 5 min TTL | `ElevateFrequentChecks` → `HomeViewModel` | Lost (OS fences still armed) |
 | Home / Nearby / Journeys `UiState` | ViewModels | Recreated on next open |
 
 GPS coordinates are **not** written to Room or DataStore.

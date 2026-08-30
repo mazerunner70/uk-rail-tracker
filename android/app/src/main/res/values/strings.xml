@@ -119,6 +119,7 @@
     <string name="home_on_train_mismatch_body">GPS puts you at %1$s, but the timetable expected %2$s. You may be on the wrong train or diverted.</string>
     <string name="home_on_train_mismatch_body_no_next">GPS puts you at %1$s, which does not match the next expected stop.</string>
     <string name="home_on_train_progress">Progress</string>
+    <string name="home_on_train_duration">%1$d min</string>
     <string name="home_on_train_stop_mins">%1$d min</string>
     <string name="home_on_train_stop_variance_late">+%1$d</string>
     <string name="home_on_train_stop_variance_early">−%1$d</string>
@@ -197,4 +198,6 @@
     <string name="station_not_found">Station not found</string>
     <string name="powered_by_national_rail">Powered by National Rail</string>
     <string name="back">Back</string>
+    <string name="status_speed_mph">%1$.1f mph</string>
+    <string name="status_speed_unknown">— mph</string>
 </resources>

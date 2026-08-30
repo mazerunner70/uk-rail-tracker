@@ -92,13 +92,13 @@ Idle is not a `WalkUpHomeUi` value. When Home *is* open with permission, the mat
 
 ## 2. OS ENTER — wake hint
 
-**Trigger:** `GeofenceTransitionsReceiver` receives `GEOFENCE_TRANSITION_ENTER`.
+**Trigger:** `GeofenceTransitionsReceiver` receives `GEOFENCE_TRANSITION_ENTER` and reduces `CommuteEvent.OsGeofenceEnter` against Idle or a stub `OnTrain` from the pin. Presence is not written.
 
-**Skipped when:** a `PinnedJourney` is already stored (on-train session owns presence; proximity noise is ignored).
+**Skipped when:** reduce is already `OnTrain` (pinned ride owns presence; proximity noise is ignored).
 
-**Side effects:**
+**Side effects (from reduce):**
 
-1. `GeofenceProximityNotifier` posts a high-priority notification: *“Near {station} — open to check trains”*, and vibrates.
+1. `NotifyProximity` → `GeofenceProximityNotifier` posts a high-priority notification: *“Near {station} — open to check trains”*, and vibrates.
 2. Per-CRS **30 minute** cooldown so the same station does not spam.
 3. Tap opens `MainActivity` with `ACTION_OPEN_HOME_FREQUENT_CHECKS`.
 
@@ -110,7 +110,7 @@ ENTER does **not** lock an origin, load favourite-bound boards, or start boardin
 
 **UI:** still `NotAtStation` / `NearStation` / `AtStation` as walk-up decides. The difference is **poll cadence**.
 
-`HomeViewModel.onOpenedForFrequentChecks()` sets `frequentChecksUntilEpochMs` for **5 minutes**. During that window (and while at-station / boarding / on-train):
+`HomeViewModel.onOpenedForFrequentChecks()` reduces `CommuteEvent.OpenedForFrequentChecks`. That emits `ElevateFrequentChecks` (5 minute TTL) without locking origin. During that window (and while at-station / boarding / on-train):
 
 | Situation | Location poll |
 |-----------|----------------|
@@ -289,7 +289,7 @@ Calling points from origin to favourite destination are marked past / current / 
 
 - **Current stop:** last GPS-confirmed CRS if any, else the timetable stop before the next expected arrival.
 - **Countdown:** minutes until destination **expected** arrival (never Darwin AT).
-- **Fraction complete:** index along origin→destination.
+- **Fraction complete:** elapsed / predicted origin→destination duration (origin actual/ET/ST to dest ET/ST). Each calling point has `fractionAlong` on that same axis. Falls back to hop index when clocks are missing.
 - **Route mismatch:** confirmed stop is *ahead of* the timetable’s next expected calling point (not the expected stop, and not still dwelling at the previous one). Home shows an amber warning with the unexpected station name.
 - **Approaching destination:** next stop CRS is the favourite.
 
@@ -365,7 +365,7 @@ Treat the commute as:
 Event  →  reduce(session, event)  →  Transition(newSession, List<Effect>)
 ```
 
-Events are things that happened: `LocationSample`, `DarwinOption`, `OpenedForFrequentChecks`, `ConfirmBoarding`, `EndTrip`, `Tick(now)`. `reduce` has no `Context`, no coroutines, no Retrofit. Effects are *intentions* (`Pin`, `ClearPin`, `StartTracking`, `StopTracking`, `Vibrate(3)`, `RefreshServiceDetails`, `WriteJourneyLog`). A thin interpreter in `HomeViewModel` (or `CommuteController`) runs them **after** the transition.
+Events are things that happened: `Location`, `OsGeofenceEnter`, `OpenedForFrequentChecks`, `Confirm`, `EndTrip`, `Tick(now)`. `reduce` has no `Context`, no coroutines, no Retrofit. Effects are *intentions* (`Pin`, `ClearPin`, `StartTracking`, `StopTracking`, `Vibrate(3)`, `RefreshServiceDetails`, `WriteJourneyLog`, `ElevateFrequentChecks`, `NotifyProximity`). A thin interpreter in `HomeViewModel` (or `CommuteController`) runs them **after** the transition.
 
 Idempotent transitions: applying the same sample twice must not double-pin or double-buzz. Effects should be derived from *edge* (Idle → Triggered), not from sitting in Triggered.
 
@@ -381,14 +381,28 @@ Session
 └─ Ride         (only while Pinned) Moving | Dwelling | Confirmed
 ```
 
-Kotlin (slice 1 implemented in `CommuteSession.kt` / `reduce`; later slices add Confirming / OnTrain events):
+Kotlin (`CommuteSession.kt` / `reduce`):
 
 ```kotlin
 sealed interface CommuteSession {
     data object Idle : CommuteSession
     data class Near(val dwelling: WalkUpPhase.Dwelling) : CommuteSession
     data class AtStation(val origin: LockedOrigin, val boarding: BoardingPhase = BoardingPhase.Idle) : CommuteSession
+    data class Confirming(
+        val origin: LockedOrigin,
+        val assumed: BoardingServiceSnapshot,
+        val alternatives: List<BoardingServiceSnapshot>,
+        val triggeredAtEpochMs: Long,
+        val showPicker: Boolean = false,
+    ) : CommuteSession
+    data class OnTrain(
+        val pin: PinnedJourney,
+        val stop: StationStopPhase = StationStopPhase.Moving,
+        val confirmedStopCrs: String? = null,
+        val buzzed: Set<Int> = emptySet(),
+    ) : CommuteSession
 }
+```
 
 sealed interface CommuteEvent {
     data class Location(
@@ -400,6 +414,13 @@ sealed interface CommuteEvent {
     data class SetOriginOverride(val origin: LockedOrigin) : CommuteEvent
     data object ClearOverride : CommuteEvent
     data object PermissionLost : CommuteEvent
+    data class Confirm(val nowEpochMs: Long) : CommuteEvent
+    data class SelectService(val serviceId: String, val nowEpochMs: Long) : CommuteEvent
+    data object ShowPicker : CommuteEvent
+    data object Dismiss : CommuteEvent
+    data class Tick(val nowEpochMs: Long) : CommuteEvent
+    data class OsGeofenceEnter(val crs: String, val stationName: String) : CommuteEvent
+    data class OpenedForFrequentChecks(val untilEpochMs: Long, val hintCrs: String? = null) : CommuteEvent
 }
 ```
 
@@ -452,7 +473,7 @@ Compose tests only check that `BoardingPrompt` renders Confirm. In debug builds,
 - Treating OS geofence ENTER as Arrived (fences flap; dwell/speed filters exist for a reason).
 - Virtualizing Darwin time so a compressed GPS ride and the countdown stay in lockstep — Refresh would lie. See [simulated-journey.md](simulated-journey.md).
 
-`HomeViewModel` still holds `boardingPhase` / `activePinned` / jobs. Slice 1 moved walk-up presence into `reduce`; pinning and FGS stay in the interpreter until later slices.
+`HomeViewModel` interprets effects (`Pin`, `StartTracking` / `UpdateTracking` / `StopTracking`, `WriteJourneyLog`, `ClearPin`, `Vibrate`). Slice 3 moved on-train stop detection, finish, and FGS intents into `reduce` (`OnTrain`).
 
 ---
 
@@ -522,7 +543,7 @@ An opt-in `includeSimulator` build injects lat/lng/speed through `LocationProvid
 |------|-------|----------|
 | Armed OS fences | Play Services (device) | Until re-arm replaces them; re-registered on boot |
 | ENTER notify cooldown | SharedPreferences | 30 min per CRS |
-| Locked origin / walk-up / boarding phase | In-memory (`HomeViewModel`) | Lost on process death (re-detected from GPS) |
+| Locked origin / walk-up / boarding / on-train stop phase | In-memory (`reduce` / `HomeViewModel`) | Lost on process death (re-detected from GPS; on-train rehydrates from pin) |
 | Platform watch | In-memory | Lost on process death |
 | Pinned service | DataStore `pinned_journey` | Until arrival / End trip / dismiss |
 | Completed trip | Room `journey_log` | Until retention policy (M7) |

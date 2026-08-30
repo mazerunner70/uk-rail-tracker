@@ -36,9 +36,9 @@ Tick when the slice is merged and the listed `HomeViewModel` fields are gone.
 | Slice | Status | Notes |
 |-------|--------|-------|
 | 1 Presence | Done | `reduce` owns Idle / Near / AtStation; `boardingPhase` still in VM |
-| 2 Boarding + pin effect | Not started | After 1 |
-| 3 On-train + finish | Not started | After 2 |
-| 4 Receivers enqueue events | Not started | Optional; after 1 |
+| 2 Boarding + pin effect | Done | `Confirming` + `Pin` effect; `boardingPhase` gone |
+| 3 On-train + finish | Done | After 2 |
+| 4 Receivers enqueue events | Done | After 1; ENTER / tap enqueue only; GPS still owns presence |
 
 When a slice lands, also update state-model “illustrative — not implemented” to the real type names.
 
@@ -68,7 +68,7 @@ Each PR: reduce + VM wiring + unit traces. No Compose rewrite beyond mapping if 
 
 **Delete from VM when done:** `walkUpPhase`, `lockedOrigin`.
 
-**Leave in the VM until later slices:** `boardingPhase`, `activePinned`. While `activePinned != null`, do not call slice-1 `reduce` for GPS (on-train still owns location).
+**Leave in the VM until later slices:** `activePinned`. While `activePinned != null`, do not call presence `reduce` for GPS (on-train still owns location).
 
 **Tests:** existing [`DetectWalkUpArrivalTest`](../android/app/src/test/java/com/ukrailtracker/app/domain/usecase/DetectWalkUpArrivalTest.kt) plus `CommuteReduceTest` traces: Away → Near → At.
 
@@ -102,11 +102,11 @@ Debug tap-to-pin in `DebugWalkUp` can stay until a later sim change; production 
 
 ### Checklist
 
-- [ ] Boarding motion + `Confirming` in session
-- [ ] `Pin` is an effect; DataStore write in interpreter
-- [ ] Auto-accept via `Tick`, not `delay { confirmBoarding() }`
-- [ ] `boardingPhase` / auto-accept job removed
-- [ ] Trace tests for trigger / confirm / no-match / dismiss
+- [x] Boarding motion + `Confirming` in session
+- [x] `Pin` is an effect; DataStore write in interpreter
+- [x] Auto-accept via `Tick`, not `delay { confirmBoarding() }`
+- [x] `boardingPhase` / auto-accept job removed
+- [x] Trace tests for trigger / confirm / no-match / dismiss
 
 ---
 
@@ -126,23 +126,23 @@ Darwin `refreshing` / `errorMessage` / `serviceMissing` stay on UI or nested loa
 
 ### Checklist
 
-- [ ] `OnTrain` in session; GPS goes to `DetectStationStop` via reduce
-- [ ] Finish: GPS at favourite CRS, Darwin AT, End trip → effects
-- [ ] FGS start/update/stop are effects
-- [ ] `journey_log` write is an effect
-- [ ] `stationStopPhase` / parallel pin flag removed
-- [ ] Trace tests: stop confirm, dest arrival, End trip
+- [x] `OnTrain` in session; GPS goes to `DetectStationStop` via reduce
+- [x] Finish: GPS at favourite CRS, Darwin AT, End trip → effects
+- [x] FGS start/update/stop are effects
+- [x] `journey_log` write is an effect
+- [x] `stationStopPhase` / parallel pin flag removed
+- [x] Trace tests: stop confirm, dest arrival, End trip
 
 ---
 
 ## Slice 4 — Receivers enqueue only (optional)
 
-`GeofenceTransitionsReceiver` / `onOpenedForFrequentChecks` emit `OpenedForFrequentChecks` into the same reduce (poll interval / `alreadyPresentOk`). Skip if slice 1 already treats the first GPS fix as cold-start lock.
+`GeofenceTransitionsReceiver` reduces `OsGeofenceEnter` (effect `NotifyProximity` when not on-train). Notification tap reduces `OpenedForFrequentChecks` (effect `ElevateFrequentChecks` for poll / `alreadyPresentOk`). GPS still owns presence.
 
 ### Checklist
 
-- [ ] Geofence / notification tap enqueue `CommuteEvent` only
-- [ ] Receiver does not set presence
+- [x] Geofence / notification tap enqueue `CommuteEvent` only
+- [x] Receiver does not set presence
 
 ---
 

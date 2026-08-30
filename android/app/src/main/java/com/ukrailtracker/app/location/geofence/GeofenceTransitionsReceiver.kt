@@ -7,13 +7,18 @@ import android.util.Log
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import com.ukrailtracker.app.appContainer
+import com.ukrailtracker.app.domain.usecase.CommuteEffect
+import com.ukrailtracker.app.domain.usecase.CommuteEvent
+import com.ukrailtracker.app.domain.usecase.CommuteSession
+import com.ukrailtracker.app.domain.usecase.reduce
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * Receives OS geofence ENTER events and notifies the user to open Home for walk-up confirmation.
+ * Receives OS geofence ENTER, reduces [CommuteEvent.OsGeofenceEnter], and runs
+ * [CommuteEffect.NotifyProximity]. Does not set walk-up presence.
  */
 class GeofenceTransitionsReceiver : BroadcastReceiver() {
 
@@ -35,16 +40,28 @@ class GeofenceTransitionsReceiver : BroadcastReceiver() {
         scope.launch {
             try {
                 val container = appContext.appContainer()
-                if (container.pinnedJourneyStore.getPinned() != null) {
-                    // On-train session owns presence — skip proximity noise.
-                    return@launch
+                val pin = container.pinnedJourneyStore.getPinned()
+                val session = if (pin != null) {
+                    CommuteSession.OnTrain(pin = pin)
+                } else {
+                    CommuteSession.Idle
                 }
                 val notifier = GeofenceProximityNotifier(appContext)
                 for (geofence in event.triggeringGeofences.orEmpty()) {
                     val crs = StationGeofenceIds.crsFromRequestId(geofence.requestId) ?: continue
                     val station = container.stationRepository.getByCrs(crs)
                     val name = station?.name?.ifBlank { crs } ?: crs
-                    notifier.notifyEnter(crs, name)
+                    val transition = reduce(
+                        session,
+                        CommuteEvent.OsGeofenceEnter(crs = crs, stationName = name),
+                    )
+                    for (effect in transition.effects) {
+                        when (effect) {
+                            is CommuteEffect.NotifyProximity ->
+                                notifier.notifyEnter(effect.crs, effect.stationName)
+                            else -> Unit
+                        }
+                    }
                 }
             } catch (t: Throwable) {
                 Log.w(TAG, "Geofence ENTER handling failed: ${t.message}")
