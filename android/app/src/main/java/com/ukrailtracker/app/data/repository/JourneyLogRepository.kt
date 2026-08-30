@@ -2,6 +2,7 @@ package com.ukrailtracker.app.data.repository
 
 import com.ukrailtracker.app.data.local.db.JourneyLogDao
 import com.ukrailtracker.app.data.local.db.JourneyLogEntity
+import com.ukrailtracker.app.domain.commute.CommuteJourneyLogger
 import com.ukrailtracker.app.domain.model.JourneyLogEntry
 import com.ukrailtracker.app.domain.model.JourneyOption
 import kotlinx.coroutines.flow.Flow
@@ -13,8 +14,8 @@ import java.time.LocalDate
  */
 class JourneyLogRepository(
     private val dao: JourneyLogDao,
-) {
-    suspend fun logFromOption(option: JourneyOption) {
+) : CommuteJourneyLogger {
+    override suspend fun logFromOption(option: JourneyOption) {
         val delay = option.delayMinutes ?: 0
         val claimStatus = when {
             option.isCancelled -> "eligible"

@@ -393,9 +393,9 @@ Each stage is a shippable PR. Do not start the next stage until the previous sta
 
 #### Definition of done
 
-- [ ] No `commuteSession is CommuteSession.X` in `HomeViewModel`
-- [ ] At most one policy module consulted by location sampling and job scheduling
-- [ ] New state checklist documented: “if it changes GPS policy, add one extension method + test”
+- [x] No `commuteSession is CommuteSession.X` in `HomeViewModel`
+- [x] At most one policy module consulted by location sampling and job scheduling
+- [x] New state checklist documented: “if it changes GPS policy, add one extension method + test”
 
 
 
@@ -445,10 +445,10 @@ Pick a state that stress-tests the migration:
 
 #### Definition of done
 
-- [ ] New state shipped behind full test coverage
-- [ ] `HomeViewModel` diff for the feature is minimal (wiring only)
-- [ ] “Adding a commute state” checklist added to this doc (see below)
-- [ ] [state-model.md](state-model.md) diagram updated
+- [x] New state shipped behind full test coverage
+- [x] `HomeViewModel` diff for the feature is minimal (wiring only)
+- [x] “Adding a commute state” checklist added to this doc (see below)
+- [x] [state-model.md](state-model.md) diagram updated
 
 ---
 
@@ -469,12 +469,15 @@ Use after stage 5.
 | 6    | Branch in `toWalkUpUi`                          | Yes                           |
 | 7    | Enter/exit handler in `CommuteRuntime`          | If jobs start/stop            |
 | 8    | Policy extension                                | If GPS/poll behaviour changes |
+| 8a   | Table row in `CommuteSessionPolicyTest`         | If step 8                      |
 | 9    | `CommuteReduceTest` trace                       | Yes                           |
 | 10   | Mapper unit test                                | Yes                           |
 | 11   | Update state-model.md                           | If user-visible               |
 
 
 **Explicitly skip:** `HomeViewModel` unless adding a new user action handler that calls `runtime.dispatch`.
+
+**GPS / poll policy:** if the new state changes whether location events are accepted, nearby stations are resolved, or poll interval — add/adjust one method in `CommuteSessionPolicy` and a table assertion in `CommuteSessionPolicyTest`. Do not add `is CommuteSession.X` branches in `CommuteRuntime`’s location loop. Transitions stay in `reduce()`; infrastructure stays in policy extensions.
 
 ---
 

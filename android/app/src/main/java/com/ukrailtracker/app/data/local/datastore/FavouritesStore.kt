@@ -6,13 +6,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ukrailtracker.app.domain.commute.CommuteFavouritesAccess
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.favouritesDataStore: DataStore<Preferences> by preferencesDataStore(name = "favourites")
 
-class FavouritesStore(private val context: Context) {
+class FavouritesStore(private val context: Context) : CommuteFavouritesAccess {
     private val key = stringSetPreferencesKey("favourite_stations")
 
     val favouritesFlow: Flow<List<String>> = context.favouritesDataStore.data.map { prefs ->
@@ -22,7 +23,7 @@ class FavouritesStore(private val context: Context) {
             .sorted()
     }
 
-    suspend fun getFavourites(): List<String> = favouritesFlow.first()
+    override suspend fun getFavourites(): List<String> = favouritesFlow.first()
 
     suspend fun add(crs: String) {
         val normalised = crs.trim().uppercase()

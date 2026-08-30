@@ -116,9 +116,11 @@ sealed interface WalkUpHomeUi {
     ) : WalkUpHomeUi
 }
 
+/** True for at-station / boarding prompt — mirrors [com.ukrailtracker.app.domain.commute.focusesAtStation]. */
 val WalkUpHomeUi?.focusesAtStation: Boolean
     get() = this is WalkUpHomeUi.AtStation || this is WalkUpHomeUi.BoardingPrompt
 
+/** True for at-station, boarding, or on-train — mirrors [com.ukrailtracker.app.domain.commute.focusesTripUi]. */
 val WalkUpHomeUi?.focusesTripUi: Boolean
     get() = focusesAtStation || this is WalkUpHomeUi.OnJourney
 

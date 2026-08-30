@@ -12,6 +12,7 @@ Primary types:
 | Walk-up | `WalkUpPhase` | Soft geofence + walk/dwell lock of an origin station |
 | Home presence | `WalkUpHomeUi` | What Home shows in the status bar and body |
 | Boarding | `BoardingPhase` | Leave-station + train-like motion after a locked origin |
+| Platform watch | `PlatformWatchPhase` | Nested AtStation sub-phase: poll one departure for its platform |
 | Pin | `PinnedJourney` (DataStore) | Survives process death; starts the on-train session |
 | On-train stop | `StationStopPhase` | Low-speed + proximity confirm of calling-point stops |
 | Progress | `JourneyProgress` | Diagram, countdown, mismatch, destination-arrived |
@@ -40,6 +41,10 @@ stateDiagram-v2
     Near --> AtStation: dwell 12 s + walking (or no speed on emulator)
     AtStation --> Away: walk away slowly beyond 400 m
     AtStation --> Near: hysteresis unlock beyond 350 m
+    AtStation --> PlatformWatch: select favourite-bound service
+    PlatformWatch --> AtStation: clear watch
+    PlatformWatch --> Away: leave station
+    PlatformWatch --> BoardingSustaining: ≥400 m AND ≥5 m/s
 
     AtStation --> BoardingSustaining: ≥400 m from origin AND ≥5 m/s
     BoardingSustaining --> AtStation: motion no longer qualifies
@@ -192,11 +197,13 @@ Drive-and-stop (known speed below walk-min after a vehicle reset) stays **Away**
 
 **Manual override:** user picks a station (`setOriginOverride`). UI is `AtStation` with `manualOverride = true`. GPS walk-up is frozen until they tap GPS / clear override.
 
-### At-station sub-state: platform watch
+### At-station sub-state: platform watch (`PlatformWatchPhase`)
 
-Not a separate presence. While `AtStation`, the user can select a favourite-bound service. Home polls that service until a **departure platform** appears, then vibrates once (`platformAppeared`).
+Nested on `CommuteSession.AtStation.platformWatch` — not a top-level presence. While at a station, the user can select a favourite-bound service (`CommuteEvent.WatchPlatform`). Session becomes `PlatformWatchPhase.Watching`; Home still maps to `WalkUpHomeUi.AtStation`. Runtime enter/exit starts/stops the Darwin poll until a **departure platform** appears, then vibrates once (`platformAppeared`).
 
-Poll cadence tightens as departure approaches (60 s → 10 s). Clearing the watch or leaving the station cancels it.
+Poll cadence tightens as departure approaches (60 s → 10 s). `ClearPlatformWatch`, leaving the station, or entering Confirming/OnTrain returns to `PlatformWatchPhase.Idle`. Async poll fields (polling spinner, error, live platform) stay in `CommuteAuxState`; identity of the watched service is on the session.
+
+GPS policy is unchanged from AtStation (same poll interval and location acceptance).
 
 ---
 
