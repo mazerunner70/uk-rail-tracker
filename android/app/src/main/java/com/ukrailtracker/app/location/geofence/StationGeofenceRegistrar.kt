@@ -14,7 +14,7 @@ import kotlinx.coroutines.tasks.await
 
 /**
  * Registers a replaceable set of OS geofences for nearby / always-on stations.
- * ENTER is a wake hint only — walk-up confirmation stays in [DetectWalkUpArrival].
+ * ENTER is a wake hint only — station presence stays on the GPS poll.
  */
 class StationGeofenceRegistrar(
     context: Context,

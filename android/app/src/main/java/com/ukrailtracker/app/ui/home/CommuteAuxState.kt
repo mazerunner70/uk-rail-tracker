@@ -37,11 +37,22 @@ data class OnTrainUiAux(
     val refreshing: Boolean = true,
     val errorMessage: String? = null,
     val serviceMissing: Boolean = false,
+    val preDeparture: PreDepartureUi? = null,
+)
+
+/** Platform wait before GPS confirms the train is moving. */
+data class PreDepartureUi(
+    val originStationName: String,
+    val minutesUntilTrainArrives: Long?,
+    val approachingFromStopName: String?,
+    val originIsFirstOnRoute: Boolean,
+    val awaitingDeparture: Boolean,
+    val showBoardedButton: Boolean,
 )
 
 /**
  * UI data that accompanies [com.ukrailtracker.app.domain.usecase.CommuteSession] but is not part of the reducer.
- * Mapped to [WalkUpHomeUi] via [mapCommuteWalkUpUi].
+ * Mapped to [MappedCommutePresence] via [mapCommutePresence].
  */
 data class CommuteAuxState(
     val overlay: PresenceOverlay = PresenceOverlay.None,

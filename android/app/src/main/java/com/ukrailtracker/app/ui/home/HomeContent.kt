@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun HomeContent(
-    content: HomeUiState.Content,
+    content: HomeUiState.Ready,
     onStationClick: (String) -> Unit,
     onBannerClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -27,10 +27,11 @@ internal fun HomeContent(
     onRejectAssumedBoarding: () -> Unit,
     onSelectBoardingCandidate: (serviceId: String) -> Unit,
     onDismissBoarding: () -> Unit,
+    onConfirmBoarded: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    when (val walkUp = content.walkUp) {
-        is WalkUpHomeUi.OnJourney -> {
+    when (val body = content.body) {
+        is HomeBodyUi.OnJourney -> {
             Column(
                 modifier = modifier
                     .fillMaxSize()
@@ -41,18 +42,19 @@ internal fun HomeContent(
                     HomeRefreshingRow()
                 }
                 OnJourneyHome(
-                    journey = walkUp,
+                    journey = body,
                     onEndTrip = onEndOnTrainTrip,
                     onOpenDetail = onOpenOnTrainDetail,
+                    onConfirmBoarded = onConfirmBoarded,
                     modifier = Modifier.weight(1f),
                 )
             }
         }
-        is WalkUpHomeUi.BoardingPrompt -> {
+        is HomeBodyUi.BoardingPrompt -> {
             HomeScrollPane(modifier, content.refreshing) {
                 item {
                     BoardingPromptHome(
-                        prompt = walkUp,
+                        prompt = body,
                         onConfirm = onConfirmBoarding,
                         onRejectAssumed = onRejectAssumedBoarding,
                         onSelectCandidate = onSelectBoardingCandidate,
@@ -61,10 +63,10 @@ internal fun HomeContent(
                 }
             }
         }
-        is WalkUpHomeUi.AtStation -> {
+        is HomeBodyUi.AtStation -> {
             HomeScrollPane(modifier, content.refreshing) {
                 atStationHomeItems(
-                    atStation = walkUp,
+                    atStation = body,
                     onOpenSettings = onOpenSettings,
                     onSelectForPlatformWatch = onSelectForPlatformWatch,
                     onClearPlatformWatch = onClearPlatformWatch,
@@ -73,10 +75,10 @@ internal fun HomeContent(
                 )
             }
         }
-        else -> {
+        is HomeBodyUi.StationList -> {
             HomeScrollPane(modifier, content.refreshing) {
                 stationListHomeItems(
-                    stations = content.stations,
+                    stations = body.stations,
                     onStationClick = onStationClick,
                     onBannerClick = onBannerClick,
                     onOpenSettings = onOpenSettings,

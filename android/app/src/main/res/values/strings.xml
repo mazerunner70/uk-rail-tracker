@@ -132,6 +132,16 @@
     <string name="home_on_train_service_missing">This train is no longer on the live board (it may have finished or the pin is stale). End the trip to return to Home.</string>
     <string name="home_on_train_scheduled">Pinned %1$s departure</string>
     <string name="home_on_train_progress_unavailable">Live calling points unavailable until the service is found on the board.</string>
+    <string name="home_on_train_presence_waiting">Waiting at %1$s</string>
+    <string name="home_on_train_presence_train_in">Train in %1$d min</string>
+    <string name="home_on_train_presence_awaiting_departure">On board — waiting to depart</string>
+    <string name="home_on_train_waiting_at">Waiting at %1$s</string>
+    <string name="home_on_train_approaching_from">Approaching from %1$s</string>
+    <string name="home_on_train_train_arrives_in">Train arrives in</string>
+    <string name="home_on_train_boarded">Boarded</string>
+    <string name="home_on_train_awaiting_departure_title">On board</string>
+    <string name="home_on_train_awaiting_departure_body">At %1$s · heading to %2$s</string>
+    <string name="home_on_train_awaiting_movement">Waiting for the train to depart…</string>
 
     <string name="on_train_notification_channel">On-train tracking</string>
     <string name="on_train_notification_channel_desc">Live countdown while you are on a train</string>
@@ -139,6 +149,7 @@
     <string name="on_train_notification_text">On train to %1$s — %2$d min</string>
     <string name="on_train_notification_text_unknown">On train to %1$s</string>
     <string name="on_train_notification_destination_fallback">destination</string>
+    <string name="location_tracking_notification_text">Checking nearby stations</string>
 
     <string name="geofence_notification_channel">Near a station</string>
     <string name="geofence_notification_channel_desc">Alerts when you enter a station area so you can open live departures</string>
@@ -200,4 +211,9 @@
     <string name="back">Back</string>
     <string name="status_speed_mph">%1$.1f mph</string>
     <string name="status_speed_unknown">— mph</string>
+    <string name="status_engine_idle">Idle</string>
+    <string name="status_engine_near">Near station</string>
+    <string name="status_engine_at">At station</string>
+    <string name="status_engine_confirming">Confirming</string>
+    <string name="status_engine_on_train">On train</string>
 </resources>

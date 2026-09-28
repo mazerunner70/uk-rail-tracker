@@ -8,10 +8,10 @@ import com.ukrailtracker.app.domain.usecase.BoardingServiceSnapshot
 import com.ukrailtracker.app.domain.usecase.CommuteSession
 import com.ukrailtracker.app.domain.usecase.LockedOrigin
 import com.ukrailtracker.app.domain.usecase.PlatformWatchPhase
-import com.ukrailtracker.app.domain.usecase.WalkUpPhase
 import com.ukrailtracker.app.ui.station.StatusKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
@@ -20,57 +20,59 @@ class CommuteUiMapperTest {
 
     @Test
     fun needsPermissionOverlayTakesPrecedence() {
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             session = CommuteSession.Idle,
             aux = CommuteAuxState(overlay = PresenceOverlay.NeedsPermission),
         )
-        assertEquals(WalkUpHomeUi.NeedsPermission, ui)
+        assertEquals(PresenceChromeUi.NeedsPermission, ui.chrome)
+        assertNull(ui.tripBody)
     }
 
     @Test
     fun locationUnavailableWhenIdle() {
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             session = CommuteSession.Idle,
             aux = CommuteAuxState(overlay = PresenceOverlay.LocationUnavailable),
         )
-        assertEquals(WalkUpHomeUi.LocationUnavailable, ui)
+        assertEquals(PresenceChromeUi.LocationUnavailable, ui.chrome)
+        assertNull(ui.tripBody)
     }
 
     @Test
     fun locationUnavailableIgnoredAtStation() {
         val session = atStation()
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             session = session,
             aux = CommuteAuxState(overlay = PresenceOverlay.LocationUnavailable),
         )
-        assertTrue(ui is WalkUpHomeUi.AtStation)
-        assertEquals("PAD", (ui as WalkUpHomeUi.AtStation).crsCode)
+        assertTrue(ui.chrome is PresenceChromeUi.AtStation)
+        assertTrue(ui.tripBody is HomeBodyUi.AtStation)
+        assertEquals("PAD", (ui.tripBody as HomeBodyUi.AtStation).crsCode)
     }
 
     @Test
     fun idleMapsToNotAtStation() {
-        val ui = mapCommuteWalkUpUi(CommuteSession.Idle, CommuteAuxState())
-        assertEquals(WalkUpHomeUi.NotAtStation, ui)
+        val ui = mapCommutePresence(CommuteSession.Idle, CommuteAuxState())
+        assertEquals(PresenceChromeUi.NotAtStation, ui.chrome)
+        assertNull(ui.tripBody)
     }
 
     @Test
     fun nearMapsToNearStation() {
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             CommuteSession.Near(
-                WalkUpPhase.Dwelling(
-                    crs = "PAD",
-                    stationName = "Paddington",
-                    distanceMetres = 120.0,
-                    enteredAtEpochMs = 0L,
-                    sawWalkingPace = true,
-                    hadSpeedReading = true,
-                ),
+                crs = "PAD",
+                name = "Paddington",
+                latitude = 51.515,
+                longitude = -0.175,
+                distanceMetres = 120.0,
             ),
             CommuteAuxState(),
         )
-        val near = ui as WalkUpHomeUi.NearStation
+        val near = ui.chrome as PresenceChromeUi.NearStation
         assertEquals("PAD", near.crsCode)
         assertEquals("120 m", near.distanceLabel)
+        assertNull(ui.tripBody)
     }
 
     @Test
@@ -80,7 +82,7 @@ class CommuteUiMapperTest {
             destinationName = "Reading",
             services = emptyList(),
         )
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             atStation(),
             CommuteAuxState(
                 atStation = AtStationAux(
@@ -90,25 +92,28 @@ class CommuteUiMapperTest {
                 ),
             ),
             lastLoadedOriginCrs = "PAD",
-        ) as WalkUpHomeUi.AtStation
-        assertEquals(listOf(dest), ui.destinations)
-        assertFalse(ui.destinationsLoading)
+        )
+        val body = ui.tripBody as HomeBodyUi.AtStation
+        assertEquals(listOf(dest), body.destinations)
+        assertFalse(body.destinationsLoading)
+        assertTrue(ui.chrome is PresenceChromeUi.AtStation)
     }
 
     @Test
     fun atStationShowsLoadingWhenOriginNotYetLoaded() {
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             atStation(),
             CommuteAuxState(atStation = AtStationAux(originCrs = "PAD")),
             lastLoadedOriginCrs = null,
-        ) as WalkUpHomeUi.AtStation
-        assertTrue(ui.destinationsLoading)
+        )
+        val body = ui.tripBody as HomeBodyUi.AtStation
+        assertTrue(body.destinationsLoading)
     }
 
     @Test
     fun confirmingMapsBoardingPrompt() {
         val assumed = boardingSnapshot()
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             CommuteSession.Confirming(
                 origin = lockedOrigin(),
                 assumed = assumed,
@@ -117,22 +122,28 @@ class CommuteUiMapperTest {
                 showPicker = true,
             ),
             CommuteAuxState(),
-        ) as WalkUpHomeUi.BoardingPrompt
-        assertEquals("PAD", ui.originCrs)
-        assertEquals(assumed.serviceId, ui.assumed.serviceId)
-        assertTrue(ui.showPicker)
+        )
+        val body = ui.tripBody as HomeBodyUi.BoardingPrompt
+        assertEquals("PAD", body.originCrs)
+        assertEquals(assumed.serviceId, body.assumed.serviceId)
+        assertTrue(body.showPicker)
+        val chrome = ui.chrome as PresenceChromeUi.Boarding
+        assertEquals("Paddington", chrome.originName)
+        assertEquals(assumed.scheduledDepartureLabel, chrome.assumedDepartureLabel)
     }
 
     @Test
     fun onTrainSkeletonFromAux() {
         val pin = pinned()
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             CommuteSession.OnTrain(pin = pin),
             CommuteAuxState(onTrain = onTrainSkeletonAux()),
-        ) as WalkUpHomeUi.OnJourney
-        assertEquals(pin.serviceId, ui.serviceId)
-        assertTrue(ui.refreshing)
-        assertEquals(pin.destinationName, ui.destinationName)
+        )
+        val body = ui.tripBody as HomeBodyUi.OnJourney
+        assertEquals(pin.serviceId, body.serviceId)
+        assertTrue(body.refreshing)
+        assertEquals(pin.destinationName, body.destinationName)
+        assertTrue(ui.chrome is PresenceChromeUi.OnJourney)
     }
 
     @Test
@@ -224,12 +235,12 @@ class CommuteUiMapperTest {
             expectedDepartureLabel = "On time",
             platform = null,
         )
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             atStation().copy(platformWatch = watching),
             CommuteAuxState(atStation = AtStationAux(originCrs = "PAD")),
             lastLoadedOriginCrs = "PAD",
-        ) as WalkUpHomeUi.AtStation
-        val watch = ui.platformWatch!!
+        )
+        val watch = (ui.tripBody as HomeBodyUi.AtStation).platformWatch!!
         assertEquals("svc-1", watch.serviceId)
         assertEquals("RDG", watch.destinationCrs)
         assertTrue(watch.polling)
@@ -247,7 +258,7 @@ class CommuteUiMapperTest {
             expectedDepartureLabel = "On time",
             platform = null,
         )
-        val ui = mapCommuteWalkUpUi(
+        val ui = mapCommutePresence(
             atStation().copy(platformWatch = watching),
             CommuteAuxState(
                 atStation = AtStationAux(
@@ -266,8 +277,8 @@ class CommuteUiMapperTest {
                 ),
             ),
             lastLoadedOriginCrs = "PAD",
-        ) as WalkUpHomeUi.AtStation
-        val watch = ui.platformWatch!!
+        )
+        val watch = (ui.tripBody as HomeBodyUi.AtStation).platformWatch!!
         assertEquals("12", watch.platform)
         assertEquals("08:07", watch.expectedDepartureLabel)
         assertFalse(watch.polling)

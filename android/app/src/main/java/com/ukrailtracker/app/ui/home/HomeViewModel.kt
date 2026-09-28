@@ -1,22 +1,17 @@
 package com.ukrailtracker.app.ui.home
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ukrailtracker.app.data.local.datastore.CommuteWindowStore
 import com.ukrailtracker.app.data.local.datastore.FavouritesStore
-import com.ukrailtracker.app.data.local.datastore.PinnedJourneyStore
-import com.ukrailtracker.app.data.repository.JourneyLogRepository
-import com.ukrailtracker.app.domain.commute.CommuteRuntime
+import com.ukrailtracker.app.domain.commute.CommuteSessionController
 import com.ukrailtracker.app.domain.commute.isOnTrain
-import com.ukrailtracker.app.domain.location.LocationProvider
 import com.ukrailtracker.app.domain.model.Departure
 import com.ukrailtracker.app.domain.model.DisruptionSeverity
 import com.ukrailtracker.app.domain.model.DisruptionSummary
 import com.ukrailtracker.app.domain.model.TrainStatus
 import com.ukrailtracker.app.domain.repository.DepartureRepository
-import com.ukrailtracker.app.domain.repository.JourneyRepository
 import com.ukrailtracker.app.domain.repository.StationRepository
 import com.ukrailtracker.app.domain.usecase.CommuteEvent
 import com.ukrailtracker.app.domain.usecase.DeriveBoardDisruption
@@ -40,30 +35,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class HomeViewModel(
-    appContext: Context,
     private val stationRepository: StationRepository,
     private val departureRepository: DepartureRepository,
-    journeyRepository: JourneyRepository,
-    journeyLogRepository: JourneyLogRepository,
-    locationProvider: LocationProvider,
     private val commuteWindowStore: CommuteWindowStore,
     private val favouritesStore: FavouritesStore,
-    pinnedJourneyStore: PinnedJourneyStore,
-    latestSpeedMps: MutableStateFlow<Double?>,
+    private val commuteSession: CommuteSessionController,
     private val getContextualStations: GetContextualStationsUseCase = GetContextualStationsUseCase(),
 ) : ViewModel() {
 
-    private val commuteRuntime = CommuteRuntime(
-        scope = viewModelScope,
-        appContext = appContext.applicationContext,
-        stationRepository = stationRepository,
-        journeyRepository = journeyRepository,
-        journeyLogRepository = journeyLogRepository,
-        locationProvider = locationProvider,
-        favouritesStore = favouritesStore,
-        pinnedJourneyStore = pinnedJourneyStore,
-        onLatestSpeedMps = { latestSpeedMps.value = it },
-    )
+    private val commuteRuntime = commuteSession.runtime
 
     private val stationBoards = MutableStateFlow(StationBoardsState())
     private val disruptionModal = MutableStateFlow<DisruptionModalState?>(null)
@@ -101,21 +81,26 @@ class HomeViewModel(
         }
     }
 
-    fun onNeedsPermission() = commuteRuntime.onNeedsPermission()
+    fun onNeedsPermission() = commuteSession.onNeedsPermission()
 
-    fun onPermissionGranted() = commuteRuntime.onPermissionGranted()
+    fun onPermissionGranted() = commuteSession.onPermissionGranted()
 
-    fun onOpenedForFrequentChecks(hintCrs: String? = null) =
-        commuteRuntime.onOpenedForFrequentChecks(hintCrs)
+    fun onBackgroundLocationGranted() = commuteSession.onBackgroundLocationGranted()
+
+    fun onHomeStarted() = commuteSession.onHomeStarted()
+
+    fun onHomeStopped() = commuteSession.onHomeStopped()
+
+    fun onOpenedForFrequentChecks() = commuteSession.requestFreshFix()
 
     fun prepareForDebugWalkUp(elevatePollForMs: Long) =
-        commuteRuntime.prepareForDebugWalkUp(elevatePollForMs)
+        commuteSession.prepareForDebugWalkUp(elevatePollForMs)
 
-    fun onPermissionDenied() = commuteRuntime.onPermissionDenied()
+    fun onPermissionDenied() = commuteSession.onPermissionDenied()
 
     fun setOriginOverride(crs: String) = commuteRuntime.setOriginOverride(crs)
 
-    fun clearOriginOverride() = commuteRuntime.clearOriginOverride()
+    fun clearOriginOverride() = commuteSession.clearOriginOverride()
 
     fun confirmBoarding() =
         commuteRuntime.dispatch(CommuteEvent.Confirm(System.currentTimeMillis()))
@@ -128,6 +113,8 @@ class HomeViewModel(
     fun dismissBoarding() = commuteRuntime.dismissBoarding()
 
     fun endOnTrainTrip() = commuteRuntime.dispatch(CommuteEvent.EndTrip)
+
+    fun confirmBoarded() = commuteRuntime.dispatch(CommuteEvent.Boarded)
 
     fun openOnTrainServiceDetail() {
         val pinned = commuteRuntime.sessionFlow.value.pinnedJourneyOrNull() ?: return
@@ -153,11 +140,11 @@ class HomeViewModel(
     fun refreshPlatformWatch() = commuteRuntime.refreshPlatformWatch()
 
     fun openWatchedService() {
-        val watch = (mapCommuteWalkUpUi(
+        val watch = (mapCommutePresence(
             commuteRuntime.sessionFlow.value,
             commuteRuntime.auxFlow.value,
             commuteRuntime.lastLoadedOriginCrs.value,
-        ) as? WalkUpHomeUi.AtStation)?.platformWatch ?: return
+        ).tripBody as? HomeBodyUi.AtStation)?.platformWatch ?: return
         viewModelScope.launch {
             _openJourney.emit(
                 OpenJourneyEvent(
@@ -172,12 +159,12 @@ class HomeViewModel(
     fun refresh() {
         val current = uiState.value
         val crsList = when (current) {
-            is HomeUiState.Content -> current.stations.map { it.crsCode }
+            is HomeUiState.Ready -> current.stationList.map { it.crsCode }
             else -> emptyList()
         }
         viewModelScope.launch {
             val boards = stationBoards.value
-            stationBoards.value = if (current is HomeUiState.Content) {
+            stationBoards.value = if (current is HomeUiState.Ready) {
                 boards.copy(refreshing = true)
             } else {
                 boards.copy(awaitingFirstLoad = true, refreshing = false)
@@ -191,13 +178,13 @@ class HomeViewModel(
             if (commuteRuntime.sessionFlow.value.isOnTrain()) {
                 commuteRuntime.refreshOnTrainOption()
             }
-            commuteRuntime.sampleLocationIfPermitted(forceRefresh = true)
+            commuteSession.requestFreshFix()
         }
     }
 
     fun openDisruption(crs: String) {
-        val content = uiState.value as? HomeUiState.Content ?: return
-        val card = content.stations.find { it.crsCode == crs } ?: return
+        val content = uiState.value as? HomeUiState.Ready ?: return
+        val card = content.stationList.find { it.crsCode == crs } ?: return
         disruptionModal.value = DisruptionModalState(
             disruption = card.disruption,
             stationName = card.stationName,
@@ -316,7 +303,7 @@ class HomeViewModel(
     }
 
     override fun onCleared() {
-        commuteRuntime.onCleared()
+        commuteSession.onHomeStopped()
         super.onCleared()
     }
 
@@ -334,30 +321,20 @@ class HomeViewModel(
             "Updated ${FETCHED_FMT.format(Instant.ofEpochMilli(epochMs))}"
 
         fun factory(
-            appContext: Context,
             stationRepository: StationRepository,
             departureRepository: DepartureRepository,
-            journeyRepository: JourneyRepository,
-            journeyLogRepository: JourneyLogRepository,
-            locationProvider: LocationProvider,
             commuteWindowStore: CommuteWindowStore,
             favouritesStore: FavouritesStore,
-            pinnedJourneyStore: PinnedJourneyStore,
-            latestSpeedMps: MutableStateFlow<Double?>,
+            commuteSession: CommuteSessionController,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return HomeViewModel(
-                    appContext = appContext.applicationContext,
                     stationRepository = stationRepository,
                     departureRepository = departureRepository,
-                    journeyRepository = journeyRepository,
-                    journeyLogRepository = journeyLogRepository,
-                    locationProvider = locationProvider,
                     commuteWindowStore = commuteWindowStore,
                     favouritesStore = favouritesStore,
-                    pinnedJourneyStore = pinnedJourneyStore,
-                    latestSpeedMps = latestSpeedMps,
+                    commuteSession = commuteSession,
                 ) as T
             }
         }

@@ -32,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ukrailtracker.app.R
 import com.ukrailtracker.app.appContainer
+import com.ukrailtracker.app.domain.usecase.CommuteSession
 import com.ukrailtracker.app.ui.components.SpeedStatusBar
 import com.ukrailtracker.app.ui.home.HomeRoute
 import com.ukrailtracker.app.ui.journey.JourneyDetailRoute
@@ -88,6 +89,9 @@ fun AppNavHost(
     onHomeLaunchActionConsumed: () -> Unit = {},
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val container = context.appContainer()
+    val pinnedJourneyStore = container.pinnedJourneyStore
     val topLevel = listOf(
         TopLevelDest(Routes.Home, R.string.nav_home, Icons.Default.Home),
         TopLevelDest(Routes.Nearby, R.string.nav_nearby, Icons.Default.NearMe),
@@ -99,7 +103,8 @@ fun AppNavHost(
     val showBottomBar = topLevel.any { dest ->
         currentDestination?.hierarchy?.any { it.route == dest.route } == true
     }
-    val speedMps by LocalContext.current.appContainer().latestSpeedMps.collectAsStateWithLifecycle()
+    val speedMps by container.latestSpeedMps.collectAsStateWithLifecycle()
+    val session by container.commuteSessionController.runtime.sessionFlow.collectAsStateWithLifecycle()
 
     LaunchedEffect(homeLaunchAction) {
         val action = homeLaunchAction ?: return@LaunchedEffect
@@ -123,12 +128,32 @@ fun AppNavHost(
         }
     }
 
+    LaunchedEffect(pinnedJourneyStore) {
+        var lastPinnedServiceId: String? = null
+        pinnedJourneyStore.pinnedFlow.collect { pinned ->
+            val serviceId = pinned?.serviceId
+            if (serviceId != null && serviceId != lastPinnedServiceId) {
+                navController.navigate(Routes.Home) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            lastPinnedServiceId = serviceId
+        }
+    }
+
     Scaffold(
         containerColor = NeonBackground,
         bottomBar = {
             if (showBottomBar) {
                 Column {
-                    SpeedStatusBar(speedMps = speedMps)
+                    SpeedStatusBar(
+                        speedMps = speedMps,
+                        engineStatus = engineStatusLabel(session),
+                    )
                     NavigationBar(containerColor = NeonSurface) {
                         topLevel.forEach { dest ->
                             val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
@@ -387,4 +412,13 @@ fun AppNavHost(
             }
         }
     }
+}
+
+@Composable
+private fun engineStatusLabel(session: CommuteSession): String = when (session) {
+    CommuteSession.Idle -> stringResource(R.string.status_engine_idle)
+    is CommuteSession.Near -> stringResource(R.string.status_engine_near)
+    is CommuteSession.AtStation -> stringResource(R.string.status_engine_at)
+    is CommuteSession.Confirming -> stringResource(R.string.status_engine_confirming)
+    is CommuteSession.OnTrain -> stringResource(R.string.status_engine_on_train)
 }

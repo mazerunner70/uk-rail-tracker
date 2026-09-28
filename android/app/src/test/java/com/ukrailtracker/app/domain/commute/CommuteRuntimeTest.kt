@@ -1,12 +1,10 @@
 package com.ukrailtracker.app.domain.commute
 
-import com.ukrailtracker.app.domain.location.LocationProvider
 import com.ukrailtracker.app.domain.model.JourneyOption
 import com.ukrailtracker.app.domain.model.PinnedJourney
 import com.ukrailtracker.app.domain.model.Station
 import com.ukrailtracker.app.domain.model.StationWithDistance
 import com.ukrailtracker.app.domain.model.TrainStatus
-import com.ukrailtracker.app.domain.model.UserLocation
 import com.ukrailtracker.app.domain.repository.JourneyRepository
 import com.ukrailtracker.app.domain.repository.StationRepository
 import com.ukrailtracker.app.domain.usecase.CommuteEvent
@@ -91,18 +89,6 @@ class CommuteRuntimeTest {
     }
 
     @Test
-    fun openedForFrequentChecksKeepsIdle() = runTest {
-        val runtime = createRuntime(backgroundScope)
-        runtime.dispatch(
-            CommuteEvent.OpenedForFrequentChecks(
-                untilEpochMs = System.currentTimeMillis() + 60_000,
-                hintCrs = "PAD",
-            ),
-        )
-        assertEquals(CommuteSession.Idle, runtime.sessionFlow.value)
-    }
-
-    @Test
     fun pinRestoreFromStoreDispatchesOnTrain() = runTest(UnconfinedTestDispatcher()) {
         val pinStore = FakePinStore()
         val runtime = createRuntime(backgroundScope, pinStore = pinStore)
@@ -153,7 +139,6 @@ class CommuteRuntimeTest {
             appContext = RuntimeEnvironment.getApplication(),
             stationRepository = stations,
             journeyRepository = journeys,
-            locationProvider = FakeLocationProvider(),
             favouritesStore = FakeFavouritesAccess(emptyList()),
             pinnedJourneyStore = pinStore,
             journeyLogRepository = FakeJourneyLogger(),
@@ -167,6 +152,7 @@ class CommuteRuntimeTest {
         override suspend fun getByCrs(crs: String): Station? =
             if (crs.equals("PAD", ignoreCase = true)) pad else null
         override suspend fun search(query: String): List<Station> = emptyList()
+        override suspend fun getAll(): List<Station> = listOf(pad)
         override suspend fun getNearby(lat: Double, lng: Double, limit: Int): List<StationWithDistance> =
             emptyList()
     }
@@ -206,10 +192,6 @@ class CommuteRuntimeTest {
             callingPoints = emptyList(),
             isCancelled = false,
         )
-    }
-
-    private class FakeLocationProvider : LocationProvider {
-        override suspend fun currentLocation(forceRefresh: Boolean): UserLocation? = null
     }
 
     private class FakeFavouritesAccess(

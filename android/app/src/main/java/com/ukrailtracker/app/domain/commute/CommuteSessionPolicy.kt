@@ -8,12 +8,8 @@ import com.ukrailtracker.app.domain.usecase.lockedOriginOrNull
  * Runtime infrastructure policy for [CommuteSession].
  *
  * **Rule:** transitions belong in `reduce()`; these extensions only answer how the
- * runtime should sample GPS and schedule jobs for the current session.
- * Do not encode the same acceptance rule in both places without a comment linking them.
- *
- * **Adding a state that changes GPS behaviour:** add/adjust one extension here + a
- * table row in [CommuteSessionPolicyTest] — do not sprinkle `is CommuteSession.X`
- * checks through [CommuteRuntime].
+ * runtime should react to the current session. GPS polling is a fixed interval
+ * owned by [com.ukrailtracker.app.domain.location.GpsPoller], not by the session.
  */
 
 enum class CommutePhase {
@@ -36,7 +32,7 @@ fun CommuteSession.isOnTrain(): Boolean = this is CommuteSession.OnTrain
 
 fun CommuteSession.isConfirming(): Boolean = this is CommuteSession.Confirming
 
-/** At-station / boarding UI focus (mirrors [com.ukrailtracker.app.ui.home.focusesAtStation]). */
+/** At-station / boarding — Home shows a trip [com.ukrailtracker.app.ui.home.HomeBodyUi]. */
 fun CommuteSession.focusesAtStation(): Boolean =
     this is CommuteSession.AtStation || this is CommuteSession.Confirming
 
@@ -45,15 +41,11 @@ fun CommuteSession.focusesTripUi(): Boolean =
     focusesAtStation() || isOnTrain()
 
 /**
- * Whether the location watch may feed [com.ukrailtracker.app.domain.usecase.CommuteEvent.Location]
- * into reduce. Manual override and Confirming ignore GPS (reduce also ignores override;
- * Confirming is runtime-only — see reduce location branch).
+ * Whether a raw GPS fix should be reduced. Manual override and Confirming ignore it;
+ * presence edges are separate events and hosts decide those themselves.
  */
 fun CommuteSession.acceptsWalkUpLocationEvents(): Boolean =
     !isManualOriginOverride() && !isConfirming()
-
-/** Nearby station lookup is unused on-train (route stops come from service details). */
-fun CommuteSession.shouldResolveNearbyStations(): Boolean = !isOnTrain()
 
 /** Single CRS accessor for locked origins (AtStation / Confirming). */
 fun CommuteSession.lockedOriginCrs(): String? = lockedOriginOrNull()?.crs
@@ -72,40 +64,5 @@ fun CommuteSession.destinationLoadOriginCrs(): String? = when (this) {
 fun CommuteSession.showsLocationUnavailableOverlay(): Boolean =
     !isOnTrain() && this !is CommuteSession.AtStation
 
-/** Clear sensing overlay when restarting the location watch from cold Idle. */
-fun CommuteSession.clearsPresenceOverlayOnWatchStart(): Boolean =
-    this is CommuteSession.Idle &&
-        !isManualOriginOverride() &&
-        !isConfirming() &&
-        !isOnTrain()
-
-/** Cold-start "already at station" lock is only valid from Idle. */
-fun CommuteSession.allowsColdStartAlreadyPresentLock(): Boolean =
-    this is CommuteSession.Idle
-
-/**
- * Request a fresh GPS fix while presence is actively watched (or elevated poll is on).
- * Confirming is included so the loop keeps ticking; [acceptsWalkUpLocationEvents] no-ops the sample.
- */
-fun CommuteSession.forceRefreshLocationSample(
-    nowEpochMs: Long,
-    elevatedUntilEpochMs: Long,
-): Boolean =
-    isOnTrain() ||
-        this is CommuteSession.AtStation ||
-        isConfirming() ||
-        nowEpochMs < elevatedUntilEpochMs
-
-fun CommuteSession.locationPollIntervalMs(
-    nowEpochMs: Long,
-    elevatedUntilEpochMs: Long,
-): Long {
-    if (isOnTrain()) return LOCATION_POLL_ON_TRAIN_MS
-    if (nowEpochMs < elevatedUntilEpochMs) return LOCATION_POLL_WATCHING_MS
-    val watching = this is CommuteSession.AtStation || isConfirming()
-    return if (watching) LOCATION_POLL_WATCHING_MS else LOCATION_POLL_MS
-}
-
+/** Fixed GPS poll interval for [com.ukrailtracker.app.domain.location.GpsPoller]. */
 const val LOCATION_POLL_MS = 10_000L
-const val LOCATION_POLL_WATCHING_MS = 4_000L
-const val LOCATION_POLL_ON_TRAIN_MS = 5_000L

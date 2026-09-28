@@ -5,7 +5,6 @@ import com.ukrailtracker.app.domain.usecase.BoardingServiceSnapshot
 import com.ukrailtracker.app.domain.usecase.CommuteSession
 import com.ukrailtracker.app.domain.usecase.LockedOrigin
 import com.ukrailtracker.app.domain.usecase.PlatformWatchPhase
-import com.ukrailtracker.app.domain.usecase.WalkUpPhase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -26,14 +25,11 @@ class CommuteSessionPolicyTest {
     private val variants: List<Pair<String, CommuteSession>> = listOf(
         "Idle" to CommuteSession.Idle,
         "Near" to CommuteSession.Near(
-            WalkUpPhase.Dwelling(
-                crs = "PAD",
-                stationName = "London Paddington",
-                enteredAtEpochMs = 0L,
-                distanceMetres = 120.0,
-                sawWalkingPace = true,
-                hadSpeedReading = true,
-            ),
+            crs = "PAD",
+            name = "London Paddington",
+            latitude = 51.515,
+            longitude = -0.175,
+            distanceMetres = 120.0,
         ),
         "AtStation" to CommuteSession.AtStation(origin = origin),
         "AtStationWatching" to CommuteSession.AtStation(
@@ -88,14 +84,9 @@ class CommuteSessionPolicyTest {
     }
 
     @Test
-    fun shouldResolveNearbyStations() {
-        variants.forEach { (name, session) ->
-            assertEquals(
-                name,
-                name != "OnTrain",
-                session.shouldResolveNearbyStations(),
-            )
-        }
+    fun overlayPolicies() {
+        assertTrue(CommuteSession.Idle.showsLocationUnavailableOverlay())
+        assertFalse(CommuteSession.AtStation(origin).showsLocationUnavailableOverlay())
     }
 
     @Test
@@ -137,63 +128,6 @@ class CommuteSessionPolicyTest {
                 alternatives = emptyList(),
                 triggeredAtEpochMs = 0L,
             ).destinationLoadOriginCrs(),
-        )
-    }
-
-    @Test
-    fun locationPollIntervalMs() {
-        val now = 100_000L
-        assertEquals(LOCATION_POLL_MS, CommuteSession.Idle.locationPollIntervalMs(now, 0L))
-        assertEquals(
-            LOCATION_POLL_WATCHING_MS,
-            CommuteSession.AtStation(origin).locationPollIntervalMs(now, 0L),
-        )
-        assertEquals(
-            LOCATION_POLL_WATCHING_MS,
-            CommuteSession.Confirming(
-                origin = origin,
-                assumed = snap(),
-                alternatives = emptyList(),
-                triggeredAtEpochMs = 0L,
-            ).locationPollIntervalMs(now, 0L),
-        )
-        assertEquals(
-            LOCATION_POLL_ON_TRAIN_MS,
-            CommuteSession.OnTrain(
-                pin = PinnedJourney(
-                    serviceId = "svc-1",
-                    originCrs = "PAD",
-                    destinationCrs = "RDG",
-                    originName = "London Paddington",
-                    destinationName = "Reading",
-                    operatorName = "GWR",
-                    scheduledDepartureLabel = "08:05",
-                    pinnedAtEpochMs = 0L,
-                ),
-            ).locationPollIntervalMs(now, 0L),
-        )
-        assertEquals(
-            LOCATION_POLL_WATCHING_MS,
-            CommuteSession.Idle.locationPollIntervalMs(now, elevatedUntilEpochMs = now + 1),
-        )
-    }
-
-    @Test
-    fun forceRefreshAndOverlayPolicies() {
-        assertTrue(CommuteSession.Idle.clearsPresenceOverlayOnWatchStart())
-        assertFalse(CommuteSession.AtStation(origin).clearsPresenceOverlayOnWatchStart())
-        assertTrue(CommuteSession.Idle.showsLocationUnavailableOverlay())
-        assertFalse(CommuteSession.AtStation(origin).showsLocationUnavailableOverlay())
-        assertTrue(CommuteSession.Idle.allowsColdStartAlreadyPresentLock())
-        assertFalse(CommuteSession.AtStation(origin).allowsColdStartAlreadyPresentLock())
-        assertTrue(
-            CommuteSession.AtStation(origin).forceRefreshLocationSample(0L, 0L),
-        )
-        assertFalse(
-            CommuteSession.Idle.forceRefreshLocationSample(100L, elevatedUntilEpochMs = 0L),
-        )
-        assertTrue(
-            CommuteSession.Idle.forceRefreshLocationSample(100L, elevatedUntilEpochMs = 200L),
         )
     }
 

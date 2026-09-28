@@ -14,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
@@ -29,17 +28,24 @@ import com.ukrailtracker.app.data.local.datastore.PinnedJourneyStore
 import com.ukrailtracker.app.domain.location.LocationProvider
 import com.ukrailtracker.app.domain.model.CommuteWindow
 import com.ukrailtracker.app.domain.model.PinnedJourney
+import com.ukrailtracker.app.domain.usecase.JourneyTimeUtils
 import com.ukrailtracker.app.domain.repository.JourneyRepository
 import com.ukrailtracker.app.domain.repository.StationRepository
 import com.ukrailtracker.app.location.SimPhase
 import com.ukrailtracker.app.location.SimulatingLocationProvider
 import com.ukrailtracker.app.location.WalkUpLocationSimulator
+import com.ukrailtracker.app.ui.home.HomeBodyUi
 import com.ukrailtracker.app.ui.home.PlatformWatchUi
+import com.ukrailtracker.app.ui.home.PresenceChromeUi
 import com.ukrailtracker.app.ui.theme.NeonGreen
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import java.time.DayOfWeek
 
 /**
@@ -50,8 +56,14 @@ import java.time.DayOfWeek
 object DebugWalkUp {
     private val simulator = WalkUpLocationSimulator()
 
+    /** Outlives Compose recomposition — do not use [rememberCoroutineScope] for sim I/O. */
+    private val simScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val errors: SharedFlow<String> = _errors.asSharedFlow()
+
+    /** Avoid restarting the same on-train simulation on every recomposition. */
+    private var lastSyncedServiceId: String? = null
 
     val phase = simulator.phase
 
@@ -61,6 +73,58 @@ object DebugWalkUp {
     /** True while a non-idle phase is injecting GPS — real location permission is not required. */
     fun isSimulatingLocation(): Boolean = simulator.isActive
 
+    /**
+     * Keep simulator phase aligned with commute presence.
+     * When the app boards via the normal flow (confirm / auto-accept / restore pin) while the
+     * simulator is still at [SimPhase.AtStation], start the on-train GPS route automatically.
+     */
+    suspend fun syncWithAppPresence(
+        chrome: PresenceChromeUi,
+        body: HomeBodyUi?,
+        journeyRepository: JourneyRepository,
+        stationRepository: StationRepository,
+        pinnedJourneyStore: PinnedJourneyStore,
+    ) {
+        when (val journey = body as? HomeBodyUi.OnJourney) {
+            null -> {
+                // Permission / unavailable overlays are not a trip exit — do not tear down GPS sim
+                // (that falls through to fused GPS, which can stall the on-train poll loop).
+                if (chrome is PresenceChromeUi.NeedsPermission ||
+                    chrome is PresenceChromeUi.LocationUnavailable
+                ) {
+                    return
+                }
+                when (simulator.phase.value) {
+                    SimPhase.OnTrain, SimPhase.ReadyDisembark -> {
+                        simulator.stop()
+                        lastSyncedServiceId = null
+                        Log.i(TAG, "Simulator stopped — app left on-train")
+                    }
+                    else -> Unit
+                }
+            }
+            else -> {
+                val awaitingDeparture = isAwaitingSimulatedDeparture(journey)
+                if (!journey.showJourneyProgress && !awaitingDeparture) {
+                    return
+                }
+                val simPhase = simulator.phase.value
+                if (simPhase == SimPhase.OnTrain || simPhase == SimPhase.ReadyDisembark) {
+                    if (lastSyncedServiceId == journey.serviceId && !awaitingDeparture) return
+                }
+                if (simPhase == SimPhase.Idle) return
+                startOnTrainForJourney(
+                    journey = journey,
+                    journeyRepository = journeyRepository,
+                    stationRepository = stationRepository,
+                    pinnedJourneyStore = pinnedJourneyStore,
+                    writePin = false,
+                    forceRestart = awaitingDeparture,
+                )
+            }
+        }
+    }
+
     @Composable
     fun HomeAppBarAction(
         stationRepository: StationRepository,
@@ -68,10 +132,10 @@ object DebugWalkUp {
         commuteWindowStore: CommuteWindowStore,
         journeyRepository: JourneyRepository,
         pinnedJourneyStore: PinnedJourneyStore,
+        body: HomeBodyUi?,
         selectedWatch: PlatformWatchUi?,
         onPreparePresence: (elevatePollForMs: Long) -> Unit,
     ) {
-        val scope = rememberCoroutineScope()
         val simPhase by simulator.phase.collectAsStateWithLifecycle()
         val blinking = simPhase == SimPhase.Walking ||
             simPhase == SimPhase.OnTrain ||
@@ -91,10 +155,11 @@ object DebugWalkUp {
         val context = LocalContext.current
         IconButton(
             onClick = {
-                scope.launch {
+                simScope.launch {
                     onIconClick(
                         context = context,
                         phase = simPhase,
+                        body = body,
                         stationRepository = stationRepository,
                         favouritesStore = favouritesStore,
                         commuteWindowStore = commuteWindowStore,
@@ -156,6 +221,7 @@ object DebugWalkUp {
     private suspend fun onIconClick(
         context: Context,
         phase: SimPhase,
+        body: HomeBodyUi?,
         stationRepository: StationRepository,
         favouritesStore: FavouritesStore,
         commuteWindowStore: CommuteWindowStore,
@@ -171,23 +237,74 @@ object DebugWalkUp {
                 commuteWindowStore = commuteWindowStore,
                 onPreparePresence = onPreparePresence,
             )
-            SimPhase.AtStation -> boardSelectedService(
-                context = context,
-                selectedWatch = selectedWatch,
-                journeyRepository = journeyRepository,
-                stationRepository = stationRepository,
-                pinnedJourneyStore = pinnedJourneyStore,
-            )
+            SimPhase.AtStation -> {
+                when (val journey = body as? HomeBodyUi.OnJourney) {
+                    null -> boardSelectedService(
+                        context = context,
+                        selectedWatch = selectedWatch,
+                        journeyRepository = journeyRepository,
+                        stationRepository = stationRepository,
+                        pinnedJourneyStore = pinnedJourneyStore,
+                    )
+                    else -> startOnTrainForJourney(
+                        journey = journey,
+                        journeyRepository = journeyRepository,
+                        stationRepository = stationRepository,
+                        pinnedJourneyStore = pinnedJourneyStore,
+                        writePin = false,
+                        forceRestart = true,
+                    )
+                }
+            }
+            SimPhase.OnTrain -> {
+                val journey = body as? HomeBodyUi.OnJourney
+                if (journey != null && isAwaitingSimulatedDeparture(journey)) {
+                    startOnTrainForJourney(
+                        journey = journey,
+                        journeyRepository = journeyRepository,
+                        stationRepository = stationRepository,
+                        pinnedJourneyStore = pinnedJourneyStore,
+                        writePin = false,
+                        forceRestart = true,
+                    )
+                }
+            }
             SimPhase.ReadyDisembark -> {
                 pinnedJourneyStore.clear()
+                lastSyncedServiceId = null
                 simulator.startDisembark()
                 Log.i(TAG, "Disembark walk started")
             }
-            SimPhase.Walking, SimPhase.OnTrain, SimPhase.Disembarking -> {
+            SimPhase.Walking, SimPhase.Disembarking -> {
                 // Active motion — ignore taps.
             }
         }
     }
+
+    /** App is boarded but journey progress has not started yet — sim should depart on tap. */
+    private fun isAwaitingSimulatedDeparture(journey: HomeBodyUi.OnJourney): Boolean =
+        journey.preDeparture?.awaitingDeparture == true &&
+            !journey.showJourneyProgress
+
+    private suspend fun startOnTrainForJourney(
+        journey: HomeBodyUi.OnJourney,
+        journeyRepository: JourneyRepository,
+        stationRepository: StationRepository,
+        pinnedJourneyStore: PinnedJourneyStore,
+        writePin: Boolean,
+        forceRestart: Boolean = false,
+    ): Boolean = startOnTrainSimulation(
+        serviceId = journey.serviceId,
+        originCrs = journey.originCrs,
+        destinationCrs = journey.destinationCrs,
+        destinationName = journey.destinationName,
+        scheduledDepartureLabel = journey.scheduledDepartureLabel,
+        journeyRepository = journeyRepository,
+        stationRepository = stationRepository,
+        pinnedJourneyStore = pinnedJourneyStore,
+        writePin = writePin,
+        forceRestart = forceRestart,
+    )
 
     private suspend fun startWalk(
         stationRepository: StationRepository,
@@ -196,9 +313,7 @@ object DebugWalkUp {
         onPreparePresence: (elevatePollForMs: Long) -> Unit,
     ) {
         stationRepository.ensureImported()
-        val station = stationRepository.getByCrs(
-            WalkUpLocationSimulator.DEFAULT_TARGET_CRS,
-        ) ?: return
+        val station = stationRepository.getByCrs(CRS_APS) ?: return
         seedDemoProfile(favouritesStore, commuteWindowStore)
         simulator.startWalkUp(
             targetLatitude = station.latitude,
@@ -209,7 +324,7 @@ object DebugWalkUp {
         onPreparePresence(
             WalkUpLocationSimulator.DEFAULT_DURATION_MS + 60_000L,
         )
-        Log.i(TAG, "Walk-up started toward APS")
+        Log.i(TAG, "Walk-up started toward Apsley ($CRS_APS)")
     }
 
     private suspend fun boardSelectedService(
@@ -221,47 +336,111 @@ object DebugWalkUp {
     ) {
         val watch = selectedWatch
         val serviceId = watch?.serviceId?.takeIf { it.isNotBlank() }
-        if (watch == null || serviceId == null) {
-            _errors.tryEmit(context.getString(R.string.home_debug_sim_select_service))
+        if (watch != null && serviceId != null) {
+            startOnTrainSimulation(
+                serviceId = serviceId,
+                originCrs = watch.originCrs,
+                destinationCrs = watch.destinationCrs,
+                destinationName = watch.destinationName,
+                scheduledDepartureLabel = watch.scheduledDepartureLabel,
+                journeyRepository = journeyRepository,
+                stationRepository = stationRepository,
+                pinnedJourneyStore = pinnedJourneyStore,
+                writePin = true,
+            )
             return
+        }
+        val pinned = pinnedJourneyStore.getPinned()
+        if (pinned != null) {
+            startOnTrainSimulation(
+                serviceId = pinned.serviceId,
+                originCrs = pinned.originCrs,
+                destinationCrs = pinned.destinationCrs,
+                destinationName = pinned.destinationName,
+                scheduledDepartureLabel = pinned.scheduledDepartureLabel,
+                journeyRepository = journeyRepository,
+                stationRepository = stationRepository,
+                pinnedJourneyStore = pinnedJourneyStore,
+                writePin = false,
+            )
+            return
+        }
+        _errors.tryEmit(context.getString(R.string.home_debug_sim_select_service))
+    }
+
+    private suspend fun startOnTrainSimulation(
+        serviceId: String,
+        originCrs: String,
+        destinationCrs: String,
+        destinationName: String,
+        scheduledDepartureLabel: String,
+        journeyRepository: JourneyRepository,
+        stationRepository: StationRepository,
+        pinnedJourneyStore: PinnedJourneyStore,
+        writePin: Boolean,
+        forceRestart: Boolean = false,
+    ): Boolean {
+        if (!forceRestart &&
+            lastSyncedServiceId == serviceId &&
+            simulator.phase.value in setOf(SimPhase.OnTrain, SimPhase.ReadyDisembark)
+        ) {
+            return true
         }
         val option = runCatching {
             journeyRepository.getServiceDetails(
                 serviceId = serviceId,
-                originCrs = watch.originCrs,
-                destinationCrs = watch.destinationCrs,
-                destinationNameFallback = watch.destinationName,
+                originCrs = originCrs,
+                destinationCrs = destinationCrs,
+                destinationNameFallback = destinationName,
             )
         }.onFailure { t ->
+            if (t is CancellationException) return@onFailure
             Log.w(TAG, "GetServiceDetails failed: ${t.message}")
             _errors.tryEmit(t.message ?: "Could not load service details")
-        }.getOrNull() ?: return
+        }.getOrNull() ?: return false
 
         val waypoints = WalkUpLocationSimulator.waypointsFromOption(option, stationRepository)
         if (waypoints.size < 2) {
             Log.w(TAG, "Board aborted — need ≥2 geocoded calling points (got ${waypoints.size})")
             _errors.tryEmit("Service has too few calling points to simulate")
-            return
+            return false
         }
         simulator.startOnTrain(
             waypoints = waypoints,
             dwellMs = WalkUpLocationSimulator.DEFAULT_STOP_DWELL_MS,
-        )
-        val originName = stationRepository.getByCrs(option.originCrs)?.name ?: option.originCrs
-        pinnedJourneyStore.pin(
-            PinnedJourney(
-                serviceId = option.serviceId,
-                originCrs = option.originCrs,
-                destinationCrs = option.destinationCrs,
-                originName = originName,
-                destinationName = option.destinationName,
-                operatorName = option.operatorName,
-                scheduledDepartureLabel = option.scheduledDepartureLabel
-                    .ifBlank { watch.scheduledDepartureLabel },
-                pinnedAtEpochMs = System.currentTimeMillis(),
+            originHoldMs = msUntilScheduledDeparture(
+                JourneyTimeUtils.effectiveDepartureLabel(
+                    scheduledDepartureLabel = option.scheduledDepartureLabel
+                        .ifBlank { scheduledDepartureLabel },
+                    expectedDepartureLabel = option.expectedDepartureLabel,
+                ),
             ),
         )
-        Log.i(TAG, "OnTrain started — ${waypoints.size} waypoints, pinned ${option.serviceId}")
+        lastSyncedServiceId = option.serviceId
+        if (writePin) {
+            val originName = stationRepository.getByCrs(option.originCrs)?.name ?: option.originCrs
+            pinnedJourneyStore.pin(
+                PinnedJourney(
+                    serviceId = option.serviceId,
+                    originCrs = option.originCrs,
+                    destinationCrs = option.destinationCrs,
+                    originName = originName,
+                    destinationName = option.destinationName,
+                    operatorName = option.operatorName,
+                    scheduledDepartureLabel = option.scheduledDepartureLabel
+                        .ifBlank { scheduledDepartureLabel },
+                    pinnedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+        }
+        Log.i(TAG, "OnTrain started — ${waypoints.size} waypoints, service ${option.serviceId}")
+        return true
+    }
+
+    /** Milliseconds to hold at origin before simulating movement; 0 when departure time has passed. */
+    private fun msUntilScheduledDeparture(departureLabel: String): Long {
+        val mins = JourneyTimeUtils.minutesUntilDeparture(departureLabel) ?: return 0L
+        return mins.coerceAtLeast(0L) * 60_000L
     }
 
     private suspend fun seedDemoProfile(

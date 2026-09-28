@@ -25,7 +25,7 @@ import com.ukrailtracker.app.ui.theme.NeonSurface
 
 @Composable
 internal fun BoardingPromptHome(
-    prompt: WalkUpHomeUi.BoardingPrompt,
+    prompt: HomeBodyUi.BoardingPrompt,
     onConfirm: () -> Unit,
     onRejectAssumed: () -> Unit,
     onSelectCandidate: (serviceId: String) -> Unit,

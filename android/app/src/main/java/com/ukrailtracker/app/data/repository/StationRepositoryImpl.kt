@@ -48,6 +48,11 @@ class StationRepositoryImpl(
         return store.search(query.trim()).map { it.toDomain() }
     }
 
+    override suspend fun getAll(): List<Station> {
+        ensureImported()
+        return store.getAll().map { it.toDomain() }
+    }
+
     override suspend fun getNearby(lat: Double, lng: Double, limit: Int): List<StationWithDistance> {
         // ~50 km box first; expand if sparse (e.g. rural / mock edge cases)
         var delta = GeoUtils.boundingBoxDegrees(50_000.0)

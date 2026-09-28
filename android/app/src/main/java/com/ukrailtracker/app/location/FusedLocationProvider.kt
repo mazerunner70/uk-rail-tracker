@@ -17,6 +17,7 @@ import com.ukrailtracker.app.domain.location.LocationProvider
 import com.ukrailtracker.app.domain.model.UserLocation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 class FusedLocationProvider(
@@ -82,36 +83,51 @@ class FusedLocationProvider(
         }
     }
 
+    /**
+     * Fallback one-shot update request.
+     *
+     * Must never hang: Play Services may expire [LocationRequest] duration without calling
+     * [LocationCallback.onLocationResult], which previously stalled the on-train GPS poll loop
+     * (frozen speed + progress after the first few fixes).
+     */
     @SuppressLint("MissingPermission")
     private suspend fun requestFreshLocationUpdates(): UserLocation? =
-        suspendCancellableCoroutine { cont ->
-            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 500L)
-                .setMinUpdateIntervalMillis(0L)
-                .setMaxUpdates(1)
-                .setDurationMillis(10_000L)
-                .setMaxUpdateAgeMillis(0L)
-                .build()
+        withTimeoutOrNull(LOCATION_UPDATE_TIMEOUT_MS) {
+            suspendCancellableCoroutine { cont ->
+                val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 500L)
+                    .setMinUpdateIntervalMillis(0L)
+                    .setMaxUpdates(1)
+                    .setDurationMillis(LOCATION_UPDATE_DURATION_MS)
+                    .setMaxUpdateAgeMillis(0L)
+                    .build()
 
-            val callback = object : LocationCallback() {
-                override fun onLocationResult(result: LocationResult) {
-                    client.removeLocationUpdates(this)
-                    if (cont.isActive) {
-                        cont.resume(result.lastLocation?.toUserLocation())
+                val callback = object : LocationCallback() {
+                    override fun onLocationResult(result: LocationResult) {
+                        client.removeLocationUpdates(this)
+                        if (cont.isActive) {
+                            cont.resume(result.lastLocation?.toUserLocation())
+                        }
                     }
                 }
-            }
 
-            try {
-                client.requestLocationUpdates(request, callback, Looper.getMainLooper())
-            } catch (_: SecurityException) {
-                if (cont.isActive) cont.resume(null)
-                return@suspendCancellableCoroutine
-            }
+                try {
+                    client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+                } catch (_: SecurityException) {
+                    if (cont.isActive) cont.resume(null)
+                    return@suspendCancellableCoroutine
+                }
 
-            cont.invokeOnCancellation {
-                client.removeLocationUpdates(callback)
+                cont.invokeOnCancellation {
+                    client.removeLocationUpdates(callback)
+                }
             }
         }
+
+    companion object {
+        private const val LOCATION_UPDATE_DURATION_MS = 10_000L
+        /** Slightly above request duration so expiry can complete before we give up. */
+        private const val LOCATION_UPDATE_TIMEOUT_MS = 11_000L
+    }
 
     private fun android.location.Location.toUserLocation(): UserLocation =
         UserLocation(

@@ -128,12 +128,47 @@ class WalkUpLocationSimulatorTest {
             waypoints = waypoints,
             dwellMs = 60_000L,
         )
-        // A arrive/depart 0; B arrive 10m, depart 11m; C arrive 11m+20m = 31m
+        // A arrive 0; A depart after hold; B arrive 10m+hold, depart 11m+hold; C arrive 11m+hold+20m
         assertEquals(0L, timeline[0].offsetMs)
         assertEquals(0L, timeline[1].offsetMs)
         assertEquals(10 * 60_000L, timeline[2].offsetMs)
         assertEquals(11 * 60_000L, timeline[3].offsetMs)
         assertEquals(31 * 60_000L, timeline[4].offsetMs)
+    }
+
+    @Test
+    fun `origin hold delays simulated departure`() {
+        val holdMs = 3 * 60_000L
+        val waypoints = listOf(
+            WalkUpLocationSimulator.ScheduleWaypoint("A", "A", 51.0, -0.1, 0L),
+            WalkUpLocationSimulator.ScheduleWaypoint("B", "B", 51.1, -0.1, 10 * 60_000L),
+        )
+        val timeline = WalkUpLocationSimulator.buildRealtimeTimeline(
+            waypoints = waypoints,
+            dwellMs = 60_000L,
+            originHoldMs = holdMs,
+        )
+        assertEquals(holdMs, timeline[1].offsetMs)
+
+        val startMs = 5_000_000L
+        sim.startOnTrain(
+            waypoints = waypoints,
+            dwellMs = 60_000L,
+            nowEpochMs = startMs,
+            originHoldMs = holdMs,
+        )
+        val beforeDepart = sim.currentLocation(startMs + holdMs - 1_000L)!!
+        assertEquals(
+            WalkUpLocationSimulator.REPORTED_STOP_SPEED_MPS,
+            beforeDepart.speedMetresPerSecond!!,
+            0.01f,
+        )
+        val afterDepart = sim.currentLocation(startMs + holdMs + 30_000L)!!
+        assertEquals(
+            WalkUpLocationSimulator.REPORTED_TRAIN_SPEED_MPS,
+            afterDepart.speedMetresPerSecond!!,
+            0.01f,
+        )
     }
 
     @Test

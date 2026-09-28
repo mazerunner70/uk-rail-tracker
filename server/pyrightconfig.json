@@ -1,0 +1,15 @@
+{
+  "include": ["poc/kafka"],
+  "exclude": ["poc/kafka/.venv", "**/__pycache__"],
+  "venvPath": "poc/kafka",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "executionEnvironments": [
+    {
+      "root": "poc/kafka",
+      "extraPaths": ["poc/kafka"],
+      "pythonVersion": "3.12"
+    }
+  ],
+  "reportImplicitRelativeImport": "none"
+}

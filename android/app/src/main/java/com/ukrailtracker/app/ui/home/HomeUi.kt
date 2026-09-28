@@ -58,20 +58,54 @@ data class BoardingCandidateUi(
 )
 
 /**
- * Presence used by the Home status bar.
- * Default / sensing / permission issues keep the usual home body.
- * [AtStation] / [BoardingPrompt] replace the home body with trip-focused content.
+ * Status-bar chrome only — never chooses the home body.
+ * Permission / near / not-at-station keep [HomeBodyUi.StationList];
+ * at-station / boarding / on-journey pair with a trip [HomeBodyUi].
  */
-sealed interface WalkUpHomeUi {
-    data object NeedsPermission : WalkUpHomeUi
-    data object LocationUnavailable : WalkUpHomeUi
+sealed interface PresenceChromeUi {
+    data object NeedsPermission : PresenceChromeUi
+    data object LocationUnavailable : PresenceChromeUi
     /** Not inside a station geofence — status bar shows "Not at a station". */
-    data object NotAtStation : WalkUpHomeUi
+    data object NotAtStation : PresenceChromeUi
+
     data class NearStation(
         val crsCode: String,
         val stationName: String,
         val distanceLabel: String,
-    ) : WalkUpHomeUi
+    ) : PresenceChromeUi
+
+    data class AtStation(
+        val crsCode: String,
+        val stationName: String,
+        val distanceLabel: String?,
+        val manualOverride: Boolean,
+    ) : PresenceChromeUi
+
+    data class Boarding(
+        val originName: String,
+        val assumedDepartureLabel: String,
+        val assumedDestinationName: String,
+    ) : PresenceChromeUi
+
+    data class OnJourney(
+        val destinationName: String,
+        val originCrs: String,
+        val destinationCrs: String,
+        val preDeparture: PreDepartureUi?,
+        val showJourneyProgress: Boolean,
+        val stoppedAtStation: Boolean,
+        val currentStopName: String?,
+        val nextStopName: String?,
+    ) : PresenceChromeUi
+}
+
+/**
+ * Exactly one home body. Station boards exist only on [StationList].
+ */
+sealed interface HomeBodyUi {
+    data class StationList(
+        val stations: List<HomeStationCardUi>,
+    ) : HomeBodyUi
 
     data class AtStation(
         val crsCode: String,
@@ -82,7 +116,7 @@ sealed interface WalkUpHomeUi {
         val destinationsLoading: Boolean,
         val noFavouritesConfigured: Boolean,
         val platformWatch: PlatformWatchUi? = null,
-    ) : WalkUpHomeUi
+    ) : HomeBodyUi
 
     data class BoardingPrompt(
         val originCrs: String,
@@ -90,7 +124,7 @@ sealed interface WalkUpHomeUi {
         val assumed: BoardingCandidateUi,
         val alternatives: List<BoardingCandidateUi>,
         val showPicker: Boolean,
-    ) : WalkUpHomeUi
+    ) : HomeBodyUi
 
     data class OnJourney(
         val serviceId: String,
@@ -113,33 +147,34 @@ sealed interface WalkUpHomeUi {
         val refreshing: Boolean = false,
         val errorMessage: String? = null,
         val serviceMissing: Boolean = false,
-    ) : WalkUpHomeUi
+        val preDeparture: PreDepartureUi? = null,
+        val showJourneyProgress: Boolean = true,
+    ) : HomeBodyUi
 }
 
-/** True for at-station / boarding prompt — mirrors [com.ukrailtracker.app.domain.commute.focusesAtStation]. */
-val WalkUpHomeUi?.focusesAtStation: Boolean
-    get() = this is WalkUpHomeUi.AtStation || this is WalkUpHomeUi.BoardingPrompt
-
-/** True for at-station, boarding, or on-train — mirrors [com.ukrailtracker.app.domain.commute.focusesTripUi]. */
-val WalkUpHomeUi?.focusesTripUi: Boolean
-    get() = focusesAtStation || this is WalkUpHomeUi.OnJourney
-
-val WalkUpHomeUi?.focusesOnTrain: Boolean
-    get() = this is WalkUpHomeUi.OnJourney
+/** Session + aux mapped to chrome and optional trip body (null → [HomeBodyUi.StationList]). */
+data class MappedCommutePresence(
+    val chrome: PresenceChromeUi,
+    val tripBody: HomeBodyUi?,
+)
 
 sealed interface HomeUiState {
     data object Loading : HomeUiState
     data class Empty(val messageKey: EmptyReason) : HomeUiState
-    data class Content(
-        val walkUp: WalkUpHomeUi? = null,
-        val stations: List<HomeStationCardUi>,
+    data class Error(val message: String) : HomeUiState
+
+    data class Ready(
+        val chrome: PresenceChromeUi,
+        val body: HomeBodyUi,
         val refreshing: Boolean = false,
         val selectedDisruption: DisruptionSummary? = null,
         val selectedStationName: String? = null,
     ) : HomeUiState
-
-    data class Error(val message: String) : HomeUiState
 }
+
+/** Station cards when the body is the list; empty otherwise. */
+val HomeUiState.Ready.stationList: List<HomeStationCardUi>
+    get() = (body as? HomeBodyUi.StationList)?.stations.orEmpty()
 
 enum class EmptyReason {
     NoStationsConfigured,

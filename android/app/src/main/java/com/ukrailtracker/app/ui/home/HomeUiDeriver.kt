@@ -25,24 +25,22 @@ fun deriveHomeUiState(
 ): HomeUiState {
     if (boards.awaitingFirstLoad) return HomeUiState.Loading
 
-    val walkUp = mapCommuteWalkUpUi(session, aux, lastLoadedOriginCrs)
-    if (boards.noStationsConfigured && boards.stations.isEmpty()) {
-        return if (walkUp != null) {
-            HomeUiState.Content(
-                walkUp = walkUp,
-                stations = emptyList(),
-                refreshing = boards.refreshing,
-                selectedDisruption = disruptionModal?.disruption,
-                selectedStationName = disruptionModal?.stationName,
-            )
-        } else {
-            HomeUiState.Empty(EmptyReason.NoStationsConfigured)
-        }
+    val presence = mapCommutePresence(session, aux, lastLoadedOriginCrs)
+    if (boards.noStationsConfigured && boards.stations.isEmpty() && presence.tripBody == null) {
+        // Keep status bar visible with an empty station list (same as prior Content + empty stations).
+        return HomeUiState.Ready(
+            chrome = presence.chrome,
+            body = HomeBodyUi.StationList(stations = emptyList()),
+            refreshing = boards.refreshing,
+            selectedDisruption = disruptionModal?.disruption,
+            selectedStationName = disruptionModal?.stationName,
+        )
     }
 
-    return HomeUiState.Content(
-        walkUp = walkUp,
-        stations = boards.stations,
+    val body = presence.tripBody ?: HomeBodyUi.StationList(stations = boards.stations)
+    return HomeUiState.Ready(
+        chrome = presence.chrome,
+        body = body,
         refreshing = boards.refreshing,
         selectedDisruption = disruptionModal?.disruption,
         selectedStationName = disruptionModal?.stationName,

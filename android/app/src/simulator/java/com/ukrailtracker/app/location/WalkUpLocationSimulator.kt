@@ -73,16 +73,22 @@ class WalkUpLocationSimulator {
         waypoints: List<ScheduleWaypoint>,
         dwellMs: Long = DEFAULT_STOP_DWELL_MS,
         nowEpochMs: Long = System.currentTimeMillis(),
+        /** Dwell at the boarding stop before simulating departure (e.g. ms until scheduled departure). */
+        originHoldMs: Long = 0L,
     ) {
         require(waypoints.size >= 2) { "Need at least origin and one further calling point" }
+        val holdMs = originHoldMs.coerceAtLeast(0L)
         val timeline = buildRealtimeTimeline(
             waypoints = waypoints,
             dwellMs = dwellMs.coerceAtLeast(0L),
+            originHoldMs = holdMs,
         )
         val last = timeline.last()
+        // When already past departure, nudge startedAt back so the first fix reports train speed.
+        val startedAt = if (holdMs == 0L) nowEpochMs - 1_000L else nowEpochMs
         engine = Engine.OnTrain(
             points = timeline,
-            startedAtEpochMs = nowEpochMs,
+            startedAtEpochMs = startedAt,
             finalLatitude = last.latitude,
             finalLongitude = last.longitude,
             finalCrs = last.crs,
@@ -185,9 +191,10 @@ class WalkUpLocationSimulator {
                 REPORTED_STOP_SPEED_MPS,
             )
         }
-        if (elapsed <= points.first().offsetMs) {
-            val p = points.first()
-            return holdLocation(p.latitude, p.longitude, nowEpochMs, REPORTED_STOP_SPEED_MPS)
+        val originDepartMs = points.firstOrNull { it.kind == TimelineKind.Depart }?.offsetMs ?: 0L
+        if (elapsed < originDepartMs) {
+            val origin = points.first()
+            return holdLocation(origin.latitude, origin.longitude, nowEpochMs, REPORTED_STOP_SPEED_MPS)
         }
         val nextIdx = points.indexOfFirst { it.offsetMs >= elapsed }.coerceAtLeast(1)
         val prev = points[nextIdx - 1]
@@ -331,8 +338,9 @@ class WalkUpLocationSimulator {
     )
 
     companion object {
-        const val DEFAULT_TARGET_CRS = "WFJ"
-        const val DEFAULT_START_OFFSET_METRES = 300.0
+        /** Default walk-up target when the debug simulator starts (Apsley). */
+        const val DEFAULT_TARGET_CRS = "APS"
+        const val DEFAULT_START_OFFSET_METRES = 400.0
         const val DEFAULT_DURATION_MS = 120_000L
         const val DEFAULT_APPROACH_BEARING_DEGREES = 180.0
         /** Fixed dwell at intermediate stops (wall-clock). */
@@ -352,6 +360,7 @@ class WalkUpLocationSimulator {
         fun buildRealtimeTimeline(
             waypoints: List<ScheduleWaypoint>,
             dwellMs: Long,
+            originHoldMs: Long = 0L,
         ): List<TimelinePoint> {
             require(waypoints.size >= 2)
             val sorted = waypoints.sortedBy { it.scheduleOffsetMs }
@@ -359,11 +368,12 @@ class WalkUpLocationSimulator {
             val relative = sorted.map {
                 it.copy(scheduleOffsetMs = (it.scheduleOffsetMs - originOffset).coerceAtLeast(0L))
             }
+            val holdMs = originHoldMs.coerceAtLeast(0L)
             val out = ArrayList<TimelinePoint>()
             relative.forEachIndexed { index, wp ->
                 if (index == 0) {
                     out += TimelinePoint(wp.crs, wp.latitude, wp.longitude, 0L, TimelineKind.Arrive)
-                    out += TimelinePoint(wp.crs, wp.latitude, wp.longitude, 0L, TimelineKind.Depart)
+                    out += TimelinePoint(wp.crs, wp.latitude, wp.longitude, holdMs, TimelineKind.Depart)
                 } else {
                     val prev = relative[index - 1]
                     val travel = (wp.scheduleOffsetMs - prev.scheduleOffsetMs).coerceAtLeast(1L)

@@ -7,10 +7,10 @@ import android.util.Log
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import com.ukrailtracker.app.appContainer
+import com.ukrailtracker.app.domain.session.SessionReducer
 import com.ukrailtracker.app.domain.usecase.CommuteEffect
 import com.ukrailtracker.app.domain.usecase.CommuteEvent
 import com.ukrailtracker.app.domain.usecase.CommuteSession
-import com.ukrailtracker.app.domain.usecase.reduce
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,7 +51,7 @@ class GeofenceTransitionsReceiver : BroadcastReceiver() {
                     val crs = StationGeofenceIds.crsFromRequestId(geofence.requestId) ?: continue
                     val station = container.stationRepository.getByCrs(crs)
                     val name = station?.name?.ifBlank { crs } ?: crs
-                    val transition = reduce(
+                    val transition = SessionReducer.reduce(
                         session,
                         CommuteEvent.OsGeofenceEnter(crs = crs, stationName = name),
                     )

@@ -45,8 +45,8 @@ object DetectBoarding {
     /**
      * Advance boarding detection while the user was previously at [originLat]/[originLng].
      *
-     * Call on each location sample after walk-up [WalkUpPhase.Arrived]. Reset to [Idle]
-     * when returning to a normal Away path without a prompt.
+     * Call on each location sample while locked at a station. Slow walk-away does not
+     * qualify; leaving the radius is a separate presence event.
      */
     fun next(
         phase: BoardingPhase,

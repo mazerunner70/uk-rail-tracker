@@ -565,5 +565,5 @@ Fields currently in `HomeViewModel` that should migrate into `CommuteAuxState` o
 - [commute-session-slices.md](commute-session-slices.md) — completed reducer vertical slices
 - [architecture.md](architecture.md) — commute session design notes
 - `[HomeViewModel.kt](../android/app/src/main/java/com/ukrailtracker/app/ui/home/HomeViewModel.kt)` — current orchestration monolith
-- `[CommuteSession.kt](../android/app/src/main/java/com/ukrailtracker/app/domain/usecase/CommuteSession.kt)` / `[CommuteReduce.kt](../android/app/src/main/java/com/ukrailtracker/app/domain/usecase/CommuteReduce.kt)` — domain core (keep stable)
+- `[CommuteSession.kt](../android/app/src/main/java/com/ukrailtracker/app/domain/usecase/CommuteSession.kt)` / `[SessionReducer.kt](../android/app/src/main/java/com/ukrailtracker/app/domain/session/SessionReducer.kt)` — domain core (keep stable)
 
