@@ -7,43 +7,74 @@ import com.ukrailtracker.app.domain.usecase.BoardingServiceSnapshot
 import com.ukrailtracker.app.domain.usecase.CommuteSession
 import com.ukrailtracker.app.domain.usecase.ComputeJourneyProgress
 import com.ukrailtracker.app.domain.usecase.PlatformWatchPhase
-import com.ukrailtracker.app.domain.usecase.StationStopPhase
+import com.ukrailtracker.app.domain.usecase.RouteStation
+import com.ukrailtracker.app.domain.usecase.ComputeTrainApproach
+import com.ukrailtracker.app.domain.usecase.OnTrainRidePhase
+import com.ukrailtracker.app.domain.usecase.atCallingPointOrNull
+import com.ukrailtracker.app.domain.usecase.isUnexpected
+import com.ukrailtracker.app.domain.usecase.tracksJourneyProgress
+import com.ukrailtracker.app.domain.usecase.waitingAtOriginOrNull
 import com.ukrailtracker.app.ui.station.StatusKind
 import java.time.LocalDateTime
 
 /**
- * Single mapping from commute session + auxiliary data to the Home presence UI contract.
+ * Maps commute session + auxiliary data to status-bar chrome and an optional trip body.
+ * When [MappedCommutePresence.tripBody] is null, Home shows [HomeBodyUi.StationList].
  */
-fun mapCommuteWalkUpUi(
+fun mapCommutePresence(
     session: CommuteSession,
     aux: CommuteAuxState,
     lastLoadedOriginCrs: String? = null,
-): WalkUpHomeUi? {
+): MappedCommutePresence {
     when (aux.overlay) {
-        PresenceOverlay.NeedsPermission -> return WalkUpHomeUi.NeedsPermission
+        PresenceOverlay.NeedsPermission -> {
+            return MappedCommutePresence(
+                chrome = PresenceChromeUi.NeedsPermission,
+                tripBody = null,
+            )
+        }
         PresenceOverlay.LocationUnavailable -> {
             if (session !is CommuteSession.OnTrain && session !is CommuteSession.AtStation) {
-                return WalkUpHomeUi.LocationUnavailable
+                return MappedCommutePresence(
+                    chrome = PresenceChromeUi.LocationUnavailable,
+                    tripBody = null,
+                )
             }
         }
         PresenceOverlay.None -> Unit
     }
     return when (session) {
-        CommuteSession.Idle -> WalkUpHomeUi.NotAtStation
-        is CommuteSession.Near -> WalkUpHomeUi.NearStation(
-            crsCode = session.dwelling.crs,
-            stationName = session.dwelling.stationName,
-            distanceLabel = GeoUtils.formatDistance(session.dwelling.distanceMetres),
+        CommuteSession.Idle -> MappedCommutePresence(
+            chrome = PresenceChromeUi.NotAtStation,
+            tripBody = null,
         )
-        is CommuteSession.AtStation -> mapAtStationUi(session, aux.atStation, lastLoadedOriginCrs)
-        is CommuteSession.Confirming -> WalkUpHomeUi.BoardingPrompt(
-            originCrs = session.origin.crs,
-            originName = session.origin.name,
-            assumed = session.assumed.toBoardingCandidateUi(),
-            alternatives = session.alternatives.map { it.toBoardingCandidateUi() },
-            showPicker = session.showPicker,
+        is CommuteSession.Near -> MappedCommutePresence(
+            chrome = PresenceChromeUi.NearStation(
+                crsCode = session.crs,
+                stationName = session.name,
+                distanceLabel = GeoUtils.formatDistance(session.distanceMetres),
+            ),
+            tripBody = null,
         )
-        is CommuteSession.OnTrain -> mapOnTrainUi(session, aux.onTrain)
+        is CommuteSession.AtStation -> mapAtStationPresence(session, aux.atStation, lastLoadedOriginCrs)
+        is CommuteSession.Confirming -> {
+            val assumed = session.assumed.toBoardingCandidateUi()
+            MappedCommutePresence(
+                chrome = PresenceChromeUi.Boarding(
+                    originName = session.origin.name,
+                    assumedDepartureLabel = assumed.scheduledDepartureLabel,
+                    assumedDestinationName = assumed.destinationName,
+                ),
+                tripBody = HomeBodyUi.BoardingPrompt(
+                    originCrs = session.origin.crs,
+                    originName = session.origin.name,
+                    assumed = assumed,
+                    alternatives = session.alternatives.map { it.toBoardingCandidateUi() },
+                    showPicker = session.showPicker,
+                ),
+            )
+        }
+        is CommuteSession.OnTrain -> mapOnTrainPresence(session, aux.onTrain)
     }
 }
 
@@ -71,15 +102,38 @@ fun mergeAtStationAuxForArrival(
 fun buildOnTrainUiAux(
     option: JourneyOption,
     onTrain: CommuteSession.OnTrain,
+    routeStations: List<RouteStation> = emptyList(),
     now: LocalDateTime = LocalDateTime.now(),
 ): OnTrainUiAux {
     val pinned = onTrain.pin
+    val preDeparture = mapPreDepartureUi(onTrain.ridePhase, option, pinned.originCrs, pinned.destinationCrs, now)
+    if (!onTrain.ridePhase.tracksJourneyProgress()) {
+        val statusKind = when (option.status) {
+            TrainStatus.OnTime -> StatusKind.OnTime
+            TrainStatus.Delayed -> StatusKind.Delayed
+            TrainStatus.Cancelled -> StatusKind.Cancelled
+            else -> StatusKind.Other
+        }
+        return OnTrainUiAux(
+            destinationName = pinned.destinationName,
+            delayMinutes = option.delayMinutes,
+            statusKind = statusKind,
+            refreshing = false,
+            preDeparture = preDeparture,
+        )
+    }
+    val atCalling = onTrain.ridePhase.atCallingPointOrNull()
+    val routeMismatch = atCalling?.expectation?.isUnexpected() == true
     val progress = ComputeJourneyProgress.compute(
         callingPoints = option.callingPoints,
         originCrs = pinned.originCrs,
         destinationCrs = pinned.destinationCrs,
         destinationNameFallback = pinned.destinationName,
-        confirmedStopCrs = onTrain.confirmedStopCrs,
+        progressAnchorCrs = onTrain.progressAnchorCrs,
+        atCallingPoint = atCalling != null,
+        journeyFraction = onTrain.journeyFraction,
+        routeMismatch = routeMismatch,
+        routeStations = routeStations,
         now = now,
     )
     val statusKind = when (option.status) {
@@ -88,11 +142,8 @@ fun buildOnTrainUiAux(
         TrainStatus.Cancelled -> StatusKind.Cancelled
         else -> StatusKind.Other
     }
-    val stopped = onTrain.stop is StationStopPhase.Confirmed ||
-        onTrain.stop is StationStopPhase.Dwelling
-    val mismatchName = if (progress.routeMismatch) {
-        (onTrain.stop as? StationStopPhase.Confirmed)?.name
-            ?: progress.currentStopName
+    val mismatchName = if (routeMismatch) {
+        atCalling?.name ?: progress.currentStopName
     } else {
         null
     }
@@ -100,44 +151,85 @@ fun buildOnTrainUiAux(
         destinationName = progress.destinationName,
         minutesRemaining = progress.minutesToDestination,
         nextStopName = progress.nextStopName,
-        currentStopName = progress.currentStopName,
+        currentStopName = atCalling?.name ?: progress.currentStopName,
         delayMinutes = option.delayMinutes,
         statusKind = statusKind,
-        routeMismatch = progress.routeMismatch,
+        routeMismatch = routeMismatch,
         mismatchStationName = mismatchName,
         expectedNextStopName = progress.timetableNextStopName,
         points = progress.points,
-        fractionComplete = progress.fractionComplete,
+        fractionComplete = progress.journeyFraction,
         predictedDurationMinutes = progress.predictedDurationMinutes,
-        stoppedAtStation = stopped,
+        stoppedAtStation = atCalling != null,
         refreshing = false,
         errorMessage = null,
         serviceMissing = false,
+        preDeparture = null,
+    )
+}
+
+private fun mapPreDepartureUi(
+    ridePhase: OnTrainRidePhase,
+    option: JourneyOption,
+    originCrs: String,
+    destinationCrs: String,
+    now: LocalDateTime,
+): PreDepartureUi? {
+    val waiting = ridePhase.waitingAtOriginOrNull()
+    val awaitingDeparture = ridePhase is OnTrainRidePhase.AwaitingDeparture
+    if (waiting == null && !awaitingDeparture) return null
+
+    val approach = ComputeTrainApproach.compute(
+        callingPoints = option.callingPoints,
+        originCrs = originCrs,
+        destinationCrs = destinationCrs,
+        now = now,
+    )
+    val minutesUntilTrainArrives = waiting?.minutesUntilTrainArrives
+        ?: approach.minutesUntilOriginArrival
+    val showBoardedButton = waiting != null
+    return PreDepartureUi(
+        originStationName = waiting?.originStationName ?: approach.originStationName,
+        minutesUntilTrainArrives = minutesUntilTrainArrives,
+        approachingFromStopName = waiting?.approachingFromStopName ?: approach.approachingFromStopName,
+        originIsFirstOnRoute = waiting?.originIsFirstOnRoute ?: approach.originIsFirstOnRoute,
+        awaitingDeparture = awaitingDeparture,
+        showBoardedButton = showBoardedButton,
     )
 }
 
 fun onTrainSkeletonAux(): OnTrainUiAux = OnTrainUiAux(refreshing = true)
 
-private fun mapAtStationUi(
+private fun mapAtStationPresence(
     session: CommuteSession.AtStation,
     atStation: AtStationAux,
     lastLoadedOriginCrs: String?,
-): WalkUpHomeUi.AtStation {
+): MappedCommutePresence {
     val phase = session.origin
     val merged = mergeAtStationAuxForArrival(session, atStation, lastLoadedOriginCrs)
-    return WalkUpHomeUi.AtStation(
+    val distanceLabel = if (phase.manualOverride) {
+        null
+    } else {
+        GeoUtils.formatDistance(phase.distanceMetres)
+    }
+    val body = HomeBodyUi.AtStation(
         crsCode = phase.crs,
         stationName = phase.name,
-        distanceLabel = if (phase.manualOverride) {
-            null
-        } else {
-            GeoUtils.formatDistance(phase.distanceMetres)
-        },
+        distanceLabel = distanceLabel,
         manualOverride = phase.manualOverride,
         destinations = merged.destinations,
         destinationsLoading = merged.destinationsLoading,
         noFavouritesConfigured = merged.noFavouritesConfigured,
         platformWatch = mapPlatformWatchUi(session.platformWatch, merged.platformWatch),
+    )
+    return MappedCommutePresence(
+        chrome = PresenceChromeUi.AtStation(
+            crsCode = phase.crs,
+            stationName = phase.name,
+            distanceLabel = distanceLabel,
+            manualOverride = phase.manualOverride,
+        ),
+        tripBody = body,
     )
 }
 
@@ -166,12 +258,12 @@ fun mapPlatformWatchUi(
     }
 }
 
-private fun mapOnTrainUi(
+private fun mapOnTrainPresence(
     session: CommuteSession.OnTrain,
     onTrain: OnTrainUiAux,
-): WalkUpHomeUi.OnJourney {
+): MappedCommutePresence {
     val pinned = session.pin
-    return WalkUpHomeUi.OnJourney(
+    val body = HomeBodyUi.OnJourney(
         serviceId = pinned.serviceId,
         originCrs = pinned.originCrs,
         destinationCrs = pinned.destinationCrs,
@@ -192,6 +284,21 @@ private fun mapOnTrainUi(
         refreshing = onTrain.refreshing,
         errorMessage = onTrain.errorMessage,
         serviceMissing = onTrain.serviceMissing,
+        preDeparture = onTrain.preDeparture,
+        showJourneyProgress = session.ridePhase.tracksJourneyProgress(),
+    )
+    return MappedCommutePresence(
+        chrome = PresenceChromeUi.OnJourney(
+            destinationName = body.destinationName,
+            originCrs = body.originCrs,
+            destinationCrs = body.destinationCrs,
+            preDeparture = body.preDeparture,
+            showJourneyProgress = body.showJourneyProgress,
+            stoppedAtStation = body.stoppedAtStation,
+            currentStopName = body.currentStopName,
+            nextStopName = body.nextStopName,
+        ),
+        tripBody = body,
     )
 }
 

@@ -362,19 +362,21 @@ journey_log + Away
 
 ### Implementing the state machine
 
-This is the how-to for the recommendation in [architecture.md](architecture.md#commute-session-design-recommendation). The detectors are already pure; the work is **composition + effects at the edge**. Ship it in vertical slices and track them in [commute-session-slices.md](commute-session-slices.md).
+This is the how-to for the architecture in [commute-state-machine.md](commute-state-machine.md) and [architecture.md](architecture.md#commute-session-design-recommendation). The detectors are pure; composition, priority arbitration, and state-scoped lifecycles are owned by `SessionEngine` and `SessionReducer`.
 
-#### 1. Events in, state out, effects as data
+#### 1. Events in, priority arbitration, state out, effects as data
 
 Treat the commute as:
 
 ```text
-Event  →  reduce(session, event)  →  Transition(newSession, List<Effect>)
+Event  ──►  SessionEngine / EventArbitrator  ──►  SessionReducer.reduce(session, event, context)  ──►  Transition(newSession, effects)
 ```
 
-Events are things that happened: `Location`, `OsGeofenceEnter`, `OpenedForFrequentChecks`, `Confirm`, `EndTrip`, `Tick(now)`. `reduce` has no `Context`, no coroutines, no Retrofit. Effects are *intentions* (`Pin`, `ClearPin`, `StartTracking`, `StopTracking`, `Vibrate(3)`, `RefreshServiceDetails`, `WriteJourneyLog`, `ElevateFrequentChecks`, `NotifyProximity`). A thin interpreter in `HomeViewModel` (or `CommuteController`) runs them **after** the transition.
+Events are things that happened: `Location`, `OsGeofenceEnter`, `OpenedForFrequentChecks`, `Confirm`, `EndTrip`, `Tick(now)`. Every event declares an `EventPriority` (`USER_INTENT`, `SYSTEM_CRITICAL`, `DEADLINE_TIMEOUT`, `AMBIENT_SENSOR`). `EventArbitrator` resolves race conditions (e.g. user taps always preempt ambient sensor fixes). 
 
-Idempotent transitions: applying the same sample twice must not double-pin or double-buzz. Effects should be derived from *edge* (Idle → Triggered), not from sitting in Triggered.
+`SessionReducer` has no Android `Context`, no coroutines, and no Retrofit. Effects are *intentions* (`Pin`, `ClearPin`, `StartTracking`, `StopTracking`, `Vibrate(3)`, `RefreshServiceDetails`, `WriteJourneyLog`, `ElevateFrequentChecks`, `NotifyProximity`). A thin interpreter in `CommuteRuntime` runs them **after** the transition.
+
+Idempotent transitions: applying the same sample twice must not double-pin or double-buzz. Effects are derived from *edge* (Idle → Triggered), not from sitting in Triggered.
 
 #### 2. Orthogonal regions, not a mega-enum
 
@@ -388,13 +390,17 @@ Session
 └─ Ride         (only while Pinned) Moving | Dwelling | Confirmed
 ```
 
-Kotlin (`CommuteSession.kt` / `reduce`):
+Kotlin (`CommuteSession.kt` / `domain/session/*`):
 
 ```kotlin
 sealed interface CommuteSession {
     data object Idle : CommuteSession
     data class Near(val dwelling: WalkUpPhase.Dwelling) : CommuteSession
-    data class AtStation(val origin: LockedOrigin, val boarding: BoardingPhase = BoardingPhase.Idle) : CommuteSession
+    data class AtStation(
+        val origin: LockedOrigin,
+        val boarding: BoardingPhase = BoardingPhase.Idle,
+        val platformWatch: PlatformWatchPhase = PlatformWatchPhase.Idle,
+    ) : CommuteSession
     data class Confirming(
         val origin: LockedOrigin,
         val assumed: BoardingServiceSnapshot,
@@ -404,52 +410,50 @@ sealed interface CommuteSession {
     ) : CommuteSession
     data class OnTrain(
         val pin: PinnedJourney,
-        val stop: StationStopPhase = StationStopPhase.Moving,
-        val confirmedStopCrs: String? = null,
+        val gpsMotion: GpsMotion = GpsMotion.Moving,
+        val ridePhase: OnTrainRidePhase = initialWaitingAtOrigin(),
+        val progressAnchorCrs: String? = null,
+        val journeyFraction: Float = 0f,
         val buzzed: Set<Int> = emptySet(),
     ) : CommuteSession
 }
-```
 
 sealed interface CommuteEvent {
-    data class Location(
-        val sample: WalkUpSample,
-        val nearest: StationWithDistance?,
-        val speedMps: Double?,
-        val alreadyPresentOk: Boolean = false,
-    ) : CommuteEvent
-    data class SetOriginOverride(val origin: LockedOrigin) : CommuteEvent
-    data object ClearOverride : CommuteEvent
-    data object PermissionLost : CommuteEvent
-    data class Confirm(val nowEpochMs: Long) : CommuteEvent
-    data class SelectService(val serviceId: String, val nowEpochMs: Long) : CommuteEvent
-    data object ShowPicker : CommuteEvent
-    data object Dismiss : CommuteEvent
-    data class Tick(val nowEpochMs: Long) : CommuteEvent
-    data class OsGeofenceEnter(val crs: String, val stationName: String) : CommuteEvent
-    data class OpenedForFrequentChecks(val untilEpochMs: Long, val hintCrs: String? = null) : CommuteEvent
+    val priority: EventPriority
+
+    data class Location(...) : CommuteEvent { override val priority = EventPriority.AMBIENT_SENSOR }
+    data class SetOriginOverride(val origin: LockedOrigin) : CommuteEvent { override val priority = EventPriority.USER_INTENT }
+    data object ClearOverride : CommuteEvent { override val priority = EventPriority.USER_INTENT }
+    data object PermissionLost : CommuteEvent { override val priority = EventPriority.SYSTEM_CRITICAL }
+    data class Confirm(val nowEpochMs: Long) : CommuteEvent { override val priority = EventPriority.USER_INTENT }
+    data class SelectService(...) : CommuteEvent { override val priority = EventPriority.USER_INTENT }
+    data object ShowPicker : CommuteEvent { override val priority = EventPriority.USER_INTENT }
+    data object Dismiss : CommuteEvent { override val priority = EventPriority.USER_INTENT }
+    data class Tick(val nowEpochMs: Long) : CommuteEvent { override val priority = EventPriority.DEADLINE_TIMEOUT }
+    data class OsGeofenceEnter(...) : CommuteEvent { override val priority = EventPriority.AMBIENT_SENSOR }
+    data class OpenedForFrequentChecks(...) : CommuteEvent { override val priority = EventPriority.AMBIENT_SENSOR }
 }
 ```
 
-Keep calling the existing `next()` functions from `reduce`. One `reduce(session, event)` returns the new session. A library (XState, Redux) is optional; the pattern is not.
+Modular state handlers (`IdleStateHandler`, `NearStateHandler`, `AtStationStateHandler`, `ConfirmingStateHandler`, `OnTrainStateHandler`) execute the transition rules, while `SessionReducer` routes events based on the active session.
 
 #### 3. One writer
 
-GPS polls, Darwin callbacks, geofence taps, and buttons must all go through `reduce`. If Home, a Worker, and the FGS each mutate “are we on a train?”, you get split-brain (ENTER is already ignored when a pin exists — that is the right *policy*, expressed in the wrong *place*). Receivers only enqueue events.
+GPS polls, Darwin callbacks, geofence taps, and buttons all go through `SessionEngine.dispatch`. If Home, a Worker, and the FGS each mutate “are we on a train?”, you get split-brain (ENTER is already ignored when a pin exists — that is the right *policy*, expressed in the wrong *place*). Receivers only enqueue events.
 
 #### 4. Time is an input
 
-Dwells (12 s walk-up, 8 s boarding, 15 s stop), 60 s auto-accept, and 3/2/1 min buzz belong in reduce as comparisons against `now` / `sample.epochMs`. Tests can jump time; production uses wall clock. A `delay { confirmBoarding() }` job is the form that leaks across sessions.
+Dwells (12 s walk-up, 8 s boarding, 15 s stop), 60 s auto-accept, and 3/2/1 min buzz belong in reduction logic as comparisons against `now` / `sample.epochMs`. Tests can jump time; production uses wall clock. A `delay { confirmBoarding() }` job is the form that leaks across sessions.
 
 #### 5. Side effects at the edge
 
 | Kind | Example | Where |
 |------|---------|--------|
-| Pure | Away → Dwelling | `next()` / `reduce` |
-| Effect | `OnTrainTrackingService.start`, DataStore pin, vibrate | interpreter |
-| Projection | “On train to EUS”, diagram, `refreshing` | `toUi(session)` |
+| Pure | Away → Dwelling | `next()` / `SessionReducer` |
+| Effect | `OnTrainTrackingService.start`, DataStore pin, vibrate | `CommuteRuntime.interpretEffect` |
+| Projection | “On train to EUS”, diagram, `refreshing` | `CommuteUiMapper` (`toUi(session)`) |
 
-Darwin in-flight is **not** a presence state. Keep `refreshing` / `errorMessage` / `serviceMissing` on the on-train view model (or a nested `LoadState`), not as siblings of `Away`.
+Darwin in-flight is **not** a presence state. Keep `refreshing` / `errorMessage` / `serviceMissing` on the on-train view model (or `CommuteAuxState`), not as siblings of `Away`.
 
 #### 6. Persist the session, not the sensors
 

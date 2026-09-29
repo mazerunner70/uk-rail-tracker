@@ -47,7 +47,7 @@ import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 
 internal fun LazyListScope.atStationHomeItems(
-    atStation: WalkUpHomeUi.AtStation,
+    atStation: HomeBodyUi.AtStation,
     onOpenSettings: () -> Unit,
     onSelectForPlatformWatch: (originCrs: String, destCrs: String, serviceId: String) -> Unit,
     onClearPlatformWatch: () -> Unit,

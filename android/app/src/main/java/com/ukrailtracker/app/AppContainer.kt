@@ -23,6 +23,7 @@ import com.ukrailtracker.app.data.repository.StationRepositoryImpl
 import com.ukrailtracker.app.data.source.asset.AssetStationsDataSource
 import com.ukrailtracker.app.data.store.StationStore
 import com.ukrailtracker.app.domain.location.LocationProvider
+import com.ukrailtracker.app.domain.commute.CommuteSessionController
 import com.ukrailtracker.app.domain.repository.DepartureRepository
 import com.ukrailtracker.app.domain.repository.JourneyRepository
 import com.ukrailtracker.app.domain.repository.StationRepository
@@ -58,7 +59,7 @@ class AppContainer(app: Application) {
         app,
         AppDatabase::class.java,
         "uk_rail_tracker.db",
-    ).fallbackToDestructiveMigration().build()
+    ).fallbackToDestructiveMigration(dropAllTables = true).build()
 
     private val stationStore = StationStore(database.stationDao())
     private val metaStore = StationMetaStore(app)
@@ -116,6 +117,18 @@ class AppContainer(app: Application) {
         stationRepository = stationRepository,
         favouritesStore = favouritesStore,
         commuteWindowStore = commuteWindowStore,
+    )
+
+    val commuteSessionController = CommuteSessionController(
+        appContext = app,
+        scope = ioScope,
+        stationRepository = stationRepository,
+        journeyRepository = journeyRepository,
+        locationProvider = locationProvider,
+        favouritesStore = favouritesStore,
+        pinnedJourneyStore = pinnedJourneyStore,
+        journeyLogRepository = journeyLogRepository,
+        onLatestSpeedMps = { latestSpeedMps.value = it },
     )
 
     fun armStationGeofencesAsync(forceLocationRefresh: Boolean = true) {

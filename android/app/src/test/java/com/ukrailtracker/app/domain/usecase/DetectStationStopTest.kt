@@ -20,31 +20,31 @@ class DetectStationStopTest {
     @Test
     fun movingAtSpeedStaysMoving() {
         val phase = DetectStationStop.next(
-            phase = StationStopPhase.Moving,
+            phase = GpsMotion.Moving,
             sample = sample(lat = 51.458, lng = -0.972, speed = 20.0, t = 0),
             speedMps = 20.0,
             routeStations = route,
             config = config,
         )
-        assertEquals(StationStopPhase.Moving, phase)
+        assertEquals(GpsMotion.Moving, phase)
     }
 
     @Test
     fun stoppedNearStationStartsDwelling() {
         val phase = DetectStationStop.next(
-            phase = StationStopPhase.Moving,
+            phase = GpsMotion.Moving,
             sample = sample(lat = 51.458, lng = -0.972, speed = 0.5, t = 0),
             speedMps = 0.5,
             routeStations = route,
             config = config,
         )
-        val dwelling = phase as StationStopPhase.Dwelling
+        val dwelling = phase as GpsMotion.Dwelling
         assertEquals("RDG", dwelling.crs)
     }
 
     @Test
     fun dwellThenConfirm() {
-        var phase: StationStopPhase = StationStopPhase.Moving
+        var phase: GpsMotion = GpsMotion.Moving
         phase = DetectStationStop.next(
             phase = phase,
             sample = sample(lat = 51.458, lng = -0.972, speed = 0.4, t = 0),
@@ -52,7 +52,7 @@ class DetectStationStopTest {
             routeStations = route,
             config = config,
         )
-        assertTrue(phase is StationStopPhase.Dwelling)
+        assertTrue(phase is GpsMotion.Dwelling)
 
         phase = DetectStationStop.next(
             phase = phase,
@@ -61,13 +61,13 @@ class DetectStationStopTest {
             routeStations = route,
             config = config,
         )
-        val confirmed = phase as StationStopPhase.Confirmed
+        val confirmed = phase as GpsMotion.Confirmed
         assertEquals("RDG", confirmed.crs)
     }
 
     @Test
     fun leaveConfirmResetsToMoving() {
-        var phase: StationStopPhase = StationStopPhase.Confirmed(
+        var phase: GpsMotion = GpsMotion.Confirmed(
             crs = "RDG",
             name = "Reading",
             confirmedAtEpochMs = 16_000L,
@@ -80,20 +80,20 @@ class DetectStationStopTest {
             routeStations = route,
             config = config,
         )
-        assertEquals(StationStopPhase.Moving, phase)
+        assertEquals(GpsMotion.Moving, phase)
     }
 
     @Test
     fun farFromRouteStationsDoesNotDwell() {
         // Far from both Reading and Slough
         val phase = DetectStationStop.next(
-            phase = StationStopPhase.Moving,
+            phase = GpsMotion.Moving,
             sample = sample(lat = 52.0, lng = -1.0, speed = 0.2, t = 0),
             speedMps = 0.2,
             routeStations = route,
             config = config,
         )
-        assertEquals(StationStopPhase.Moving, phase)
+        assertEquals(GpsMotion.Moving, phase)
     }
 
     private fun sample(lat: Double, lng: Double, speed: Double?, t: Long) =

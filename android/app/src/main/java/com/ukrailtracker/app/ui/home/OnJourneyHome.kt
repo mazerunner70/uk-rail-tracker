@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,16 +53,18 @@ import com.ukrailtracker.app.ui.theme.NeonSurface
 
 @Composable
 internal fun OnJourneyHome(
-    journey: WalkUpHomeUi.OnJourney,
+    journey: HomeBodyUi.OnJourney,
     onEndTrip: () -> Unit,
     onOpenDetail: () -> Unit,
+    onConfirmBoarded: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val liveUnavailable = journey.serviceMissing ||
-        (journey.errorMessage != null && journey.minutesRemaining == null)
+        (journey.errorMessage != null && journey.minutesRemaining == null && journey.preDeparture == null)
     val remainingPoints = remember(journey.points) {
         remainingJourneyPoints(journey.points)
     }
+    val preDeparture = journey.preDeparture
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -86,6 +91,8 @@ internal fun OnJourneyHome(
                     color = NeonAmber,
                     fontWeight = FontWeight.Bold,
                 )
+            } else if (preDeparture != null) {
+                PreDepartureHero(preDeparture = preDeparture, journey = journey)
             } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -186,39 +193,46 @@ internal fun OnJourneyHome(
                 .padding(horizontal = 10.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            JourneyProgressTimeline(
-                points = journey.points,
-                fractionComplete = journey.fractionComplete,
-                predictedDurationMinutes = journey.predictedDurationMinutes,
-            )
-            if (remainingPoints.isEmpty()) {
-                Text(
-                    text = stringResource(
-                        if (liveUnavailable) {
-                            R.string.home_on_train_progress_unavailable
-                        } else {
-                            R.string.journey_calling_points_empty
-                        },
-                    ),
-                    color = NeonMuted,
-                    style = MaterialTheme.typography.bodyMedium,
+            if (preDeparture != null && !journey.showJourneyProgress) {
+                PreDeparturePanel(
+                    preDeparture = preDeparture,
+                    onConfirmBoarded = onConfirmBoarded,
                 )
             } else {
-                val viewportRows = remainingPoints.size.coerceAtMost(REMAINING_STOP_VIEWPORT)
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(remainingStopListHeight(viewportRows)),
-                    verticalArrangement = Arrangement.spacedBy(REMAINING_STOP_GAP),
-                    contentPadding = PaddingValues(vertical = 2.dp),
-                ) {
-                    itemsIndexed(
-                        items = remainingPoints,
-                        key = { index, point ->
-                            "${point.crs.orEmpty()}-${point.name}-$index"
-                        },
-                    ) { _, point ->
-                        ProgressPointRow(point = point)
+                JourneyProgressTimeline(
+                    points = journey.points,
+                    fractionComplete = journey.fractionComplete,
+                    predictedDurationMinutes = journey.predictedDurationMinutes,
+                )
+                if (remainingPoints.isEmpty()) {
+                    Text(
+                        text = stringResource(
+                            if (liveUnavailable) {
+                                R.string.home_on_train_progress_unavailable
+                            } else {
+                                R.string.journey_calling_points_empty
+                            },
+                        ),
+                        color = NeonMuted,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    val viewportRows = remainingPoints.size.coerceAtMost(REMAINING_STOP_VIEWPORT)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(remainingStopListHeight(viewportRows)),
+                        verticalArrangement = Arrangement.spacedBy(REMAINING_STOP_GAP),
+                        contentPadding = PaddingValues(vertical = 2.dp),
+                    ) {
+                        itemsIndexed(
+                            items = remainingPoints,
+                            key = { index, point ->
+                                "${point.crs.orEmpty()}-${point.name}-$index"
+                            },
+                        ) { _, point ->
+                            ProgressPointRow(point = point)
+                        }
                     }
                 }
             }
@@ -235,6 +249,127 @@ internal fun OnJourneyHome(
             }
             TextButton(onClick = onEndTrip) {
                 Text(stringResource(R.string.home_on_train_end), color = NeonMagenta)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreDepartureHero(
+    preDeparture: PreDepartureUi,
+    journey: HomeBodyUi.OnJourney,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (preDeparture.awaitingDeparture) {
+            Text(
+                text = stringResource(R.string.home_on_train_awaiting_departure_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = NeonCyan,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(
+                    R.string.home_on_train_awaiting_departure_body,
+                    preDeparture.originStationName,
+                    journey.destinationName,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        } else {
+            Text(
+                text = stringResource(
+                    R.string.home_on_train_waiting_at,
+                    preDeparture.originStationName,
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                color = NeonCyan,
+                fontWeight = FontWeight.Bold,
+            )
+            preDeparture.approachingFromStopName?.let { from ->
+                Text(
+                    text = stringResource(R.string.home_on_train_approaching_from, from),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NeonMuted,
+                )
+            }
+        }
+        if (journey.scheduledDepartureLabel.isNotBlank()) {
+            Text(
+                text = stringResource(
+                    R.string.home_on_train_scheduled,
+                    journey.scheduledDepartureLabel,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = NeonMuted,
+            )
+        }
+        if (journey.refreshing) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(14.dp),
+                strokeWidth = 2.dp,
+                color = NeonCyan,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreDeparturePanel(
+    preDeparture: PreDepartureUi,
+    onConfirmBoarded: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (preDeparture.awaitingDeparture) {
+            Text(
+                text = stringResource(R.string.home_on_train_awaiting_movement),
+                color = NeonMuted,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.home_on_train_train_arrives_in),
+                    color = NeonMuted,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = preDeparture.minutesUntilTrainArrives?.let { "$it" } ?: "…",
+                    color = NeonCyan,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                    lineHeight = 30.sp,
+                )
+                if (preDeparture.minutesUntilTrainArrives != null) {
+                    Text(
+                        text = stringResource(R.string.home_on_train_countdown_unit),
+                        color = NeonCyan,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            if (preDeparture.showBoardedButton) {
+                Button(
+                    onClick = onConfirmBoarded,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeonCyan,
+                        contentColor = NeonBackground,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_on_train_boarded),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
     }
@@ -281,13 +416,13 @@ private fun JourneyProgressTimeline(
     }.sortedBy { it.second }
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (markers.isNotEmpty()) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(14.dp),
+                    .height(TIMELINE_LABEL_ROW_HEIGHT),
             ) {
                 val trackWidth = maxWidth
                 val labelWidth = 28.dp
@@ -302,14 +437,18 @@ private fun JourneyProgressTimeline(
                     Text(
                         text = crs,
                         color = progressPointAccent(point),
-                        fontSize = 9.sp,
-                        fontWeight = if (
-                            point.isCurrent || point.isNext || point.isOrigin || point.isDestination
-                        ) {
-                            FontWeight.Bold
-                        } else {
-                            FontWeight.Normal
-                        },
+                        style = TextStyle(
+                            fontSize = 9.sp,
+                            lineHeight = 11.sp,
+                            fontWeight = if (
+                                point.isCurrent || point.isNext ||
+                                point.isOrigin || point.isDestination
+                            ) {
+                                FontWeight.Bold
+                            } else {
+                                FontWeight.Normal
+                            },
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                         textAlign = TextAlign.Center,
@@ -322,7 +461,7 @@ private fun JourneyProgressTimeline(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp),
+                    .height(TIMELINE_TICK_HEIGHT),
             ) {
                 val trackWidth = maxWidth
                 val tickWidth = 2.dp
@@ -333,7 +472,7 @@ private fun JourneyProgressTimeline(
                         modifier = Modifier
                             .offset(x = x)
                             .width(tickWidth)
-                            .height(8.dp)
+                            .height(TIMELINE_TICK_HEIGHT)
                             .background(progressPointAccent(point), RoundedCornerShape(1.dp)),
                     )
                 }
@@ -396,14 +535,6 @@ private fun labelLeft(
 @Composable
 private fun ProgressPointRow(point: ProgressPointUiModel) {
     val color = progressPointAccent(point)
-    val minutes = if (!point.isPast && !point.isCancelled) {
-        JourneyTimeUtils.minutesUntilArrival(
-            scheduledArrivalLabel = point.scheduledLabel,
-            expectedArrivalLabel = point.expectedLabel,
-        )
-    } else {
-        null
-    }
     val expected = point.expectedLabel?.trim().orEmpty()
     val statusLabel = when {
         point.isCancelled || expected.equals("Cancelled", ignoreCase = true) -> "Cancelled"
@@ -414,10 +545,9 @@ private fun ProgressPointRow(point: ProgressPointUiModel) {
         else -> null
     }
     val variance = point.scheduleVarianceMinutes
+    val arrivalClock = progressPointArrivalClock(point)
     val etaLabel = when {
-        minutes != null && minutes >= 0 -> stringResource(R.string.home_on_train_stop_mins, minutes)
-        point.actualLabel != null ->
-            stringResource(R.string.home_on_train_stop_actual, point.actualLabel)
+        arrivalClock.isNotBlank() -> arrivalClock
         statusLabel != null -> statusLabel
         else -> point.scheduledLabel.orEmpty()
     }
@@ -502,6 +632,8 @@ private fun ProgressPointRow(point: ProgressPointUiModel) {
 }
 
 private const val REMAINING_STOP_VIEWPORT = 4
+private val TIMELINE_LABEL_ROW_HEIGHT = 18.dp
+private val TIMELINE_TICK_HEIGHT = 8.dp
 private val REMAINING_STOP_ROW_HEIGHT = 36.dp
 private val REMAINING_STOP_GAP = 2.dp
 
@@ -522,6 +654,23 @@ internal fun remainingJourneyPoints(
         ?: 0
     val from = startIndex.coerceAtMost(destIndex)
     return points.subList(from, destIndex + 1)
+}
+
+private fun progressPointArrivalClock(point: ProgressPointUiModel): String {
+    if (point.isCancelled) return ""
+    val expected = point.expectedLabel?.trim().orEmpty()
+    if (expected.equals("Cancelled", ignoreCase = true)) return ""
+
+    JourneyTimeUtils.parseableClockLabel(point.actualLabel)?.let { return it }
+    if (point.actualLabel?.equals("On time", ignoreCase = true) == true) {
+        return point.scheduledLabel.orEmpty()
+    }
+
+    JourneyTimeUtils.parseableClockLabel(expected)?.let { return it }
+    if (expected.equals("Delayed", ignoreCase = true)) {
+        return point.scheduledLabel.orEmpty()
+    }
+    return point.scheduledLabel.orEmpty()
 }
 
 private fun progressPointAccent(point: ProgressPointUiModel): Color = when {

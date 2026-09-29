@@ -12,6 +12,7 @@ Product and engineering documentation for the UK Rail Tracker Android app.
 | [Data sources](data-sources.md) | Live rail APIs, credentials, and endpoint mapping |
 | [Architecture](architecture.md) | App layers, commute session design, local storage, offline, privacy |
 | [State model](state-model.md) | Walk-up → boarding → on-train → finish (geofence to journey_log) |
+| [Commute state machine](commute-state-machine.md) | Session variants, priority event reduction, loop, and effects |
 | [Commute session slices](commute-session-slices.md) | Vertical-slice progress: reduce / effects / HomeViewModel |
 | [Simulated test journey](simulated-journey.md) | In-app GPS sim + live Darwin Refresh (`includeSimulator`) |
 | [Compensation guide](compensation-guide.md) | UK Delay Repay rules by operator (M7 support) |

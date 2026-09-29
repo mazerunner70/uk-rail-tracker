@@ -1,5 +1,6 @@
 package com.ukrailtracker.app.domain.usecase
 
+import com.ukrailtracker.app.domain.geo.GeoUtils
 import com.ukrailtracker.app.domain.model.CallingPoint
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -18,7 +19,7 @@ data class ProgressPointUiModel(
     val isCurrent: Boolean,
     val isNext: Boolean,
     val isCancelled: Boolean,
-    /** 0f at origin … 1f at destination on the predicted-time axis. Null when unknown. */
+    /** 0f at origin … 1f at destination on the spatial route axis. Null when coords missing. */
     val fractionAlong: Float? = null,
 )
 
@@ -40,23 +41,23 @@ data class JourneyProgress(
     /** True when Darwin has published an actual arrival time for the destination. */
     val destinationArrived: Boolean,
     /**
-     * Predicted origin→destination duration in minutes (origin actual/expected/ST to
-     * destination ET/ST). Null when clocks are missing.
+     * Predicted origin→destination duration in minutes (display only).
+     * Null when clocks are missing.
      */
     val predictedDurationMinutes: Int?,
     /**
-     * 0f at origin … 1f at / past destination. Elapsed / predicted duration when
-     * clocks exist; otherwise calling-point index plus hop interpolation.
+     * 0f at origin … 1f at / past destination. From GPS spatial math (session),
+     * not Darwin clocks.
      */
-    val fractionComplete: Float,
-    /**
-     * True when GPS confirmed a stop that is not the timetable's next expected calling
-     * point (and not the stop immediately before it).
-     */
+    val journeyFraction: Float,
+    /** True when [StopExpectation] is Unexpected — passed in from session. */
     val routeMismatch: Boolean,
     /** True when the next station on the trip is the favourite destination. */
     val approachingDestination: Boolean,
-)
+) {
+    /** Alias for UI that still says fractionComplete. */
+    val fractionComplete: Float get() = journeyFraction
+}
 
 object ComputeJourneyProgress {
 
@@ -65,12 +66,16 @@ object ComputeJourneyProgress {
         originCrs: String,
         destinationCrs: String,
         destinationNameFallback: String,
-        confirmedStopCrs: String?,
+        progressAnchorCrs: String?,
+        atCallingPoint: Boolean,
+        journeyFraction: Float,
+        routeMismatch: Boolean,
+        routeStations: List<RouteStation> = emptyList(),
         now: LocalDateTime = LocalDateTime.now(),
     ): JourneyProgress {
         val origin = originCrs.trim().uppercase()
         val dest = destinationCrs.trim().uppercase()
-        val confirmed = confirmedStopCrs?.trim()?.uppercase()
+        val anchor = progressAnchorCrs?.trim()?.uppercase()
 
         val destIndex = callingPoints.indexOfLast { it.crs?.uppercase() == dest }
             .takeIf { it >= 0 }
@@ -79,7 +84,6 @@ object ComputeJourneyProgress {
             .takeIf { it >= 0 }
             ?: 0
 
-        // Timetable-only next — used for mismatch (ignore GPS confirmation).
         val timetableNextIndex = inferExpectedNextIndex(
             callingPoints = callingPoints,
             originIndex = originIndex,
@@ -88,11 +92,12 @@ object ComputeJourneyProgress {
             now = now,
         )
 
-        val confirmedIndex = confirmed?.let { crs ->
+        val confirmedIndex = anchor?.let { crs ->
             callingPoints.indexOfFirst { it.crs?.uppercase() == crs }.takeIf { it >= 0 }
         }
 
         val currentIndex = when {
+            atCallingPoint && confirmedIndex != null -> confirmedIndex
             confirmedIndex != null -> confirmedIndex
             timetableNextIndex > originIndex -> timetableNextIndex - 1
             else -> originIndex
@@ -104,12 +109,6 @@ object ComputeJourneyProgress {
             else -> null
         }
 
-        val routeMismatch = isRouteMismatch(
-            confirmedIndex = confirmedIndex,
-            timetableNextIndex = timetableNextIndex,
-            destIndex = destIndex,
-        )
-
         val originPoint = callingPoints.getOrNull(originIndex)
         val destPoint = destIndex.takeIf { it >= 0 }?.let { callingPoints[it] }
         val originLabel = originPoint?.let { interpolationClockLabel(it, preferActual = true) }
@@ -120,13 +119,19 @@ object ComputeJourneyProgress {
             ?.toInt()
             ?.takeIf { it > 0 }
 
+        val spatialFractions = spatialFractionsAlongRoute(
+            callingPoints = callingPoints,
+            originIndex = originIndex,
+            destIndex = destIndex,
+            routeStations = routeStations,
+        )
+
         val points = callingPoints.mapIndexed { index, cp ->
             val crs = cp.crs?.uppercase()
             val actualDisplay = JourneyTimeUtils.displayActualLabel(cp.actualTimeLabel)
             val observed = when {
                 JourneyTimeUtils.parseableClockLabel(cp.actualTimeLabel) != null ->
                     JourneyTimeUtils.parseableClockLabel(cp.actualTimeLabel)
-                // Darwin often reports AT as "On time" — treat as zero variance vs ST.
                 JourneyTimeUtils.hasActualArrival(cp.actualTimeLabel) -> cp.scheduledTimeLabel
                 else -> JourneyTimeUtils.parseableClockLabel(cp.expectedLabel)
             }
@@ -146,23 +151,11 @@ object ComputeJourneyProgress {
                 isCurrent = index == currentIndex,
                 isNext = nextIndex != null && index == nextIndex,
                 isCancelled = cp.isCancelled,
-                fractionAlong = fractionAlong(
-                    index = index,
-                    originIndex = originIndex,
-                    destIndex = destIndex,
-                    currentIndex = currentIndex,
-                    callingPoint = cp,
-                    originLabel = originLabel,
-                    destLabel = destLabel,
-                    durationSeconds = durationSeconds,
-                    now = now,
-                ),
+                fractionAlong = spatialFractions.getOrNull(index),
             )
         }
 
-        // AT may be HH:mm or the phrase "On time" (arrived to timetable).
         val destinationArrived = JourneyTimeUtils.hasActualArrival(destPoint?.actualTimeLabel)
-        // Countdown is always destination ET (ST when ET is "On time") — never AT.
         val minutes = if (destinationArrived) {
             null
         } else {
@@ -174,20 +167,9 @@ object ComputeJourneyProgress {
         }
 
         val fraction = when {
-            destinationArrived || currentIndex >= destIndex -> 1f
-            durationSeconds != null && durationSeconds > 0L -> {
-                val originUntil = secondsUntilLabel(originLabel, now) ?: 0L
-                val elapsed = (-originUntil).coerceAtLeast(0L).coerceAtMost(durationSeconds)
-                (elapsed.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-            }
-            else -> indexFraction(
-                originIndex = originIndex,
-                destIndex = destIndex,
-                currentIndex = currentIndex,
-                nextIndex = nextIndex,
-                callingPoints = callingPoints,
-                now = now,
-            )
+            destinationArrived || (atCallingPoint && confirmedIndex != null && confirmedIndex >= destIndex) ->
+                1f
+            else -> journeyFraction.coerceIn(0f, 1f)
         }
 
         val nextPoint = nextIndex?.let { callingPoints.getOrNull(it) }
@@ -198,7 +180,7 @@ object ComputeJourneyProgress {
 
         return JourneyProgress(
             points = points,
-            currentStopCrs = currentPoint?.crs?.uppercase() ?: confirmed,
+            currentStopCrs = currentPoint?.crs?.uppercase() ?: anchor,
             currentStopName = currentPoint?.locationName,
             nextStopCrs = nextPoint?.crs?.uppercase(),
             nextStopName = nextPoint?.locationName,
@@ -208,24 +190,224 @@ object ComputeJourneyProgress {
             minutesToDestination = minutes,
             destinationArrived = destinationArrived,
             predictedDurationMinutes = predictedDurationMinutes,
-            fractionComplete = fraction,
+            journeyFraction = fraction,
             routeMismatch = routeMismatch,
             approachingDestination = approaching,
         )
     }
 
     /**
-     * ET for the destination stop. When Darwin has only published AT, [CallingPoint.expectedLabel]
-     * may have been filled from AT — ignore that and fall back to scheduled for countdown.
+     * GPS journey fraction on the origin→destination spatial axis.
+     * At a confirmed calling point: snap to that stop’s cumulative share.
+     * En route: leg = progressAnchor → next calling point by route order;
+     * `legFraction = dStart / (dStart + dEnd)`.
      */
+    fun spatialJourneyFraction(
+        latitude: Double,
+        longitude: Double,
+        progressAnchorCrs: String?,
+        atCallingPointCrs: String?,
+        originCrs: String,
+        destinationCrs: String,
+        callingPoints: List<CallingPoint>,
+        routeStations: List<RouteStation>,
+        previousFraction: Float,
+    ): Float {
+        val origin = originCrs.trim().uppercase()
+        val dest = destinationCrs.trim().uppercase()
+        val destIndex = callingPoints.indexOfLast { it.crs?.uppercase() == dest }
+            .takeIf { it >= 0 }
+            ?: return previousFraction.coerceIn(0f, 1f)
+        val originIndex = callingPoints.indexOfFirst { it.crs?.uppercase() == origin }
+            .takeIf { it >= 0 }
+            ?: 0
+
+        val fractions = spatialFractionsAlongRoute(
+            callingPoints = callingPoints,
+            originIndex = originIndex,
+            destIndex = destIndex,
+            routeStations = routeStations,
+        )
+        if (fractions.all { it == null }) {
+            return indexFallbackFraction(
+                callingPoints = callingPoints,
+                originIndex = originIndex,
+                destIndex = destIndex,
+                progressAnchorCrs = progressAnchorCrs,
+                atCallingPointCrs = atCallingPointCrs,
+                previousFraction = previousFraction,
+            )
+        }
+
+        val snapCrs = atCallingPointCrs?.trim()?.uppercase()
+        if (snapCrs != null) {
+            val idx = callingPoints.indexOfFirst { it.crs?.uppercase() == snapCrs }
+            if (idx >= 0) {
+                fractions[idx]?.let { return it.coerceIn(0f, 1f) }
+                return indexShare(originIndex, destIndex, idx)
+            }
+        }
+
+        val anchor = progressAnchorCrs?.trim()?.uppercase()
+            ?: origin
+        val anchorIndex = callingPoints.indexOfFirst { it.crs?.uppercase() == anchor }
+            .takeIf { it >= 0 }
+            ?: originIndex
+        if (anchorIndex >= destIndex) {
+            return 1f
+        }
+        val legEndIndex = (anchorIndex + 1..destIndex).firstOrNull { i ->
+            callingPoints[i].crs != null &&
+                routeStations.any { it.crs.equals(callingPoints[i].crs, ignoreCase = true) }
+        } ?: (anchorIndex + 1).coerceAtMost(destIndex)
+
+        val startStation = stationForCrs(callingPoints.getOrNull(anchorIndex)?.crs, routeStations)
+            ?: stationForCrs(origin, routeStations)
+        val endStation = stationForCrs(callingPoints.getOrNull(legEndIndex)?.crs, routeStations)
+        if (startStation == null || endStation == null) {
+            return fractions[anchorIndex] ?: previousFraction.coerceIn(0f, 1f)
+        }
+
+        val dStart = GeoUtils.haversineMetres(
+            latitude, longitude, startStation.latitude, startStation.longitude,
+        )
+        val dEnd = GeoUtils.haversineMetres(
+            latitude, longitude, endStation.latitude, endStation.longitude,
+        )
+        val denom = dStart + dEnd
+        val legFraction = if (denom < 1.0) {
+            if (dStart <= dEnd) 0f else 1f
+        } else {
+            (dStart / denom).toFloat().coerceIn(0f, 1f)
+        }
+
+        val startFrac = fractions[anchorIndex] ?: indexShare(originIndex, destIndex, anchorIndex)
+        val endFrac = fractions[legEndIndex] ?: indexShare(originIndex, destIndex, legEndIndex)
+        return (startFrac + legFraction * (endFrac - startFrac)).coerceIn(0f, 1f)
+    }
+
+    fun judgeStopExpectation(
+        confirmedCrs: String,
+        callingPoints: List<CallingPoint>,
+        originCrs: String,
+        destinationCrs: String,
+        now: LocalDateTime = LocalDateTime.now(),
+    ): StopExpectation {
+        if (callingPoints.isEmpty()) return StopExpectation.Unknown
+        val origin = originCrs.trim().uppercase()
+        val dest = destinationCrs.trim().uppercase()
+        val confirmed = confirmedCrs.trim().uppercase()
+        val destIndex = callingPoints.indexOfLast { it.crs?.uppercase() == dest }
+            .takeIf { it >= 0 }
+            ?: return StopExpectation.Unknown
+        val originIndex = callingPoints.indexOfFirst { it.crs?.uppercase() == origin }
+            .takeIf { it >= 0 }
+            ?: 0
+        val confirmedIndex = callingPoints.indexOfFirst { it.crs?.uppercase() == confirmed }
+            .takeIf { it >= 0 }
+            ?: return StopExpectation.Unexpected(timetableNextCrs = null)
+
+        val timetableNextIndex = inferExpectedNextIndex(
+            callingPoints = callingPoints,
+            originIndex = originIndex,
+            destIndex = destIndex,
+            confirmed = null,
+            now = now,
+        )
+        if (timetableNextIndex < 0) return StopExpectation.Unknown
+        val timetableNextCrs = callingPoints.getOrNull(timetableNextIndex)?.crs?.uppercase()
+
+        return when {
+            confirmedIndex == timetableNextIndex -> StopExpectation.MatchesTimetableNext
+            confirmedIndex == timetableNextIndex - 1 -> StopExpectation.StillAtPriorStop
+            confirmedIndex < timetableNextIndex - 1 -> StopExpectation.BehindTimetable
+            else -> StopExpectation.Unexpected(timetableNextCrs)
+        }
+    }
+
+    private fun spatialFractionsAlongRoute(
+        callingPoints: List<CallingPoint>,
+        originIndex: Int,
+        destIndex: Int,
+        routeStations: List<RouteStation>,
+    ): List<Float?> {
+        if (callingPoints.isEmpty() || destIndex < originIndex) {
+            return List(callingPoints.size) { null }
+        }
+        val coords = callingPoints.map { cp ->
+            stationForCrs(cp.crs, routeStations)
+        }
+        if ((originIndex..destIndex).none { coords[it] != null }) {
+            return List(callingPoints.size) { null }
+        }
+        val cumulative = DoubleArray(callingPoints.size) { 0.0 }
+        var lastLat: Double? = null
+        var lastLng: Double? = null
+        var travelled = 0.0
+        for (i in originIndex..destIndex) {
+            val st = coords[i]
+            if (st != null) {
+                if (lastLat != null && lastLng != null) {
+                    travelled += GeoUtils.haversineMetres(lastLat, lastLng, st.latitude, st.longitude)
+                }
+                lastLat = st.latitude
+                lastLng = st.longitude
+            }
+            cumulative[i] = travelled
+        }
+        val total = cumulative[destIndex]
+        if (total <= 0.0) {
+            return callingPoints.indices.map { i ->
+                when {
+                    i < originIndex || i > destIndex -> null
+                    i == originIndex -> 0f
+                    i == destIndex -> 1f
+                    else -> indexShare(originIndex, destIndex, i)
+                }
+            }
+        }
+        return callingPoints.indices.map { i ->
+            when {
+                i < originIndex || i > destIndex -> null
+                i == originIndex -> 0f
+                i == destIndex -> 1f
+                coords[i] == null -> null
+                else -> (cumulative[i] / total).toFloat().coerceIn(0f, 1f)
+            }
+        }
+    }
+
+    private fun indexFallbackFraction(
+        callingPoints: List<CallingPoint>,
+        originIndex: Int,
+        destIndex: Int,
+        progressAnchorCrs: String?,
+        atCallingPointCrs: String?,
+        previousFraction: Float,
+    ): Float {
+        val snap = atCallingPointCrs ?: progressAnchorCrs ?: return previousFraction.coerceIn(0f, 1f)
+        val idx = callingPoints.indexOfFirst { it.crs.equals(snap, ignoreCase = true) }
+            .takeIf { it >= 0 }
+            ?: return previousFraction.coerceIn(0f, 1f)
+        return indexShare(originIndex, destIndex, idx)
+    }
+
+    private fun indexShare(originIndex: Int, destIndex: Int, index: Int): Float {
+        val span = (destIndex - originIndex).coerceAtLeast(1)
+        return ((index - originIndex).toFloat() / span.toFloat()).coerceIn(0f, 1f)
+    }
+
+    private fun stationForCrs(crs: String?, routeStations: List<RouteStation>): RouteStation? {
+        val key = crs?.trim()?.uppercase() ?: return null
+        return routeStations.firstOrNull { it.crs.equals(key, ignoreCase = true) }
+    }
+
     private fun destinationExpectedLabel(destPoint: CallingPoint?): String? {
         if (destPoint == null) return null
-        // When AT is present, expectedLabel may be AT echoed via et ?: at — not a live ETA.
         if (JourneyTimeUtils.hasActualArrival(destPoint.actualTimeLabel)) return null
         return destPoint.expectedLabel
     }
 
-    /** Destination axis end: ET/ST clock, never Darwin AT. */
     private fun destPredictedClockLabel(destPoint: CallingPoint?): String? {
         if (destPoint == null) return null
         if (JourneyTimeUtils.hasActualArrival(destPoint.actualTimeLabel)) {
@@ -235,54 +417,15 @@ object ComputeJourneyProgress {
             ?: JourneyTimeUtils.parseableClockLabel(destPoint.scheduledTimeLabel)
     }
 
-    private fun fractionAlong(
-        index: Int,
-        originIndex: Int,
-        destIndex: Int,
-        currentIndex: Int,
-        callingPoint: CallingPoint,
-        originLabel: String?,
-        destLabel: String?,
-        durationSeconds: Long?,
-        now: LocalDateTime,
-    ): Float? {
-        if (durationSeconds == null || durationSeconds <= 0L) return null
-        if (index < originIndex || index > destIndex) return null
-        if (index == originIndex) return 0f
-        if (index == destIndex) return 1f
-        val stopLabel = interpolationClockLabel(
-            callingPoint,
-            preferActual = index < currentIndex,
-        ) ?: destLabel
-        val along = secondsBetweenLabels(originLabel, stopLabel, now) ?: return null
-        return (along.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+    private fun interpolationClockLabel(cp: CallingPoint, preferActual: Boolean): String? {
+        if (preferActual && JourneyTimeUtils.hasActualArrival(cp.actualTimeLabel)) {
+            JourneyTimeUtils.parseableClockLabel(cp.actualTimeLabel)?.let { return it }
+            JourneyTimeUtils.parseableClockLabel(cp.scheduledTimeLabel)?.let { return it }
+        }
+        return JourneyTimeUtils.parseableClockLabel(cp.expectedLabel)
+            ?: JourneyTimeUtils.parseableClockLabel(cp.scheduledTimeLabel)
     }
 
-    private fun indexFraction(
-        originIndex: Int,
-        destIndex: Int,
-        currentIndex: Int,
-        nextIndex: Int?,
-        callingPoints: List<CallingPoint>,
-        now: LocalDateTime,
-    ): Float {
-        val span = (destIndex - originIndex).coerceAtLeast(1)
-        val progressed = when {
-            currentIndex <= originIndex -> 0
-            currentIndex >= destIndex -> span
-            else -> currentIndex - originIndex
-        }
-        val hop = if (currentIndex < destIndex) {
-            val from = callingPoints.getOrNull(currentIndex)
-            val to = nextIndex?.let { callingPoints.getOrNull(it) }
-            if (from != null && to != null) hopFraction(from, to, now) else 0f
-        } else {
-            0f
-        }
-        return ((progressed.toFloat() + hop) / span.toFloat()).coerceIn(0f, 1f)
-    }
-
-    /** Seconds from [fromLabel] to [toLabel], using [now] only to resolve the calendar day. */
     private fun secondsBetweenLabels(
         fromLabel: String?,
         toLabel: String?,
@@ -291,6 +434,14 @@ object ComputeJourneyProgress {
         val fromUntil = secondsUntilLabel(fromLabel, now) ?: return null
         val toUntil = secondsUntilLabel(toLabel, now) ?: return null
         return (toUntil - fromUntil).takeIf { it > 0L }
+    }
+
+    private fun secondsUntilLabel(label: String?, now: LocalDateTime): Long? {
+        val time = JourneyTimeUtils.parseTimeLabel(label) ?: return null
+        val today = LocalDateTime.of(now.toLocalDate(), time)
+        val candidates = listOf(today.minusDays(1), today, today.plusDays(1))
+        val nearest = candidates.minBy { kotlin.math.abs(ChronoUnit.SECONDS.between(now, it)) }
+        return ChronoUnit.SECONDS.between(now, nearest)
     }
 
     /**
@@ -318,56 +469,6 @@ object ComputeJourneyProgress {
             if (minutes == null || minutes >= 0) return i
         }
         return destIndex
-    }
-
-    private fun isRouteMismatch(
-        confirmedIndex: Int?,
-        timetableNextIndex: Int,
-        destIndex: Int,
-    ): Boolean {
-        if (confirmedIndex == null || destIndex < 0 || timetableNextIndex < 0) return false
-        // Arrived at the expected next stop — OK.
-        if (confirmedIndex == timetableNextIndex) return false
-        // Still dwelling at the previous stop — OK.
-        if (confirmedIndex == timetableNextIndex - 1) return false
-        // Behind timetable (earlier stop) — tolerate; not a diversion signal.
-        if (confirmedIndex < timetableNextIndex - 1) return false
-        // Ahead of / off the expected sequence.
-        return true
-    }
-
-    /**
-     * Progress through the current→next hop using timetable (and Darwin actual at the
-     * current stop). Caps below 1 so the bar does not claim the next stop until
-     * that stop becomes current.
-     */
-    internal fun hopFraction(from: CallingPoint, to: CallingPoint, now: LocalDateTime): Float {
-        val startLabel = interpolationClockLabel(from, preferActual = true)
-        val endLabel = interpolationClockLabel(to, preferActual = false)
-        val startSecondsUntil = secondsUntilLabel(startLabel, now) ?: return 0f
-        val endSecondsUntil = secondsUntilLabel(endLabel, now) ?: return 0f
-        val elapsed = (-startSecondsUntil).coerceAtLeast(0L)
-        val remaining = endSecondsUntil.coerceAtLeast(0L)
-        val duration = elapsed + remaining
-        if (duration <= 0L) return 0f
-        return (elapsed.toFloat() / duration.toFloat()).coerceIn(0f, 0.999f)
-    }
-
-    private fun interpolationClockLabel(cp: CallingPoint, preferActual: Boolean): String? {
-        if (preferActual && JourneyTimeUtils.hasActualArrival(cp.actualTimeLabel)) {
-            JourneyTimeUtils.parseableClockLabel(cp.actualTimeLabel)?.let { return it }
-            JourneyTimeUtils.parseableClockLabel(cp.scheduledTimeLabel)?.let { return it }
-        }
-        return JourneyTimeUtils.parseableClockLabel(cp.expectedLabel)
-            ?: JourneyTimeUtils.parseableClockLabel(cp.scheduledTimeLabel)
-    }
-
-    private fun secondsUntilLabel(label: String?, now: LocalDateTime): Long? {
-        val time = JourneyTimeUtils.parseTimeLabel(label) ?: return null
-        val today = LocalDateTime.of(now.toLocalDate(), time)
-        val candidates = listOf(today.minusDays(1), today, today.plusDays(1))
-        val nearest = candidates.minBy { kotlin.math.abs(ChronoUnit.SECONDS.between(now, it)) }
-        return ChronoUnit.SECONDS.between(now, nearest)
     }
 
     private fun effectiveArrivalLabel(cp: CallingPoint): String? {

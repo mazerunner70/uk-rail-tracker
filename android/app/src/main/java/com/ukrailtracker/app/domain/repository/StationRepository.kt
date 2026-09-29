@@ -8,5 +8,6 @@ interface StationRepository {
     suspend fun count(): Int
     suspend fun getByCrs(crs: String): Station?
     suspend fun search(query: String): List<Station>
+    suspend fun getAll(): List<Station>
     suspend fun getNearby(lat: Double, lng: Double, limit: Int = 10): List<StationWithDistance>
 }

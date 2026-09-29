@@ -7,6 +7,9 @@ import com.ukrailtracker.app.domain.geo.GeoUtils
  *
  * Confirms a stop when GPS shows low speed for [StationStopConfig.dwellMillis] and the
  * nearest route station is within [StationStopConfig.matchMetres].
+ *
+ * Raw GPS motion only — ride phase [OnTrainRidePhase.AtCallingPoint] is derived in reduce
+ * when motion becomes [GpsMotion.Confirmed].
  */
 data class StationStopConfig(
     /** Proximity to a calling-point station centre. */
@@ -24,46 +27,50 @@ data class RouteStation(
     val longitude: Double,
 )
 
-sealed interface StationStopPhase {
-    data object Moving : StationStopPhase
+/** Raw GPS stop detector output (Moving / Dwelling / Confirmed). */
+sealed interface GpsMotion {
+    data object Moving : GpsMotion
 
     data class Dwelling(
         val crs: String,
         val name: String,
         val startedAtEpochMs: Long,
         val distanceMetres: Double,
-    ) : StationStopPhase
+    ) : GpsMotion
 
     data class Confirmed(
         val crs: String,
         val name: String,
         val confirmedAtEpochMs: Long,
         val distanceMetres: Double,
-    ) : StationStopPhase
+    ) : GpsMotion
 }
+
+@Deprecated("Use GpsMotion", ReplaceWith("GpsMotion"))
+typealias StationStopPhase = GpsMotion
 
 object DetectStationStop {
 
     fun next(
-        phase: StationStopPhase,
+        phase: GpsMotion,
         sample: WalkUpSample,
         speedMps: Double?,
         routeStations: List<RouteStation>,
         config: StationStopConfig = StationStopConfig(),
-    ): StationStopPhase {
-        if (routeStations.isEmpty()) return StationStopPhase.Moving
+    ): GpsMotion {
+        if (routeStations.isEmpty()) return GpsMotion.Moving
 
         val nearest = nearestRouteStation(sample.latitude, sample.longitude, routeStations)
-            ?: return StationStopPhase.Moving
+            ?: return GpsMotion.Moving
         val (station, distance) = nearest
         val stopped = isStopped(speedMps, config) && distance <= config.matchMetres
 
         return when (phase) {
-            StationStopPhase.Moving -> {
+            GpsMotion.Moving -> {
                 if (!stopped) {
-                    StationStopPhase.Moving
+                    GpsMotion.Moving
                 } else {
-                    StationStopPhase.Dwelling(
+                    GpsMotion.Dwelling(
                         crs = station.crs,
                         name = station.name,
                         startedAtEpochMs = sample.epochMs,
@@ -72,11 +79,11 @@ object DetectStationStop {
                 }
             }
 
-            is StationStopPhase.Dwelling -> {
+            is GpsMotion.Dwelling -> {
                 when {
-                    !stopped -> StationStopPhase.Moving
+                    !stopped -> GpsMotion.Moving
                     !station.crs.equals(phase.crs, ignoreCase = true) -> {
-                        StationStopPhase.Dwelling(
+                        GpsMotion.Dwelling(
                             crs = station.crs,
                             name = station.name,
                             startedAtEpochMs = sample.epochMs,
@@ -84,7 +91,7 @@ object DetectStationStop {
                         )
                     }
                     sample.epochMs - phase.startedAtEpochMs >= config.dwellMillis -> {
-                        StationStopPhase.Confirmed(
+                        GpsMotion.Confirmed(
                             crs = station.crs,
                             name = station.name,
                             confirmedAtEpochMs = sample.epochMs,
@@ -95,11 +102,11 @@ object DetectStationStop {
                 }
             }
 
-            is StationStopPhase.Confirmed -> {
+            is GpsMotion.Confirmed -> {
                 when {
-                    !stopped -> StationStopPhase.Moving
+                    !stopped -> GpsMotion.Moving
                     !station.crs.equals(phase.crs, ignoreCase = true) -> {
-                        StationStopPhase.Dwelling(
+                        GpsMotion.Dwelling(
                             crs = station.crs,
                             name = station.name,
                             startedAtEpochMs = sample.epochMs,

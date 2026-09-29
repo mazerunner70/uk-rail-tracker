@@ -16,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ukrailtracker.app.R
@@ -32,6 +36,13 @@ import com.ukrailtracker.app.appContainer
 import com.ukrailtracker.app.debug.DebugWalkUp
 import com.ukrailtracker.app.ui.components.AppBarIconButton
 import com.ukrailtracker.app.ui.components.AppScreen
+import kotlinx.coroutines.CancellationException
+
+private data class SimSyncKey(
+    val serviceId: String,
+    val showJourneyProgress: Boolean,
+    val awaitingDeparture: Boolean,
+)
 
 @Composable
 fun HomeRoute(
@@ -50,16 +61,11 @@ fun HomeRoute(
     val container = context.appContainer()
     val viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(
-            appContext = context,
             stationRepository = container.stationRepository,
             departureRepository = container.departureRepository,
-            journeyRepository = container.journeyRepository,
-            journeyLogRepository = container.journeyLogRepository,
-            locationProvider = container.locationProvider,
             commuteWindowStore = container.commuteWindowStore,
             favouritesStore = container.favouritesStore,
-            pinnedJourneyStore = container.pinnedJourneyStore,
-            latestSpeedMps = container.latestSpeedMps,
+            commuteSession = container.commuteSessionController,
         ),
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,35 +95,6 @@ fun HomeRoute(
         }
     }
 
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { /* ongoing / geofence notifications may still show on older APIs */ }
-
-    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {
-        armStationGeofences(context)
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { result ->
-        val locationGranted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (locationGranted) {
-            viewModel.onPermissionGranted()
-            armStationGeofences(context)
-            maybeRequestNotificationPermission(context, notificationPermissionLauncher)
-        } else if (result.keys.any {
-                it == Manifest.permission.ACCESS_FINE_LOCATION ||
-                    it == Manifest.permission.ACCESS_COARSE_LOCATION
-            }
-        ) {
-            viewModel.onPermissionDenied()
-            context.appContainer().geofenceRearmScheduler.cancel()
-        }
-    }
-
     fun hasLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION,
@@ -138,12 +115,64 @@ fun HomeRoute(
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* ongoing / geofence notifications may still show on older APIs */ }
+
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        armStationGeofences(context)
+        if (granted) viewModel.onBackgroundLocationGranted()
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        val locationGranted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (locationGranted) {
+            viewModel.onPermissionGranted()
+            if (hasBackgroundLocationPermission()) {
+                viewModel.onBackgroundLocationGranted()
+            }
+            armStationGeofences(context)
+            maybeRequestNotificationPermission(context, notificationPermissionLauncher)
+        } else if (result.keys.any {
+                it == Manifest.permission.ACCESS_FINE_LOCATION ||
+                    it == Manifest.permission.ACCESS_COARSE_LOCATION
+            }
+        ) {
+            viewModel.onPermissionDenied()
+            context.appContainer().geofenceRearmScheduler.cancel()
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> viewModel.onHomeStarted()
+                Lifecycle.Event.ON_STOP -> viewModel.onHomeStopped()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.onHomeStopped()
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (!hasUsableLocation()) {
             viewModel.onNeedsPermission()
             return@LaunchedEffect
         }
         viewModel.onPermissionGranted()
+        if (hasBackgroundLocationPermission()) {
+            viewModel.onBackgroundLocationGranted()
+        }
         if (hasLocationPermission() && !DebugWalkUp.isSimulatingLocation()) {
             armStationGeofences(context)
         }
@@ -157,7 +186,7 @@ fun HomeRoute(
 
     LaunchedEffect(pendingFrequentLocationChecks, pendingFrequentChecksCrs) {
         if (!pendingFrequentLocationChecks) return@LaunchedEffect
-        viewModel.onOpenedForFrequentChecks(pendingFrequentChecksCrs)
+        viewModel.onOpenedForFrequentChecks()
         onFrequentLocationChecksConsumed()
     }
 
@@ -170,14 +199,26 @@ fun HomeRoute(
         )
     }
 
-    val presence = when (val s = state) {
-        is HomeUiState.Content -> s.walkUp ?: WalkUpHomeUi.NotAtStation
-        else -> WalkUpHomeUi.NotAtStation
+    val chrome = when (val s = state) {
+        is HomeUiState.Ready -> s.chrome
+        else -> PresenceChromeUi.NotAtStation
     }
-    val selectedSimWatch = (presence as? WalkUpHomeUi.AtStation)?.platformWatch
+    val body = (state as? HomeUiState.Ready)?.body
+    val selectedSimWatch = (body as? HomeBodyUi.AtStation)?.platformWatch
+    val onJourney = body as? HomeBodyUi.OnJourney
+    val simSyncKey = onJourney?.let {
+        SimSyncKey(
+            serviceId = it.serviceId,
+            showJourneyProgress = it.showJourneyProgress,
+            awaitingDeparture = it.preDeparture?.awaitingDeparture == true,
+        )
+    }
 
-    LaunchedEffect(presence) {
-        if (presence is WalkUpHomeUi.OnJourney && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    // Skip sync while Home is Loading — mapping that to NotAtStation was stopping the on-train
+    // GPS simulator and freezing progress/speed.
+    LaunchedEffect(simSyncKey, onJourney != null, state is HomeUiState.Ready) {
+        if (state !is HomeUiState.Ready) return@LaunchedEffect
+        if (onJourney != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS,
@@ -185,6 +226,17 @@ fun HomeRoute(
             if (!granted) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+        try {
+            DebugWalkUp.syncWithAppPresence(
+                chrome = chrome,
+                body = body,
+                journeyRepository = container.journeyRepository,
+                stationRepository = container.stationRepository,
+                pinnedJourneyStore = container.pinnedJourneyStore,
+            )
+        } catch (_: CancellationException) {
+            // LaunchedEffect restarted while simulator sync was in flight.
         }
     }
 
@@ -212,6 +264,7 @@ fun HomeRoute(
                 commuteWindowStore = container.commuteWindowStore,
                 journeyRepository = container.journeyRepository,
                 pinnedJourneyStore = container.pinnedJourneyStore,
+                body = body,
                 selectedWatch = selectedSimWatch,
                 onPreparePresence = viewModel::prepareForDebugWalkUp,
             )
@@ -223,7 +276,7 @@ fun HomeRoute(
         },
         belowTopBar = {
             PresenceStatusBar(
-                walkUp = presence,
+                chrome = chrome,
                 onAllowLocation = requestLocationPermission,
                 onChangeStation = onChangeWalkUpStation,
                 onClearOverride = viewModel::clearOriginOverride,
@@ -246,7 +299,7 @@ fun HomeRoute(
                 modifier = Modifier.fillMaxSize(),
             )
             is HomeUiState.Error -> HomeError(message = s.message)
-            is HomeUiState.Content -> {
+            is HomeUiState.Ready -> {
                 HomeContent(
                     content = s,
                     onStationClick = onStationClick,
@@ -264,6 +317,7 @@ fun HomeRoute(
                     onRejectAssumedBoarding = viewModel::rejectAssumedBoarding,
                     onSelectBoardingCandidate = viewModel::selectBoardingCandidate,
                     onDismissBoarding = viewModel::dismissBoarding,
+                    onConfirmBoarded = viewModel::confirmBoarded,
                     modifier = Modifier.fillMaxSize(),
                 )
                 s.selectedDisruption?.let { disruption ->

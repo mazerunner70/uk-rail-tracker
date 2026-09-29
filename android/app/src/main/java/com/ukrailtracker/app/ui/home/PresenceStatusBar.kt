@@ -23,7 +23,7 @@ import com.ukrailtracker.app.ui.theme.NeonSurface
 
 @Composable
 internal fun PresenceStatusBar(
-    walkUp: WalkUpHomeUi,
+    chrome: PresenceChromeUi,
     onAllowLocation: () -> Unit,
     onChangeStation: () -> Unit,
     onClearOverride: () -> Unit,
@@ -31,48 +31,67 @@ internal fun PresenceStatusBar(
     showBackgroundLocationCta: Boolean = false,
     onAllowBackgroundLocation: () -> Unit = {},
 ) {
-    val (label, labelColor) = when (walkUp) {
-        WalkUpHomeUi.NeedsPermission,
-        WalkUpHomeUi.LocationUnavailable,
-        WalkUpHomeUi.NotAtStation,
+    val (label, labelColor) = when (chrome) {
+        PresenceChromeUi.NeedsPermission,
+        PresenceChromeUi.LocationUnavailable,
+        PresenceChromeUi.NotAtStation,
         -> stringResource(R.string.home_presence_not_at_station) to NeonMuted
-        is WalkUpHomeUi.NearStation ->
-            stringResource(R.string.home_presence_near, walkUp.stationName) to NeonAmber
-        is WalkUpHomeUi.AtStation ->
-            stringResource(R.string.home_presence_at, walkUp.stationName) to NeonCyan
-        is WalkUpHomeUi.BoardingPrompt ->
-            stringResource(R.string.home_boarding_presence, walkUp.originName) to NeonAmber
-        is WalkUpHomeUi.OnJourney ->
-            stringResource(R.string.home_on_train_presence, walkUp.destinationName) to NeonCyan
+        is PresenceChromeUi.NearStation ->
+            stringResource(R.string.home_presence_near, chrome.stationName) to NeonAmber
+        is PresenceChromeUi.AtStation ->
+            stringResource(R.string.home_presence_at, chrome.stationName) to NeonCyan
+        is PresenceChromeUi.Boarding ->
+            stringResource(R.string.home_boarding_presence, chrome.originName) to NeonAmber
+        is PresenceChromeUi.OnJourney -> when {
+            chrome.preDeparture?.awaitingDeparture == true ->
+                stringResource(R.string.home_on_train_awaiting_departure_title) to NeonCyan
+            chrome.preDeparture != null && !chrome.showJourneyProgress ->
+                stringResource(
+                    R.string.home_on_train_presence_waiting,
+                    chrome.preDeparture.originStationName,
+                ) to NeonAmber
+            else ->
+                stringResource(R.string.home_on_train_presence, chrome.destinationName) to NeonCyan
+        }
     }
-    val subtitle = when (walkUp) {
-        is WalkUpHomeUi.NearStation -> "${walkUp.crsCode} · ${walkUp.distanceLabel}"
-        is WalkUpHomeUi.AtStation -> buildString {
-            append(walkUp.crsCode)
-            if (walkUp.manualOverride) {
+    val subtitle = when (chrome) {
+        is PresenceChromeUi.NearStation -> "${chrome.crsCode} · ${chrome.distanceLabel}"
+        is PresenceChromeUi.AtStation -> buildString {
+            append(chrome.crsCode)
+            if (chrome.manualOverride) {
                 append(" · ")
                 append(stringResource(R.string.home_presence_manual))
             } else {
-                walkUp.distanceLabel?.let {
+                chrome.distanceLabel?.let {
                     append(" · ")
                     append(it)
                 }
             }
         }
-        is WalkUpHomeUi.BoardingPrompt -> stringResource(
+        is PresenceChromeUi.Boarding -> stringResource(
             R.string.home_boarding_presence_subtitle,
-            walkUp.assumed.scheduledDepartureLabel,
-            walkUp.assumed.destinationName,
+            chrome.assumedDepartureLabel,
+            chrome.assumedDestinationName,
         )
-        is WalkUpHomeUi.OnJourney -> when {
-            walkUp.stoppedAtStation && !walkUp.currentStopName.isNullOrBlank() ->
-                stringResource(R.string.home_on_train_presence_at_stop, walkUp.currentStopName)
-            !walkUp.nextStopName.isNullOrBlank() ->
-                stringResource(R.string.home_on_train_presence_next, walkUp.nextStopName)
-            else -> walkUp.destinationCrs
+        is PresenceChromeUi.OnJourney -> when {
+            chrome.preDeparture?.awaitingDeparture == true ->
+                stringResource(R.string.home_on_train_presence_awaiting_departure)
+            chrome.preDeparture != null && !chrome.showJourneyProgress -> {
+                val mins = chrome.preDeparture.minutesUntilTrainArrives
+                if (mins != null && mins >= 0) {
+                    stringResource(R.string.home_on_train_presence_train_in, mins)
+                } else {
+                    chrome.originCrs
+                }
+            }
+            chrome.stoppedAtStation && !chrome.currentStopName.isNullOrBlank() ->
+                stringResource(R.string.home_on_train_presence_at_stop, chrome.currentStopName)
+            !chrome.nextStopName.isNullOrBlank() ->
+                stringResource(R.string.home_on_train_presence_next, chrome.nextStopName)
+            else -> chrome.destinationCrs
         }
-        WalkUpHomeUi.NotAtStation,
-        WalkUpHomeUi.LocationUnavailable,
+        PresenceChromeUi.NotAtStation,
+        PresenceChromeUi.LocationUnavailable,
         -> if (showBackgroundLocationCta) {
             stringResource(R.string.home_presence_background_hint)
         } else {
@@ -93,8 +112,8 @@ internal fun PresenceStatusBar(
             modifier = Modifier
                 .weight(1f)
                 .then(
-                    if (walkUp is WalkUpHomeUi.AtStation) {
-                        Modifier.clickable { onOriginClick(walkUp.crsCode) }
+                    if (chrome is PresenceChromeUi.AtStation) {
+                        Modifier.clickable { onOriginClick(chrome.crsCode) }
                     } else {
                         Modifier
                     },
@@ -115,8 +134,8 @@ internal fun PresenceStatusBar(
                 )
             }
         }
-        when (walkUp) {
-            WalkUpHomeUi.NeedsPermission -> {
+        when (chrome) {
+            PresenceChromeUi.NeedsPermission -> {
                 TextButton(onClick = onAllowLocation) {
                     Text(stringResource(R.string.home_presence_allow_location), color = NeonCyan)
                 }
@@ -124,9 +143,9 @@ internal fun PresenceStatusBar(
                     Text(stringResource(R.string.home_presence_set_station), color = NeonMuted)
                 }
             }
-            WalkUpHomeUi.LocationUnavailable,
-            WalkUpHomeUi.NotAtStation,
-            is WalkUpHomeUi.NearStation,
+            PresenceChromeUi.LocationUnavailable,
+            PresenceChromeUi.NotAtStation,
+            is PresenceChromeUi.NearStation,
             -> {
                 if (showBackgroundLocationCta) {
                     TextButton(onClick = onAllowBackgroundLocation) {
@@ -137,15 +156,15 @@ internal fun PresenceStatusBar(
                     Text(stringResource(R.string.home_presence_set_station), color = NeonMuted)
                 }
             }
-            is WalkUpHomeUi.AtStation -> {
+            is PresenceChromeUi.AtStation -> {
                 TextButton(onClick = onClearOverride) {
                     Text(stringResource(R.string.home_presence_cancel_station), color = NeonCyan)
                 }
             }
-            is WalkUpHomeUi.BoardingPrompt -> {
+            is PresenceChromeUi.Boarding -> {
                 // Actions live in the boarding prompt body.
             }
-            is WalkUpHomeUi.OnJourney -> {
+            is PresenceChromeUi.OnJourney -> {
                 // Actions live in the on-train body.
             }
         }

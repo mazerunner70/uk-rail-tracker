@@ -50,7 +50,7 @@ When a slice lands, also update state-model “illustrative — not implemented�
 - Live Darwin — Refresh and `JourneyRepository` stay real ([simulated-journey.md](simulated-journey.md)).
 - `WalkUpHomeUi` as the Compose contract; map `session` → UI at the edge.
 
-New types under `domain/usecase/` (or `domain/commute/`): `CommuteSession`, `CommuteEvent`, `CommuteEffect`, `fun reduce(...)`. [`HomeViewModel`](../android/app/src/main/java/com/ukrailtracker/app/ui/home/HomeViewModel.kt) interprets effects only.
+New types under `domain/usecase/` or `domain/session/`: `CommuteSession`, `CommuteEvent`, `CommuteEffect`, `SessionReducer.reduce(...)`, `SessionEngine`. `CommuteRuntime` interprets effects and manages lifecycles.
 
 Each PR: reduce + VM wiring + unit traces. No Compose rewrite beyond mapping if `WalkUpHomeUi` is unchanged.
 

@@ -223,39 +223,42 @@ While a journey is pinned after boarding confirm (or manual pin):
 
 The M4–M6 pipeline is several **orthogonal** machines (walk-up, boarding, pin, station-stop), not one enum. Keep it that way.
 
-**Implement as:** events in, state out, effects as data.
+**Implemented as:** events in, priority arbitration, pure state reduction, effects as data.
 
 ```text
-Event  →  reduce(session, event)  →  Transition(newSession, effects)
-                 │
-                 ▼
-         interpreter (Android) runs effects
-                 │
-                 ▼
-         map(session) → WalkUpHomeUi
+Event  ──►  SessionEngine (Priority Arbitration)  ──►  SessionReducer.reduce(session, event, context)
+                                                                      │
+                                                                      ▼
+                                                       Transition(newSession, effects)
+                                                                      │
+                                                                      ▼
+                                                       CommuteRuntime runs effects
+                                                                      │
+                                                                      ▼
+                                                       CommuteUiMapper → WalkUpHomeUi
 ```
 
-`reduce` is a pure function with no Android types. Today that grain already exists as `DetectWalkUpArrival.next`, `DetectBoarding.next`, `DetectStationStop.next`. `HomeViewModel.sampleLocation` is the weak glue: it mutates several fields, starts jobs, and pins in the same function. The next step is one `CommuteSession` plus an effect list; the ViewModel only interprets.
+`SessionReducer` and modular handlers (`IdleStateHandler`, `AtStationStateHandler`, etc.) are pure functions with no Android types. All contextual inputs pass in via `SessionReduceContext`.
 
 Classify every action before writing it:
 
 | Kind | Example | Where it lives |
 |------|---------|----------------|
-| Pure transition | Away → Dwelling after a GPS sample | `reduce` / `next()` |
-| Effect | Start FGS, pin DataStore, vibrate, `GetServiceDetails` | Interpreter after reduce |
-| UI projection | Status bar copy, progress diagram, `refreshing` | `session` → `WalkUpHomeUi` |
+| Pure transition | Away → Dwelling after a GPS sample | State handlers / `SessionReducer` |
+| Effect | Start FGS, pin DataStore, vibrate, `GetServiceDetails` | `CommuteRuntime.interpretEffect` |
+| UI projection | Status bar copy, progress diagram, `refreshing` | `CommuteUiMapper` (`session` → `WalkUpHomeUi`) |
 
 If `DetectBoarding` starts a service, the domain is no longer testable. If Darwin latency is a sibling of `Away`, presence and networking are confused — `refreshing` / `error` are load state on the on-train *view*, not commute phases.
 
-**One writer.** GPS, Darwin, notification taps, and buttons all call the same `reduce`. Receivers and Workers **enqueue events** (`OsGeofenceEnter`, `OpenedForFrequentChecks`); they do not set presence. Split-brain is how ENTER and an on-train pin disagree.
+**One writer.** GPS, Darwin, notification taps, and buttons all dispatch events to `SessionEngine`. Receivers and Workers **enqueue events** (`OsGeofenceEnter`, `OpenedForFrequentChecks`); they do not set presence directly.
 
-**Time is an input.** Pass `now` / `Tick` into reduce (dwells, 8 s boarding, 60 s auto-accept, 3/2/1 min buzz). Do not start a coroutine that later pokes fields. Detectors already compare `sample.epochMs`; boarding auto-accept and buzz-in-the-ViewModel are the weaker form.
+**Time is an input.** Dwells, 8 s boarding, 60 s auto-accept, and 3/2/1 min buzz are evaluated against timestamps in `SessionReduceContext` and `sample.epochMs` or driven by state-scoped `Tick` timeouts.
 
 **Persist the trip, not the sensors.** Durable: `PinnedJourney`, `journey_log`. Ephemeral: walk-up / dwelling — GPS will say them again after process death.
 
-**Do not:** flatten into one mega-enum; require XState/Redux (the pattern matters, not a library); virtualize Darwin’s clock so countdown matches compressed GPS; treat OS ENTER as `Arrived`.
+**Priority tiers eliminate races.** User commands (`Dismiss`, `Confirm`, `EndTrip`) have `USER_INTENT` priority and flush with 0ms latency, invalidating ambient sensor noise.
 
-`HomeViewModel` remains the interpreter until a `CommuteController` is extracted. Phases and thresholds: [state-model.md](state-model.md). Implementation slices (tick progress there): [commute-session-slices.md](commute-session-slices.md).
+Engine details: [commute-state-machine.md](commute-state-machine.md). Phases and thresholds: [state-model.md](state-model.md). ADR: [android/docs/session-state-engine-architecture.md](../android/docs/session-state-engine-architecture.md).
 
 ---
 

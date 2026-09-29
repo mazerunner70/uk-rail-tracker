@@ -20,7 +20,7 @@ class HomeUiDeriverTest {
     }
 
     @Test
-    fun noStationsWithIdleSessionShowsContentWithNotAtStation() {
+    fun noStationsWithIdleSessionShowsReadyWithNotAtStation() {
         val ui = deriveHomeUiState(
             session = CommuteSession.Idle,
             aux = CommuteAuxState(),
@@ -31,13 +31,15 @@ class HomeUiDeriverTest {
             ),
             disruptionModal = null,
         )
-        assertTrue(ui is HomeUiState.Content)
-        assertEquals(WalkUpHomeUi.NotAtStation, (ui as HomeUiState.Content).walkUp)
-        assertTrue(ui.stations.isEmpty())
+        assertTrue(ui is HomeUiState.Ready)
+        val ready = ui as HomeUiState.Ready
+        assertEquals(PresenceChromeUi.NotAtStation, ready.chrome)
+        assertTrue(ready.body is HomeBodyUi.StationList)
+        assertTrue(ready.stationList.isEmpty())
     }
 
     @Test
-    fun noStationsWithWalkUpShowsContent() {
+    fun noStationsWithPermissionChromeShowsReady() {
         val ui = deriveHomeUiState(
             session = CommuteSession.Idle,
             aux = CommuteAuxState(overlay = PresenceOverlay.NeedsPermission),
@@ -48,13 +50,15 @@ class HomeUiDeriverTest {
             ),
             disruptionModal = null,
         )
-        assertTrue(ui is HomeUiState.Content)
-        assertEquals(WalkUpHomeUi.NeedsPermission, (ui as HomeUiState.Content).walkUp)
-        assertTrue(ui.stations.isEmpty())
+        assertTrue(ui is HomeUiState.Ready)
+        val ready = ui as HomeUiState.Ready
+        assertEquals(PresenceChromeUi.NeedsPermission, ready.chrome)
+        assertTrue(ready.body is HomeBodyUi.StationList)
+        assertTrue(ready.stationList.isEmpty())
     }
 
     @Test
-    fun boardsAndWalkUpCombined() {
+    fun boardsAndChromeCombined() {
         val card = HomeStationCardUi(
             crsCode = "PAD",
             stationName = "Paddington",
@@ -79,8 +83,9 @@ class HomeUiDeriverTest {
                 awaitingFirstLoad = false,
             ),
             disruptionModal = null,
-        ) as HomeUiState.Content
-        assertEquals(WalkUpHomeUi.NotAtStation, ui.walkUp)
-        assertEquals(1, ui.stations.size)
+        ) as HomeUiState.Ready
+        assertEquals(PresenceChromeUi.NotAtStation, ui.chrome)
+        assertEquals(1, ui.stationList.size)
+        assertTrue(ui.body is HomeBodyUi.StationList)
     }
 }

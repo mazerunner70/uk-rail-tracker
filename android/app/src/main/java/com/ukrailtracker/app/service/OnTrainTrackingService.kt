@@ -20,9 +20,9 @@ import com.ukrailtracker.app.MainActivity
 import com.ukrailtracker.app.R
 
 /**
- * Foreground service while an M6 on-train session is active.
- * Keeps a persistent notification with destination + countdown so location / haptics
- * remain reliable when the app is backgrounded.
+ * Location foreground service. With background location it stays up and polls GPS
+ * so journey notifications can keep updating after Home is closed. Without that
+ * permission it still shows the on-train countdown while a trip is pinned.
  *
  * Uses [ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION] when runtime location is granted.
  * When the debug GPS simulator is driving positions (no real GPS), starts as
@@ -31,22 +31,65 @@ import com.ukrailtracker.app.R
  */
 class OnTrainTrackingService : Service() {
 
+    private var keepAlive = false
+    private var showingJourney = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onDestroy() {
+        if (keepAlive) {
+            keepAlive = false
+            releaseBackgroundHold()
+        }
+        super.onDestroy()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        ensureChannel()
         when (intent?.action) {
             ACTION_STOP -> {
+                keepAlive = false
+                showingJourney = false
+                releaseBackgroundHold()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_END_JOURNEY -> {
+                showingJourney = false
+                if (keepAlive) {
+                    val notification = buildIdleNotification()
+                    if (!enterForeground(notification, allowWithoutLocation = false)) {
+                        keepAlive = false
+                        releaseBackgroundHold()
+                        stopSelf()
+                        return START_NOT_STICKY
+                    }
+                } else {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+            }
+            ACTION_START_BACKGROUND -> {
+                keepAlive = true
+                if (!showingJourney) {
+                    val notification = buildIdleNotification()
+                    if (!enterForeground(notification, allowWithoutLocation = false)) {
+                        keepAlive = false
+                        stopSelf()
+                        return START_NOT_STICKY
+                    }
+                }
+                notifyController(background = true)
+            }
             else -> {
+                showingJourney = true
                 val destination = intent?.getStringExtra(EXTRA_DESTINATION)
                     ?: getString(R.string.on_train_notification_destination_fallback)
                 val minutes = intent?.getIntExtra(EXTRA_MINUTES, -1) ?: -1
                 val allowWithoutLocation =
                     intent?.getBooleanExtra(EXTRA_ALLOW_WITHOUT_LOCATION, false) == true
-                ensureChannel()
                 val notification = buildNotification(destination, minutes)
                 if (!enterForeground(notification, allowWithoutLocation)) {
                     stopSelf()
@@ -127,14 +170,6 @@ class OnTrainTrackingService : Service() {
     }
 
     private fun buildNotification(destination: String, minutes: Int): Notification {
-        val openApp = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
         val text = if (minutes >= 0) {
             getString(R.string.on_train_notification_text, destination, minutes)
         } else {
@@ -144,12 +179,48 @@ class OnTrainTrackingService : Service() {
             .setContentTitle(getString(R.string.on_train_notification_title))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(contentIntent())
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    private fun buildIdleNotification(): Notification {
+        val openApp = contentIntent()
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.on_train_notification_title))
+            .setContentText(getString(R.string.location_tracking_notification_text))
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(openApp)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
+    }
+
+    private fun contentIntent(): PendingIntent =
+        PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+    private fun notifyController(background: Boolean) {
+        val app = applicationContext as? com.ukrailtracker.app.UkRailTrackerApp ?: return
+        if (background) {
+            app.container.commuteSessionController.onBackgroundHoldAcquired()
+        }
+    }
+
+    private fun releaseBackgroundHold() {
+        val app = applicationContext as? com.ukrailtracker.app.UkRailTrackerApp ?: return
+        app.container.commuteSessionController.onBackgroundHoldReleased()
     }
 
     companion object {
@@ -160,6 +231,8 @@ class OnTrainTrackingService : Service() {
         private const val EXTRA_MINUTES = "minutes"
         private const val EXTRA_ALLOW_WITHOUT_LOCATION = "allow_without_location"
         const val ACTION_STOP = "com.ukrailtracker.app.action.STOP_ON_TRAIN"
+        private const val ACTION_START_BACKGROUND = "com.ukrailtracker.app.action.START_LOCATION_TRACKING"
+        private const val ACTION_END_JOURNEY = "com.ukrailtracker.app.action.END_JOURNEY"
 
         /**
          * @param allowWithoutLocation when true (debug GPS simulator), start as specialUse FGS
@@ -173,7 +246,7 @@ class OnTrainTrackingService : Service() {
         ) {
             val intent = Intent(context, OnTrainTrackingService::class.java).apply {
                 putExtra(EXTRA_DESTINATION, destinationName)
-                putExtra(EXTRA_MINUTES, minutesRemaining?.toInt() ?: -1)
+                putExtra(EXTRA_MINUTES, minutesRemaining ?: -1)
                 putExtra(EXTRA_ALLOW_WITHOUT_LOCATION, allowWithoutLocation)
             }
             ContextCompat.startForegroundService(context, intent)
@@ -186,6 +259,25 @@ class OnTrainTrackingService : Service() {
             allowWithoutLocation: Boolean = false,
         ) {
             start(context, destinationName, minutesRemaining, allowWithoutLocation)
+        }
+
+        /** Keep polling and show the idle location notification. */
+        fun startBackground(context: Context) {
+            val intent = Intent(context, OnTrainTrackingService::class.java).apply {
+                action = ACTION_START_BACKGROUND
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        /**
+         * Drop the journey text. If background location tracking is on, the idle
+         * notification stays; otherwise the service stops.
+         */
+        fun endJourney(context: Context) {
+            val intent = Intent(context, OnTrainTrackingService::class.java).apply {
+                action = ACTION_END_JOURNEY
+            }
+            context.startService(intent)
         }
 
         fun stop(context: Context) {

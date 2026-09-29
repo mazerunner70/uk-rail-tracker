@@ -240,6 +240,6 @@ GPS coordinates are **not** written to Room or DataStore.
 | Journey log writes | `data/repository/JourneyLogRepository.kt` |
 | Board cache TTL | `DepartureRepositoryImpl` (`FRESH_TTL_MS`, `STALE_MAX_MS`) |
 | Pin encode/decode | `PinnedJourneyStore` |
-| Presence session | `CommuteSession.kt`, `CommuteReduce.kt` |
+| Presence session | `CommuteSession.kt`, `domain/session/SessionReducer.kt`, `SessionEngine.kt` |
 
 Related: [state-model.md](state-model.md) (commute FSM + persistence table), [architecture.md](architecture.md) (layers, privacy), [data-sources.md](data-sources.md) (Darwin vs bundled stations).
