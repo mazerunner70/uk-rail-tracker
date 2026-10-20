@@ -1,0 +1,31 @@
+{
+  "stage_slug": "code-generation",
+  "space": "default",
+  "intent": "261017-cfa-daily-updates",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "HD sequence from Current File Reference only (cols 33–39); refuse when that field has no three digits rather than guessing from the zip basename.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "FR5.1 real update zip demo left for Build and Test / manual ops; unit tests use synthetic CFA/zip fixtures as the plan allowed.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "CFA apply duplicates CIF schedule parsing instead of sharing with cif_loader to keep MCA full-load and incremental paths independent for this PoC.",
+      "source": "orchestrator"
+    }
+  ]
+}

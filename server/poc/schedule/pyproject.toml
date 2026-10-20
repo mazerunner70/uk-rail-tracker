@@ -1,0 +1,13 @@
+[project]
+name = "schedule-poc"
+version = "0.1.0"
+description = "Local LM schedule tracking POC (CIF load + Kafka harvest/replay)"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0,<9"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

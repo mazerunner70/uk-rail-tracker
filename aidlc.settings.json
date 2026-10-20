@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "models": {
+    "schemaVersion": 1,
+    "agents": {
+      "architect": {
+        "effort": "medium",
+        "model": {
+          "cursor": "auto"
+        }
+      },
+      "architecture-reviewer": {
+        "effort": "medium",
+        "model": {
+          "cursor": "auto"
+        }
+      },
+      "aws-platform": {
+        "effort": "low"
+      },
+      "compliance": {
+        "effort": "low"
+      },
+      "composer": {
+        "effort": "low"
+      },
+      "delivery": {
+        "effort": "low"
+      },
+      "design": {
+        "effort": "medium"
+      },
+      "developer": {
+        "effort": "low"
+      },
+      "devsecops": {
+        "effort": "low"
+      },
+      "operations": {
+        "effort": "low"
+      },
+      "pipeline-deploy": {
+        "effort": "low"
+      },
+      "product": {
+        "effort": "low"
+      },
+      "product-lead": {
+        "effort": "low"
+      },
+      "quality": {
+        "effort": "low"
+      }
+    }
+  }
+}

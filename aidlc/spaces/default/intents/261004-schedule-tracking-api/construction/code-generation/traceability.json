@@ -1,0 +1,128 @@
+{
+  "stage": "code-generation",
+  "unit": "stage-level",
+  "upstream_ids": [
+    "FR1",
+    "FR1.1",
+    "FR1.2",
+    "FR2",
+    "FR2.1",
+    "FR2.2",
+    "FR3",
+    "FR3.1",
+    "FR3.2",
+    "FR4",
+    "FR4.1",
+    "FR4.2",
+    "NFR1",
+    "NFR1.1",
+    "NFR2",
+    "NFR2.1",
+    "NFR3",
+    "NFR3.1"
+  ],
+  "coverage": [
+    {
+      "id": "FR1",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/cif_loader.py"
+    },
+    {
+      "id": "FR1.1",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/cif_loader.py"
+    },
+    {
+      "id": "FR1.2",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/db.py"
+    },
+    {
+      "id": "FR2",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/replay.py"
+    },
+    {
+      "id": "FR2.1",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/harvest.py"
+    },
+    {
+      "id": "FR2.2",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/replay.py"
+    },
+    {
+      "id": "FR3",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/identity.py"
+    },
+    {
+      "id": "FR3.1",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/identity.py"
+    },
+    {
+      "id": "FR3.2",
+      "status": "OK",
+      "target": "server/poc/schedule/tests/test_identity.py"
+    },
+    {
+      "id": "FR4",
+      "status": "OK",
+      "target": "server/poc/schedule/demo/run_demo.py"
+    },
+    {
+      "id": "FR4.1",
+      "status": "OK",
+      "target": "server/poc/schedule/demo/run_demo.py"
+    },
+    {
+      "id": "FR4.2",
+      "status": "OK",
+      "target": "server/poc/schedule/tests/test_harvest_replay.py"
+    },
+    {
+      "id": "NFR1",
+      "status": "OK",
+      "target": "server/poc/schedule/fixtures/lm_tiny.mca"
+    },
+    {
+      "id": "NFR1.1",
+      "status": "OK",
+      "target": "server/poc/schedule/demo/run_demo.py"
+    },
+    {
+      "id": "NFR2",
+      "status": "OK",
+      "target": "server/poc/schedule/tests/test_db.py"
+    },
+    {
+      "id": "NFR2.1",
+      "status": "OK",
+      "target": "server/poc/schedule/tests/test_loader.py"
+    },
+    {
+      "id": "NFR3",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/kafka_classify.py"
+    },
+    {
+      "id": "NFR3.1",
+      "status": "OK",
+      "target": "server/poc/schedule/schedule_poc/kafka_classify.py"
+    }
+  ],
+  "reverse": [
+    {
+      "id": "API-endpoint",
+      "status": "N/A",
+      "target": "Out of scope per FR4 / requirements (no HTTP API)"
+    },
+    {
+      "id": "Frontend",
+      "status": "N/A",
+      "target": "Out of scope (no Android changes)"
+    }
+  ]
+}

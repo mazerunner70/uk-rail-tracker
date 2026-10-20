@@ -1,0 +1,29 @@
+{
+  "stage": "domain-design",
+  "upstream_ids": [
+    "US1.1",
+    "US2.1",
+    "US3.1",
+    "US4.1",
+    "US5.1",
+    "US6.1",
+    "US7.1",
+    "US7.2",
+    "US7.3",
+    "US7.4",
+    "US7.5"
+  ],
+  "coverage": [
+    { "id": "US1.1", "status": "OK", "target": "CfaIntake,KafkaOverlay,PlanQuery" },
+    { "id": "US2.1", "status": "OK", "target": "CfaIntake" },
+    { "id": "US3.1", "status": "OK", "target": "PlanQuery" },
+    { "id": "US4.1", "status": "OK", "target": "KafkaOverlay" },
+    { "id": "US5.1", "status": "OK", "target": "CfaIntake" },
+    { "id": "US6.1", "status": "OK", "target": "CfaIntake,KafkaOverlay,PlanQuery" },
+    { "id": "US7.1", "status": "Deferred", "target": "reserved Kafka types stay on ArchiveObject; not OverlayProjection" },
+    { "id": "US7.2", "status": "Deferred", "target": "station plus time-window is not a PlanQuery cheapest grain" },
+    { "id": "US7.3", "status": "Deferred", "target": "ApplyHistory counts only; no versioned Journey copy" },
+    { "id": "US7.4", "status": "Deferred", "target": "external S3 Glue Athena named not created" },
+    { "id": "US7.5", "status": "Deferred", "target": "Android and docs/architecture.md out of this catalogue" }
+  ]
+}

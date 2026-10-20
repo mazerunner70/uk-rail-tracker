@@ -1,0 +1,27 @@
+[project]
+name = "live-sched"
+version = "0.1.0"
+description = "Live schedule POC: MCA LM load + 1h Kafka apply (separate from schedule_poc)"
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv>=1.0,<2",
+    "confluent-kafka>=2.3,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0,<9"]
+
+[project.scripts]
+live-sched = "live_sched.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["live_sched*"]
+exclude = ["tests*", "demo*", "data*", "output*", "fixtures*", "docs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

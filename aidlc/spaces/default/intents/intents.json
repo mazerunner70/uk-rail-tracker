@@ -1,0 +1,30 @@
+[
+  {
+    "uuid": "01a10745-ca63-701f-a5c2-d977276d7ee7",
+    "slug": "schedule-tracking-api",
+    "dirName": "261004-schedule-tracking-api",
+    "scope": "poc",
+    "status": "complete"
+  },
+  {
+    "uuid": "01a12bda-e3f4-7d0d-b8c5-75247a68c003",
+    "slug": "live-schedule-poc",
+    "dirName": "261011-live-schedule-poc",
+    "scope": "poc",
+    "status": "complete"
+  },
+  {
+    "uuid": "01a14a2b-d01d-776b-b0b8-6a47dc671647",
+    "slug": "cfa-daily-updates",
+    "dirName": "261017-cfa-daily-updates",
+    "scope": "poc",
+    "status": "complete"
+  },
+  {
+    "uuid": "01a15983-4857-7226-86d5-d58bff1cc616",
+    "slug": "athena-timetable-lake",
+    "dirName": "261020-athena-timetable-lake",
+    "scope": "classic",
+    "status": "in-flight"
+  }
+]

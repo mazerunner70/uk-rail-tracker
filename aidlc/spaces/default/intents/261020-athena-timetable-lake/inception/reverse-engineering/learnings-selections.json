@@ -1,0 +1,31 @@
+{
+  "stage_slug": "reverse-engineering",
+  "space": "default",
+  "intent": "261020-athena-timetable-lake",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Focused the scan on server/poc/live-sched; the human chose a focused scan and the request follows the live-sched proof of concept, so deep coverage stayed on that tree.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Treated this as a project-root scan with a stale code knowledge base; the intent has no registered repo list, and the existing store is STALE because server/poc/live-sched changed after the 261017-cfa-daily-updates scan, so reuse is not offered.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Minted the scope fingerprint in the parent session and spelled the analyzed path server/poc/live-sched without a trailing slash; the architect's shell could not run the mint command, and the slash form made the same directory look narrower than the previous store.",
+      "source": "orchestrator"
+    }
+  ]
+}
