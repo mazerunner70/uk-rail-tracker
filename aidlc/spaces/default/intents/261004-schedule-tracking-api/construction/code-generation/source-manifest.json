@@ -1,0 +1,29 @@
+{
+  "stage": "code-generation",
+  "unit": "stage-level",
+  "version": 1,
+  "writes": [
+    { "path": "server/poc/schedule/" },
+    { "path": "server/poc/schedule/schedule_poc/__init__.py" },
+    { "path": "server/poc/schedule/schedule_poc/db.py" },
+    { "path": "server/poc/schedule/schedule_poc/repository.py" },
+    { "path": "server/poc/schedule/schedule_poc/cif_loader.py" },
+    { "path": "server/poc/schedule/schedule_poc/identity.py" },
+    { "path": "server/poc/schedule/schedule_poc/kafka_classify.py" },
+    { "path": "server/poc/schedule/schedule_poc/harvest.py" },
+    { "path": "server/poc/schedule/schedule_poc/replay.py" },
+    { "path": "server/poc/schedule/tests/conftest.py" },
+    { "path": "server/poc/schedule/tests/test_db.py" },
+    { "path": "server/poc/schedule/tests/test_loader.py" },
+    { "path": "server/poc/schedule/tests/test_harvest_replay.py" },
+    { "path": "server/poc/schedule/tests/test_identity.py" },
+    { "path": "server/poc/schedule/fixtures/lm_tiny.mca" },
+    { "path": "server/poc/schedule/fixtures/harvest_corpus.jsonl" },
+    { "path": "server/poc/schedule/demo/run_demo.py" },
+    { "path": "server/poc/schedule/requirements.txt" },
+    { "path": "server/poc/schedule/pyproject.toml" },
+    { "path": "server/poc/schedule/README.md" },
+    { "path": "server/poc/schedule/.env.example" },
+    { "path": "server/poc/schedule/.gitignore" }
+  ]
+}

@@ -1,0 +1,116 @@
+# Code Generation Plan — Live Schedule POC (stage-level)
+
+**Target**: zero-Unit POC under `server/poc/live-sched/`  
+**Requirements**: `aidlc/spaces/default/intents/261011-live-schedule-poc/inception/requirements-analysis/requirements.md`  
+**Brownfield references** (read-only; do **not** import `schedule_poc`): `server/poc/schedule/` behaviour for CIF codes and Push Port apply kinds; `server/poc/kafka/` for Kafka client patterns; MCA at `server/poc/timetable/RJTTF944MCA.txt`  
+**Out of plan**: production/AWS database, Android, HTTP API, importing `schedule_poc`
+
+## Testing Contract
+
+```json
+{
+  "version": 1,
+  "methodology": "test-after",
+  "source": "org",
+  "ordering": "implement each applicable testable layer, then write and run that layer's tests.",
+  "scope": "poc",
+  "test_strategy": "minimal",
+  "project_type": "brownfield",
+  "applicable_notes": [
+    {
+      "layer": "org",
+      "text": "We treat tests as a first-class deliverable in every Bolt. The specific\nmethodology (TDD, BDD, ATDD, or classic test-after) is affirmed at\npractices-discovery and recorded in `team.md` under this heading with explicit\n`Methodology` and `Ordering` fields; Code Generation resolves those fields\nindependently from coverage, tooling, and scope notes.\n\nWhen no posture has been affirmed, our default per scope is:\n- **Methodology**: test-after\n- **Ordering**: implement each applicable testable layer, then write and run\n  that layer's tests.\n- `mvp`, `enterprise`, `feature`, `infra`, `classic` add an 80% line-coverage\n  floor and CI execution before merge.\n- `bugfix`, `security-patch` add a targeted regression for the specific\n  bug/vulnerability and require the existing suite to remain green.\n- `express` uses the Minimal strategy: requirement-driven unit tests (one per\n  requirement, with a happy-path floor per component); existing tests remain\n  green.\n- `poc`, `refactor`, `workshop` add no extra new-test floor and require the\n  existing suite to remain green.\n\nThe active `Test Strategy` still applies in every scope and determines test\nvolume/types. Scope floors are additive; they never reduce or replace the\nselected strategy.\n\nBuild and Test verifies defined coverage floors and affirmed quality targets;\nthey may not be weakened to make a step pass.\n\nAffirm a stricter posture in `team.md` if the team commits to one."
+    },
+    {
+      "layer": "project",
+      "text": "- venv should be built correctly when needed so dependency install does not pollute the system (learned 2026-10-11)"
+    }
+  ],
+  "obligations": {
+    "strategy": "minimal",
+    "strategy_volume": [
+      "One verifiable test per requirement at the narrowest effective level.",
+      "At least one happy-path unit test per component.",
+      "Unit tests are the default; a bugfix/security scope floor may require an integration or E2E regression when that is the narrowest level that reproduces the defect."
+    ],
+    "scope_floor": [
+      "Keep the existing test suite green.",
+      "This scope adds no extra new-test floor beyond the selected test strategy."
+    ],
+    "combination_rule": "Apply every selected-strategy obligation and every scope-floor obligation; neither replaces the other, and a targeted scope regression may add the narrowest necessary test type beyond the strategy default."
+  },
+  "plan_profile": {
+    "methodology": "test-after",
+    "runner_step": "Verify the existing test runner/configuration and record the exact unit-scoped command.",
+    "runner_ready_before_first_test": true,
+    "testable_layers": [
+      "Data model / database behavior",
+      "Repository / data access",
+      "Business logic",
+      "API / endpoint",
+      "Frontend behavior"
+    ],
+    "steps": [
+      "Project structure and production configuration skeleton.",
+      "Verify the existing test runner/configuration and record the exact unit-scoped command.",
+      "Data model / database behavior - implement.",
+      "Data model / database behavior - write and run its tests after implementation.",
+      "Repository / data access - implement.",
+      "Repository / data access - write and run its tests after implementation.",
+      "Business logic - implement.",
+      "Business logic - write and run its tests after implementation.",
+      "API / endpoint - implement.",
+      "API / endpoint - write and run its tests after implementation.",
+      "Frontend behavior - implement.",
+      "Frontend behavior - write and run its tests after implementation.",
+      "Environment/build configuration.",
+      "Documentation and traceability."
+    ]
+  },
+  "input_sha256": "sha256:af9c3cb71c04b9fec41fa3dd3214facbdd701f518520ffb678ca7a9a185a53fe",
+  "contract_sha256": "sha256:627f1c6c881c1bed89da0d92cd14c4fe5cf2f76b7e8131f1c0abd963bb2c7a71"
+}
+```
+
+## Scope notes
+
+- **Omit** API/endpoint and Frontend layers — not in requirements.
+- Package under `server/poc/live-sched/` must **not** import `schedule_poc`; behaviour may be reimplemented by reading Schedule POC / Kafka POC as reference only.
+- MCA source: `server/poc/timetable/RJTTF944MCA.txt`; persist **LM** schedules only into local SQLite under `live-sched`.
+- Docs: schedule-code count summary + per-code algorithm markdown under `server/poc/live-sched/docs/`.
+- Live update: Kafka consumer for **fixed 1 hour**; every message → CSV under `server/poc/live-sched/output/`; apply Schedule-POC-equivalent kinds (`TS`, `schedule`, deactivated / equivalent under `uR`/`sR` wrappers for matching LM journeys); short markdown DB-change log under `output/`.
+- Credentials: workspace-root `.env` (gitignored), variable names matching Kafka POC: `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_CONSUMER_KEY`, `KAFKA_CONSUMER_SECRET`, `KAFKA_GROUP_ID`, optional `KAFKA_SSL_CA_LOCATION`, `KAFKA_TOPIC_JSON` / `XML` / `AVRO`. Ship `.env.example` at repo root or document copy-from-kafka `.env.example` in README — never hardcode secrets.
+- Venv: create/use a local `.venv` under `server/poc/live-sched` so installs do not pollute the system.
+
+## Canonical output filenames
+
+| Output | Path |
+|--------|------|
+| Schedule-code summary | `server/poc/live-sched/docs/schedule-code-summary.md` |
+| Per-code algorithms | `server/poc/live-sched/docs/schedule-code-algorithms.md` |
+| Kafka message CSV | `server/poc/live-sched/output/kafka-messages.csv` |
+| DB change log | `server/poc/live-sched/output/db-changes.md` |
+| SQLite DB | `server/poc/live-sched/data/live_sched.sqlite` (or path configurable; default under `data/`) |
+
+## Implementation steps
+
+- [x] **Step 1** — Create `server/poc/live-sched/` package skeleton (Python ≥3.12): `pyproject.toml`, package `live_sched/`, `tests/`, `fixtures/`, `demo/` or CLI entrypoints, `docs/`, `output/`, `data/`, README. Trace: FR1.3 scaffolding.
+- [x] **Step 2** — Create local `.venv`, install deps, verify pytest; record exact unit-scoped command in `unit-test-instructions.md`. Trace: NFR2/NFR3 obligations, project venv note. *(venv/pytest deferred to parent: delegated-agent interpreter guard)*
+- [x] **Step 3** — Implement SQLite schema/connection for journeys, calling points, applied updates (or equivalent needed for LM store + overlays). Trace: FR1.2.
+- [x] **Step 4** — Write/run data-model tests (create DB, insert/query). Trace: FR1 happy-path floor. *(tests written; run deferred to parent)*
+- [x] **Step 5** — Implement repository/data access over that schema (no `schedule_poc` import). Trace: FR1.2.
+- [x] **Step 6** — Write/run repository tests. Trace: FR1. *(tests written; run deferred to parent)*
+- [x] **Step 7** — Implement MCA stream parse for schedule codes (at least TI/BS/BX/LO/LI/LT/ZZ as needed), TOC filter `LM`, persist schedules; write `docs/schedule-code-summary.md` and `docs/schedule-code-algorithms.md`. Trace: FR1.1, FR1.2, FR2.1–FR2.3.
+- [x] **Step 8** — Write/run CIF/load tests against a tiny LM fixture under `fixtures/` (not the multi-GB MCA in CI). Trace: FR1, FR2. *(tests written; run deferred to parent)*
+- [x] **Step 9** — Implement Kafka config loading from workspace-root `.env` (same key names as Kafka POC); consumer that runs for 3600s, appends every message to `output/kafka-messages.csv`, classifies `uR`/`sR` children, applies `TS` / `schedule` / deactivated (Schedule POC–equivalent) for matching LM journeys, appends couple-line entries to `output/db-changes.md` for each DB change; ignore/log other types without failing. Trace: FR3.1–FR3.4, NFR1.1.
+- [x] **Step 10** — Write/run consumer/apply tests with fixture Kafka payloads (no live network required in unit tests). Trace: FR3. *(tests written; run deferred to parent)*
+- [x] **Step 11** — CLI/demo entrypoints: (a) load MCA→DB+docs; (b) run 1h live consumer (documented; optional short `--duration` for local dry-runs). Trace: FR1–FR3, NFR2.1.
+- [x] **Step 12** — Environment/build: root `.env.example` keys documented; README runbook; ensure no secrets in repo. Trace: NFR1.1.
+- [x] **Step 13** — `source-manifest.json`, `traceability.json`, tick plan checkboxes, `code-summary.md`. Trace: all FR/NFR.
+
+## Explicitly not in this plan
+
+- Importing or depending on `server/poc/schedule/schedule_poc`
+- Production / AWS full-schedule database
+- Android or Darwin LDB HTTP work
+- Applying Kafka kinds beyond Schedule POC harvest/replay equivalents for LM matches

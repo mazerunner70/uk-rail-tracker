@@ -1,0 +1,15 @@
+{
+  "stage_slug": "build-and-test",
+  "space": "default",
+  "intent": "261004-schedule-tracking-api",
+  "selections": [
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Testing Posture",
+      "text": "venv should be built correctly when needed so dependency install does not pollute the system",
+      "source": "user_addition"
+    }
+  ]
+}

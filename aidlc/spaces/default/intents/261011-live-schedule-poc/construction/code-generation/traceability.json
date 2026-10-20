@@ -1,0 +1,139 @@
+{
+  "stage": "code-generation",
+  "unit": "stage-level",
+  "upstream_ids": [
+    "FR1",
+    "FR1.1",
+    "FR1.2",
+    "FR1.3",
+    "FR2",
+    "FR2.1",
+    "FR2.2",
+    "FR2.3",
+    "FR3",
+    "FR3.1",
+    "FR3.2",
+    "FR3.3",
+    "FR3.4",
+    "NFR1",
+    "NFR1.1",
+    "NFR2",
+    "NFR2.1",
+    "NFR3",
+    "NFR3.1"
+  ],
+  "coverage": [
+    {
+      "id": "FR1",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/cif_loader.py"
+    },
+    {
+      "id": "FR1.1",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/cif_loader.py"
+    },
+    {
+      "id": "FR1.2",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/db.py"
+    },
+    {
+      "id": "FR1.3",
+      "status": "OK",
+      "target": "server/poc/live-sched/"
+    },
+    {
+      "id": "FR2",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/docs_gen.py"
+    },
+    {
+      "id": "FR2.1",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/docs_gen.py"
+    },
+    {
+      "id": "FR2.2",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/docs_gen.py"
+    },
+    {
+      "id": "FR2.3",
+      "status": "OK",
+      "target": "server/poc/live-sched/docs/"
+    },
+    {
+      "id": "FR3",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/consumer.py"
+    },
+    {
+      "id": "FR3.1",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/config.py"
+    },
+    {
+      "id": "FR3.2",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/csv_archive.py"
+    },
+    {
+      "id": "FR3.3",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/apply.py"
+    },
+    {
+      "id": "FR3.4",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/change_log.py"
+    },
+    {
+      "id": "NFR1",
+      "status": "OK",
+      "target": ".env.example"
+    },
+    {
+      "id": "NFR1.1",
+      "status": "OK",
+      "target": "server/poc/live-sched/live_sched/config.py"
+    },
+    {
+      "id": "NFR2",
+      "status": "OK",
+      "target": "server/poc/live-sched/"
+    },
+    {
+      "id": "NFR2.1",
+      "status": "OK",
+      "target": "server/poc/live-sched/README.md"
+    },
+    {
+      "id": "NFR3",
+      "status": "OK",
+      "target": "server/poc/live-sched/tests/"
+    },
+    {
+      "id": "NFR3.1",
+      "status": "OK",
+      "target": "aidlc/spaces/default/intents/261011-live-schedule-poc/construction/code-generation/unit-test-instructions.md"
+    }
+  ],
+  "reverse": [
+    {
+      "id": "API-endpoint",
+      "status": "N/A",
+      "target": "Out of scope per plan (no HTTP API)"
+    },
+    {
+      "id": "Frontend",
+      "status": "N/A",
+      "target": "Out of scope (no Android / UI work)"
+    },
+    {
+      "id": "schedule_poc-import",
+      "status": "N/A",
+      "target": "Forbidden by FR1.3; behaviour reimplemented under live_sched"
+    }
+  ]
+}

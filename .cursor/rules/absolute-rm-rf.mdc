@@ -1,0 +1,32 @@
+---
+description: Never use relative paths or variables with rm -rf; literal absolute paths only
+alwaysApply: true
+---
+
+# Absolute literal paths for destructive deletes
+
+`rm -rf` (and equivalent recursive force deletes) is a critical operation.
+
+## Rules
+
+- **NEVER** run `rm -rf` (or `rm -r` / `rm --recursive --force`) against a **relative** path.
+- **NEVER** run `rm -rf` against the content of a **variable** (`$VAR`, `${VAR}`, etc.), even if the variable holds an absolute path.
+- **ALWAYS** pass a fully resolved **literal absolute path** as the delete target in the command itself.
+- Prefer naming the exact directory once as a literal absolute path in the `rm -rf` argv — never `cd` somewhere and then `rm -rf .venv` / `rm -rf .` / `rm -rf ..`, and never `rm -rf "$SOME_DIR"`.
+- If the absolute path cannot be written safely as a literal, **stop** and ask rather than deleting.
+
+## Examples
+
+```bash
+# ❌ BAD — relative target; cwd mistakes can wipe the wrong tree
+cd server/poc/schedule && rm -rf .venv
+
+# ❌ BAD — variable target; empty/wrong expansion can wipe the wrong tree
+VENV=/home/william/code/personal/2025/uk-rail-tracker/server/poc/schedule/.venv
+rm -rf "$VENV"
+
+# ✅ GOOD — literal absolute target only
+rm -rf /home/william/code/personal/2025/uk-rail-tracker/server/poc/schedule/.venv
+```
+
+Treat relative `rm -rf` **or** variable-based `rm -rf` as a **critical violation**: do not run it; rewrite to a literal absolute path first.

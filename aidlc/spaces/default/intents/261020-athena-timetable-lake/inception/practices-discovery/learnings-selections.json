@@ -1,0 +1,31 @@
+{
+  "stage_slug": "practices-discovery",
+  "space": "default",
+  "intent": "261020-athena-timetable-lake",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Read Q2 Other as architecture-first with staged implementation; the human asked for an overall architecture now and said implementation can land in stages, so we skip a running intake-to-query slice for this work.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Landed the lead drafts after the release engineer's writes were refused, then collected independent quality, developer, and security reviews; interview asks only the six points those drafts could not settle (branching, thin slice, test order, coverage, environments, style and later scans).",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Testing Posture",
+      "text": "Kept the classic 80% coverage floor carved out because Q4 chose suite-green until CI exists; that is an explicit team carve-out, not silence.",
+      "source": "orchestrator"
+    }
+  ]
+}

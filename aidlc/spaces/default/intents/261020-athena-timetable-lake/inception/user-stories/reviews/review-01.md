@@ -1,0 +1,20 @@
+## Review
+
+**Verdict:** READY
+**Reviewer:** aidlc-product-lead-agent
+**Date:** 2026-10-20T16:09:00Z
+**Iteration:** 1
+
+### Findings
+
+| ID | Severity | Location | Finding | Required action | Status |
+|---|---|---|---|---|---|
+| R-01 | Major | aidlc/spaces/default/intents/261020-athena-timetable-lake/inception/user-stories/stories.md > US3.1 AC3.1.1 and INVEST | US3.1 traces FR3.1, FR3.3, and NFR1, but its ACs only require partition keys, prefix/grain, projected columns, STP winner order, and one worked example. FR3.1 also requires file layout. Requirements Open questions require the architecture markdown to choose a columnar format and Glue table names. INVEST says columnar format stays an architecture choice, and AC3.1.1 says a specific format is not story done. A writer following stories alone can mark US3.1 complete without choosing layout, format, or Glue table names. | Add ACs so `docs/athena-timetable-lake.md` must name Glue table names and a file layout (including a columnar format) that satisfies NFR1. Keep Parquet-versus-alternatives as the author's choice of value, not as an omitted section. | New |
+| R-02 | Major | aidlc/spaces/default/intents/261020-athena-timetable-lake/inception/user-stories/stories.md > US1.1 AC1.1.2, US2.1 AC2.1.1, US4.1 AC4.1.1 | Those Given/When/Then checks treat exact bucket or prefix strings and shared-versus-separate buckets as left to architecture. Requirements Open questions say the document must name the strings and must pick whether CFA receipt and Kafka archive share a bucket. Because every AC here is a document check, QA can pass a file that only has `{env}` logical names and never records those picks. That is the guessing this intent is supposed to close. | Change the ACs so the markdown must name env-qualified bucket and prefix strings and must pick shared versus separate receipt and archive buckets. Keep the existing Then that the file must not claim those resources already exist. | New |
+| R-03 | Minor | aidlc/spaces/default/intents/261020-athena-timetable-lake/inception/user-stories/stories.md > US3.1 AC3.1.1, AC3.1.4 and US4.1 AC4.1.5 | NFR1 requires partition keys and projected columns that let Athena skip unrelated dates, TOCs, and overlay types. The ACs require naming keys and a fixture query that is not a full-table scan of every journey or Kafka object. A file can pass those checks with keys that still scan every TOC or overlay type. | Add a Then that the named partition keys skip unrelated dates, TOCs, and overlay types for each FR3.1 lookup. | New |
+| R-04 | Minor | aidlc/spaces/default/intents/261020-athena-timetable-lake/inception/user-stories/stories.md > US3.1 AC3.1.1 and US4.1 AC4.1.4 | Calling points and overlay bind use `service_guid` and an optional Darwin `rid` alias, but no AC requires the markdown to state how `service_guid` is minted or how `rid` is stored as an alias. A later implementer will guess from CodeKB. | Add an AC that the markdown states the `service_guid` assignment rule and how a Darwin `rid` alias attaches to a current-plan journey. | New |
+| R-05 | Minor | aidlc/spaces/default/intents/261020-athena-timetable-lake/inception/user-stories/stories.md > US5.1 AC5.1.2 | The Then says identity and calendar rules stay FR2.4 / FR3.1 / FR3.3. QA can pass a TOC-extension heading that only cites those IDs and does not restate the rules a later implementer needs. | Require the TOC-extension section to restate identity, calendar, and sequence rules in document prose, not by FR-number reference. | New |
+
+### Summary
+
+Personas, MoSCoW, and workflow split match Q1–Q4; every FR/NFR has a story, and Must Have ACs are document checks a later implementer can follow for CFA apply, cheap lookups, overlay, and deferred scope. The two Majors are the same class of leftover choice: file layout/format and bucket naming are still “architecture later” even though this intent’s job is to write that architecture file — follow the requirements Open questions when drafting `docs/athena-timetable-lake.md`.

@@ -1,0 +1,23 @@
+{
+  "stage": "code-generation",
+  "unit": "stage-level",
+  "version": 1,
+  "writes": [
+    { "path": "server/poc/live-sched/live_sched/feed_sequence.py" },
+    { "path": "server/poc/live-sched/live_sched/cfa_zip.py" },
+    { "path": "server/poc/live-sched/live_sched/cfa_apply.py" },
+    { "path": "server/poc/live-sched/live_sched/cfa_report.py" },
+    { "path": "server/poc/live-sched/live_sched/db.py" },
+    { "path": "server/poc/live-sched/live_sched/repository.py" },
+    { "path": "server/poc/live-sched/live_sched/config.py" },
+    { "path": "server/poc/live-sched/live_sched/cli.py" },
+    { "path": "server/poc/live-sched/tests/__init__.py" },
+    { "path": "server/poc/live-sched/tests/cfa_fixtures.py" },
+    { "path": "server/poc/live-sched/tests/test_feed_sequence.py" },
+    { "path": "server/poc/live-sched/tests/test_cfa_zip.py" },
+    { "path": "server/poc/live-sched/tests/test_cfa_apply.py" },
+    { "path": "server/poc/live-sched/tests/test_cfa_cli.py" },
+    { "path": "server/poc/live-sched/tests/test_db.py" },
+    { "path": ".env.example" }
+  ]
+}
