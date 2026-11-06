@@ -5,12 +5,12 @@
 | Path | Role |
 |------|------|
 | `android/` | Kotlin `:app` — UI, domain, data, JVM tests |
-| `server/poc/schedule/` | Python `schedule_poc` library, demo, pytest |
-| `server/poc/kafka/` | Exploratory Kafka consumers / utils |
-| `server/poc/timetable/` | CIF design notes + sample MCA (no parser package) |
+| `server/poc/schedule/` | Python `schedule_poc` library, demo, pytest. Not opened this run |
+| `server/poc/kafka/` | Exploratory Kafka consumers / utils. Not opened this run |
+| `server/poc/timetable/` | CIF design notes + sample MCA (no parser package). Not opened this run |
 | `server/poc/live-sched/` | **Present** — `live_sched` package, CLI, tests, fixtures, demo, CFA watch folder |
-| `server/PLAN.md` + PDFs | Harvest/API design |
-| `docs/`, `README.md` | Product documentation |
+| `server/PLAN.md` + PDFs | Harvest/API design. Not opened this run |
+| `docs/`, `README.md` | Product documentation. Not opened this run, except the local-timetable page used as intent context |
 | `aidlc/`, `.cursor/` | AI-DLC harness (not product runtime) |
 
 ## Android (`android/app/src/main/…`)
@@ -37,9 +37,19 @@ data/           default CFA watch folder; output SQLite is gitignored
 output/         gitignored Kafka CSV and db-changes.md
 ```
 
-Packaging: `pyproject.toml` (`live-sched` 0.1.0, Python ≥3.12, setuptools `setuptools.build_meta`). Console script `live-sched` → `live_sched.cli:main`. Editable install documented as `python3 -m venv .venv` then `.venv/bin/pip install -e ".[dev]"`. Wheel excludes `tests*`, `demo*`, `data*`, `output*`, `fixtures*`, `docs*`. No Makefile, Dockerfile, lockfile, or `requirements.txt` in this tree.
+File classification for this run:
 
-Import edges reported by the scan, with no cycles:
+| Class | What this run did |
+|-------|-------------------|
+| Application package | Read the `live_sched` modules named in the tree, plus `pyproject.toml`, `README.md`, and `.gitignore` |
+| Tests opened | `conftest.py`, `test_db.py`, `test_feed_sequence.py`, `test_cfa_apply.py`, `test_apply.py` |
+| Tests named only | The other modules in `tests/`. `test_service_day.py` was not opened; a prior scan recorded the G43975 case |
+| Scripts read | `demo/run_demo.py` (thin wrapper around `live_sched.cli.main`); `scripts/compare_mca_to_db.py` (third CIF copy) |
+| Skimmed, not opened | `.venv`, `.pytest_cache`, `fixtures/`, `data/`, `output/`, `docs/` |
+
+Packaging: `pyproject.toml` (`live-sched` 0.1.0, Python ≥3.12, setuptools `setuptools.build_meta`). Console script `live-sched` → `live_sched.cli:main`. Editable install documented as `python3 -m venv .venv` then `.venv/bin/pip install -e ".[dev]"`. Wheel excludes `tests*`, `demo*`, `data*`, `output*`, `fixtures*`, `docs*`. No Makefile, Dockerfile, lockfile, or `requirements.txt` in this tree. The on-disk `.venv` path names Python 3.14; that tree was not inspected beyond the path name.
+
+Import edges recorded on 2026-10-20. They match the modules read on 2026-10-25. This run did not re-trace every import line. No cycles were reported:
 
 ```text
 cli → cfa_apply, cfa_report, cif_loader, config, consumer, db, docs_gen, repository
@@ -52,13 +62,13 @@ docs_gen → cif_loader.HANDLED_CODES
 config → python-dotenv
 ```
 
-`cfa_zip`, `feed_sequence`, `identity`, `service_day`, `csv_archive`, `change_log`, `cfa_report`, `db`, and `kafka_classify` use the standard library only (plus `sqlite3` where they touch the database). `confluent-kafka` is imported inside `iter_kafka_messages`, so unit tests that inject messages do not import it. Nothing in this tree imports `schedule_poc` or any other workspace package. No in-repo Python file outside `server/poc/live-sched` imports `live_sched`.
+`cfa_zip`, `feed_sequence`, `identity`, `service_day`, `csv_archive`, `change_log`, `cfa_report`, `db`, and `kafka_classify` use the standard library only (plus `sqlite3` where they touch the database). `confluent-kafka` is imported inside `iter_kafka_messages`, so unit tests that inject messages do not import it. Nothing in this tree imports `schedule_poc` or any other workspace package. No in-repo Python file outside `server/poc/live-sched` imports `live_sched` (2026-10-20 statement; this run confirmed the live-sched side of that boundary and did not re-scan the rest of the repo).
 
-`g43975_overlay.mca` is exercised through `tests/test_service_day.py`; the fixture file itself was not opened line by line. `scripts/compare_mca_to_db.py` was read for its module docstring and the duplicated CIF flush rules.
+`fixtures/g43975_overlay.mca` is named by `tests/test_service_day.py`. This run did not open that test body or the fixture bytes. The prior store records that the fixture is used there. `scripts/compare_mca_to_db.py` was read: it starts a third copy of `_slice`, `_Location`, and `_parse_ti`.
 
 ## Schedule POC (`server/poc/schedule/`)
 
-Preserved from the prior store. This run did not open the tree.
+Preserved from the prior store. This run did not open the tree. Live-sched must not import it.
 
 ```
 schedule_poc/   cif_loader, db, repository, identity, kafka_classify, harvest, replay

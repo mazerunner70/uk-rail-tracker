@@ -108,11 +108,11 @@ Overlay, rid aliases, journey status, and per-stop forecast columns are **merge-
 
 ### Apply history
 
-Glue table `apply_history`. After accept, Athena holds the current plan plus history of: sequence, total / new / override / duplicate / delete counts, identities changed. Not a full versioned copy of every journey row after every file. Raw zips remain the replay source.
+Glue table `apply_history`. After accept, Athena holds the current plan plus history of: sequence, total / new / override / duplicate / delete counts, and identities changed. Identities changed are CIF triples `(train_uid, run_date, stp_indicator)`, not `service_guid`. Not a full versioned copy of every journey row after every file. Raw zips remain the replay source.
 
 ### Publish and failure
 
-An accepted apply is **one atomic** published current-plan plus history update. A mid-apply failure leaves the previous plan queryable. Kafka overlay is **not** in this transaction.
+An accepted apply is **one atomic** published current-plan plus history update. A mid-apply failure leaves the previous plan queryable and writes no partial grain from the failed apply. Kafka overlay is **not** in this transaction.
 
 ## Cheap lookups
 
@@ -172,7 +172,7 @@ A later query-contract test for this train on this date must **not** scan every 
 
 ## Kafka archive/overlay
 
-KafkaOverlay owns archive and the three overlay projections. Fail-open after the archive object exists. Overlay is outside the CfaIntake transaction.
+KafkaOverlay owns archive and the three overlay projections. Fail-open after the archive object exists: classify or overlay persist failure is logged, consuming continues, and no overlay row is required for that message. Overlay is outside the CfaIntake transaction.
 
 ### Archive-before-classify
 
@@ -188,7 +188,7 @@ Project only when the message binds to a journey that **already exists**.
 | `schedule` | Write `schedule_payload` on the same overlay row | unchanged; does not rewrite booked rows |
 | `deactivated` | Set overlay `deactivated` and Journey.status | unchanged |
 
-Queryable overlay is **one current row** per `(train_uid, calendar_date)` with columns `forecast_arrival`, `forecast_departure`, `deactivated`, `schedule_payload`. `overlayType` is not an identity or partition key.
+Queryable overlay is **one current row** per `(train_uid, calendar_date)` with columns `forecast_arrival`, `forecast_departure`, `deactivated`, `schedule_payload`. Last successful overlay persist wins: a later bound `TS`, `schedule`, or `deactivated` replaces the matching columns on that row. `overlayType` is not an identity or partition key.
 
 Per-stop `forecast_arrival` / `forecast_departure` on `calling_points` are persist details merge-preserved on CFA/MCA publish. The cheapest overlay lookup is the overlay row, not a rescan of calling points.
 

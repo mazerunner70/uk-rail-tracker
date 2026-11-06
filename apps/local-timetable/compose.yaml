@@ -1,0 +1,28 @@
+services:
+  db:
+    image: alpine:3.20
+    command: sleep infinity
+    volumes:
+      - ./db:/db
+    restart: unless-stopped
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./mca:/mca:ro
+      - ./db:/db
+    environment:
+      TZ: Europe/London
+    restart: unless-stopped
+  screen:
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    depends_on:
+      - server
+    restart: unless-stopped

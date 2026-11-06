@@ -1,0 +1,19 @@
+{
+  "stage": "code-generation",
+  "unit": "timetable-query",
+  "version": 1,
+  "writes": [
+    { "path": "apps/local-timetable/compose.yaml" },
+    { "path": "apps/local-timetable/server/package.json" },
+    { "path": "apps/local-timetable/server/src/londonClock.ts" },
+    { "path": "apps/local-timetable/server/src/stopTime.ts" },
+    { "path": "apps/local-timetable/server/src/sqliteReader.ts" },
+    { "path": "apps/local-timetable/server/src/trainViews.ts" },
+    { "path": "apps/local-timetable/server/src/httpServer.ts" },
+    { "path": "apps/local-timetable/server/src/main.ts" },
+    { "path": "apps/local-timetable/server/test/timetable-query/helpers.ts" },
+    { "path": "apps/local-timetable/server/test/timetable-query/stopTime.test.ts" },
+    { "path": "apps/local-timetable/server/test/timetable-query/trainViews.test.ts" },
+    { "path": "apps/local-timetable/server/test/timetable-query/httpServer.test.ts" }
+  ]
+}

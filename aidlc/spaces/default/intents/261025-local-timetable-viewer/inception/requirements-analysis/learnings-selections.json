@@ -1,0 +1,79 @@
+{
+  "stage_slug": "requirements-analysis",
+  "space": "default",
+  "intent": "261025-local-timetable-viewer",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "five questions only: first view, which SQLite file, refresh, clock, and how Docker runs the parts. The page and the affirmed practices already settle the three views, London Midland only, TypeScript layout, and a read-only database.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Question 4a answer C means this machine is kept on UK time, so Europe/London and the machine clock are the same clock for today and now.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Forbidden",
+      "text": "The database is its own container and the SQLite file survives a restart and a rebuild. The reader still does not create or rewrite that file. Live-sched remains the writer.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c4",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Forbidden",
+      "text": "The human amended that database note: live-sched is not involved in any way, because it is a proof of concept and this application will run into the future. The other five notes stay unchanged.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c5",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "The screen asks again every 30 seconds while a view is open. A control on the screen changes that interval. Reloading the page starts again at 30 seconds.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c6",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Where the train is uses forecast departure, then forecast arrival, then booked public departure, then booked public arrival. A stop time earlier than the origin stop's time is the next calendar day.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c7",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Modify: keep the existing FR1–FR6 numbers and the three views",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c8",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Chat: apply all seven change items (MCA writer, empty screen, split never-writes, done includes network, FR7–FR9, held-answer screen rules, unique day's MCA). Live-sched is not the writer.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c9",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Stated the stop-time order in the requirements so a later build does not guess which clock column means \"at or before now\". Forecast departure wins, then forecast arrival, then the booked public times in that same order.",
+      "source": "orchestrator"
+    }
+  ]
+}

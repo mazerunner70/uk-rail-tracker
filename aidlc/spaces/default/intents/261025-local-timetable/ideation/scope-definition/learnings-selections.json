@@ -1,0 +1,31 @@
+{
+  "stage_slug": "scope-definition",
+  "space": "default",
+  "intent": "261025-local-timetable",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Two questions only: file paths, and what is in versus out. Who it is for, the three views, and docs-only were already answered.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "File answer says one document under docs/future-intents named lcocal-timetable.md. Intent says two pages, future-intents note and local-timetable.md. Asked which files and which name before writing the scope.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Confirmed one file, docs/future-intents/local-timetable.md, holding both the future-intents note and the service description. Ranked the page with MoSCoW because this pass is one fixed page and there are no usage numbers to score.",
+      "source": "orchestrator"
+    }
+  ]
+}

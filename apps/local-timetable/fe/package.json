@@ -1,0 +1,21 @@
+{
+  "name": "local-timetable-fe",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "test": "node --import ./test/register-hooks.ts --import tsx --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^17.4.4",
+    "@types/node": "^22.14.0",
+    "esbuild": "^0.25.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@10.12.1"
+}

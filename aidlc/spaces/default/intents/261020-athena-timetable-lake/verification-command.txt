@@ -1,0 +1,1 @@
+python3 aidlc/spaces/default/intents/261020-athena-timetable-lake/verification-check.py

@@ -1,0 +1,21 @@
+## Review
+
+**Verdict:** NOT-READY
+**Reviewer:** aidlc-product-lead-agent
+**Date:** 2026-10-25T17:23:00Z
+**Iteration:** 1
+
+### Findings
+
+| ID | Severity | Location | Finding | Required action | Status |
+|---|---|---|---|---|---|
+| R-01 | Major | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/user-stories/stories.md > US1.1 AC1.1.4 | The reached stop is the greatest `seq` whose stop time is at or before the server's Europe/London `HHMM`, and the same criterion says a `HHMM` earlier than the lowest-`seq` stop is the next calendar day. A journey that calls at 22:00 and again at 00:30 has two passing results at 23:00: a numeric `HHMM` comparison treats 00:30 as already reached, and the next-day sentence treats 00:30 as still ahead. The criterion also leaves the calendar day of every other stop time unnamed. | State the comparison as Europe/London datetimes. A stop `HHMM` earlier than the lowest-`seq` stop's `HHMM` falls on the calendar day after `service_day.calendar_date`. Every other stop `HHMM` falls on `service_day.calendar_date`. The reached stop is the greatest `seq` at or before the server's current Europe/London datetime. | New |
+| R-02 | Major | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/user-stories/stories.md > US1.1 AC1.1.1 and US2.1 AC2.1.1 | AC1.1.1 sends an ask when both station codes are non-empty. US2.1 sends the next ask when the interval has elapsed. An edit that changes one code while both boxes stay filled has no ask of its own, so the board can keep listing the previous pair until the timer fires. | State that editing either station code asks at once with the codes now in the boxes, and that the list then shows that answer. | New |
+| R-03 | Major | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/user-stories/stories.md > US1.1 AC1.1.7, US1.2 AC1.2.5, and US2.1 AC2.1.4 | Each view shows a loading line while an ask is in flight. Only a failed ask is required to keep the previous successful answer on screen. A timer refresh can replace the trains with the loading line alone and still pass these criteria, so the board can go blank on every tick. | State that a later in-flight ask keeps the previous successful answer visible, and that the loading line is shown with that answer. | New |
+| R-04 | Major | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/user-stories/stories.md > opening paragraph, US1.1 Depends on, and US3.1 INVEST | The opening paragraph names US1.1 as the first running slice and groups US3.1 with the work that is Must Have for the whole service. US1.1 depends on US3.1. The US3.1 INVEST note puts the containers, the surviving file, and the read-only open inside the first slice, and leaves the test and scan checks until the views exist. Those three statements name different first slices. | Name one first slice. Either US1.1 plus AC3.1.1, AC3.1.2, and AC3.1.3, or US1.1 against the existing SQLite file with every US3.1 criterion after that slice. | New |
+| R-05 | Minor | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/user-stories/stories.md > US1.1 AC1.1.7, US1.2 AC1.2.5, and US2.1 AC2.1.2 | Each view has a control that opens the other view, and the reader can change the interval. The criteria leave the interval, the two station codes, and the last successful answer unspecified after that move. | State what is kept when the reader moves between the two views: the interval, the station codes, and the last successful answer. | New |
+| R-06 | Minor | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/user-stories/stories.md > US1.2 AC1.2.4 | AC1.2.4 says either view is built without calling `list_journeys()`. That criterion sits on US1.2. US1.1 is the first slice, is independent of US1.2, and has no matching criterion, so a first-slice build of the pair view can call `list_journeys()` and still pass US1.1. | Add the same ban to US1.1, or state on US1.1 that AC1.2.4 already applies to the pair answer. | New |
+
+### Summary
+
+The four stories match the one local reader, both boards, the timer, and the three containers, and every requirement maps to a story. Engineering still has to guess the midnight stop, when a station edit refreshes, whether a refresh hides the trains, and which criteria belong in the first slice.

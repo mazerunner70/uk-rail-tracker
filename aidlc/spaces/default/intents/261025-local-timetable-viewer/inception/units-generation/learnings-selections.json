@@ -1,0 +1,47 @@
+{
+  "stage_slug": "units-generation",
+  "space": "default",
+  "intent": "261025-local-timetable-viewer",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Three containers and four code blocks are already decided. The open points are how those blocks sit in the containers, and when the MCA replace runs.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Q1 D: the MCA load is its own unit in the server container, the query is the other server unit, both pages are one screen unit, and the database container holds only the file. Q2 Other: the screen starts empty, a button starts the MCA load, and the screen polls the server for progress.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Q3 B: the screen calls only the query unit, and that unit starts the MCA load and reports progress. Q4 B: the empty screen uses the same 30 second interval for load progress, and it asks for trains only after the load succeeds.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c4",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Plan approved. Three units: mca-load and timetable-query share the server container. screen is its own container. The database container is not a unit.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c5",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Modify after domain design: same three-unit chain; component mapping, comms is lost and interval refusal on screen, traceability U1–U3, db packaging under apps/local-timetable/db.",
+      "source": "orchestrator"
+    }
+  ]
+}

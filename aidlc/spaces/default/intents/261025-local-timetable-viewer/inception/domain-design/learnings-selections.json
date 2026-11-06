@@ -1,0 +1,47 @@
+{
+  "stage_slug": "domain-design",
+  "space": "default",
+  "intent": "261025-local-timetable-viewer",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "MFA was a typo for MCA. Four blocks: McaInitialisation replaces the SQLite file from that day's MCA and applies no CFA",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "NetworkPage asks on open and on each interval even when the station boxes are empty. StationPairPage asks only when both boxes are non-empty. Unmatched codes are a successful empty list.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Forbidden",
+      "text": "The earlier rule that the reader never rewrites SQLite still binds TimetableQuery. McaInitialisation is the exception and replaces the file.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c4",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "The pair page reads StationSelection and RefreshInterval owned by NetworkPage. That reference is not a call, so the call graph stays acyclic.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c5",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Modify after FR7–FR9: TimetableQuery starts McaInitialisation in-process and owns LoadProgress; NetworkPage owns empty screen, load button, and RefreshInterval validation; US2.1 traces to NetworkPage; US3.1 reader unchanged traces to TimetableQuery.",
+      "source": "orchestrator"
+    }
+  ]
+}

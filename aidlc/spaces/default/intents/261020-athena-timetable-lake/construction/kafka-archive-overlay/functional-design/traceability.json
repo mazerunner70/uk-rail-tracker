@@ -1,0 +1,22 @@
+{
+  "stage": "functional-design",
+  "unit": "kafka-archive-overlay",
+  "upstream_ids": [
+    "AC4.1.1",
+    "AC4.1.2",
+    "AC4.1.3",
+    "AC4.1.4",
+    "AC4.1.5"
+  ],
+  "coverage": [
+    { "id": "AC4.1.1", "status": "OK", "target": "BR4.1, BR4.7" },
+    { "id": "AC4.1.2", "status": "OK", "target": "BR4.2, BR4.6, BR4.8" },
+    { "id": "AC4.1.3", "status": "OK", "target": "BR4.3" },
+    { "id": "AC4.1.4", "status": "OK", "target": "BR4.4" },
+    { "id": "AC4.1.5", "status": "OK", "target": "BR4.5" }
+  ],
+  "reverse": [
+    { "id": "BR4.9", "status": "N/A", "target": "C1/C3 name lock from Q5 A; not an AC" },
+    { "id": "BR4.10", "status": "N/A", "target": "this Bolt heading lock from Q2 A; not an AC" }
+  ]
+}

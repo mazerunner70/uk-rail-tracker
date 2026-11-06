@@ -1,0 +1,31 @@
+{
+  "stage_slug": "practices-discovery",
+  "space": "default",
+  "intent": "261025-local-timetable-viewer",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "team.md already has affirmed practices from earlier classic work, so this pass treats those sections as the baseline and only reopens what the local Docker timetable service does not settle.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Read the two Other answers as a short-lived branch squash-merged to main, and as TypeScript under apps/local-timetable/db, server, and fe",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Left the quality review's tighter view cases and a local Docker smoke out of the hard rules",
+      "source": "orchestrator"
+    }
+  ]
+}

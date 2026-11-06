@@ -1,0 +1,15 @@
+{
+  "stage_slug": "intent-capture",
+  "space": "default",
+  "intent": "261025-local-timetable",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Five questions at Minimal depth: who it is for, what done means, why now, who decides, and whether this pass stays the two documents. The request already names the two files and the three views.",
+      "source": "orchestrator"
+    }
+  ]
+}
