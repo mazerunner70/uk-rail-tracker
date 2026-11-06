@@ -1,0 +1,24 @@
+{
+  "stage": "code-generation",
+  "unit": "screen",
+  "version": 1,
+  "writes": [
+    { "path": "apps/local-timetable/compose.yaml" },
+    { "path": "apps/local-timetable/fe/Dockerfile" },
+    { "path": "apps/local-timetable/fe/esbuild.config.mjs" },
+    { "path": "apps/local-timetable/fe/nginx.conf" },
+    { "path": "apps/local-timetable/fe/package.json" },
+    { "path": "apps/local-timetable/fe/pnpm-lock.yaml" },
+    { "path": "apps/local-timetable/fe/tsconfig.json" },
+    { "path": "apps/local-timetable/fe/public/index.html" },
+    { "path": "apps/local-timetable/fe/public/style.css" },
+    { "path": "apps/local-timetable/fe/src/apiClient.ts" },
+    { "path": "apps/local-timetable/fe/src/controller.ts" },
+    { "path": "apps/local-timetable/fe/src/dom.ts" },
+    { "path": "apps/local-timetable/fe/src/main.ts" },
+    { "path": "apps/local-timetable/fe/src/types.ts" },
+    { "path": "apps/local-timetable/fe/test/apiClient.test.ts" },
+    { "path": "apps/local-timetable/fe/test/controller.test.ts" },
+    { "path": "apps/local-timetable/fe/test/register-hooks.ts" }
+  ]
+}

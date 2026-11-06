@@ -1,0 +1,55 @@
+{
+  "stage_slug": "user-stories",
+  "space": "default",
+  "intent": "261025-local-timetable-viewer",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Keep after the requirements rewrite leaves the four wide stories as a reader of a pre-filled database. The product lead's advisory review says they do not cover the empty screen or that day's MCA replace.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Keep: accept the existing stories, personas, assessment, and traceability as they are after the requirements rewrite. No regeneration.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Execute user stories. The service is a screen for one person, so stories add the person, the benefit, and the Given/When/Then checks the requirements do not name.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c4",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Two questions only: who the stories are about, and how small each story is. The views, the UK clock, the 30-second refresh, and the three containers are already in the approved requirements.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c5",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "One persona, the local reader, who starts the containers and reads the board. Four wide stories: the station pair, all trains now, the refresh, and the three containers.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c6",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "The human added screen wording now: labelled station boxes, a loading line, the words No trains, and a control on each view that opens the other.",
+      "source": "orchestrator"
+    }
+  ]
+}

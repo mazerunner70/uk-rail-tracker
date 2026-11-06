@@ -1,0 +1,43 @@
+{
+  "stage": "code-generation",
+  "unit": "screen",
+  "upstream_ids": [
+    "FR1.1",
+    "FR1.6",
+    "FR2.1",
+    "FR2.3",
+    "FR3.2",
+    "FR5.1",
+    "FR5.2",
+    "FR5.3",
+    "FR5.4",
+    "FR5.5",
+    "FR5.6",
+    "FR5.7",
+    "FR9.1",
+    "FR9.2",
+    "FR9.3",
+    "FR9.4",
+    "FR9.5",
+    "FR9.6",
+    "NFR4"
+  ],
+  "coverage": [
+    { "id": "FR9.1", "status": "OK", "target": "apps/local-timetable/fe/src/dom.ts" },
+    { "id": "FR9.2", "status": "OK", "target": "apps/local-timetable/fe/src/apiClient.ts" },
+    { "id": "FR9.3", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "FR9.4", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "FR9.5", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "FR9.6", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "FR5.1", "status": "OK", "target": "apps/local-timetable/fe/src/main.ts" },
+    { "id": "FR5.2", "status": "OK", "target": "apps/local-timetable/fe/test/controller.test.ts" },
+    { "id": "FR5.3", "status": "OK", "target": "apps/local-timetable/fe/src/main.ts" },
+    { "id": "FR5.4", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "FR5.5", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "FR5.6", "status": "OK", "target": "apps/local-timetable/fe/test/controller.test.ts" },
+    { "id": "FR5.7", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "FR2.3", "status": "OK", "target": "apps/local-timetable/fe/src/main.ts" },
+    { "id": "FR1.1", "status": "OK", "target": "apps/local-timetable/fe/src/controller.ts" },
+    { "id": "NFR4", "status": "OK", "target": "apps/local-timetable/fe/test/" }
+  ]
+}

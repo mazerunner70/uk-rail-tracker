@@ -25,6 +25,20 @@
     "slug": "athena-timetable-lake",
     "dirName": "261020-athena-timetable-lake",
     "scope": "classic",
-    "status": "in-flight"
+    "status": "complete"
+  },
+  {
+    "uuid": "01a17320-a648-710e-ad1a-250a75ad879e",
+    "slug": "local-timetable",
+    "dirName": "261025-local-timetable",
+    "scope": "local-timetable-docs",
+    "status": "complete"
+  },
+  {
+    "uuid": "01a1736a-d193-762b-9ff6-385d14946a85",
+    "slug": "local-timetable-viewer",
+    "dirName": "261025-local-timetable-viewer",
+    "scope": "classic",
+    "status": "complete"
   }
 ]

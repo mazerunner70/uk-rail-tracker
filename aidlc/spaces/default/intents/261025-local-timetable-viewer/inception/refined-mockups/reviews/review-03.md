@@ -1,0 +1,18 @@
+## Review
+
+**Verdict:** NOT-READY
+**Reviewer:** aidlc-product-lead-agent
+**Date:** 2026-11-01T09:13:00Z
+**Iteration:** 1
+
+### Findings
+
+| ID | Severity | Location | Finding | Required action | Status |
+|---|---|---|---|---|---|
+| R-01 | Critical | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/refined-mockups/mockups.md > Network page, Station-pair page, Shared behaviour | The kept pages are only the two train boards. There is no empty first screen, no load button, and no progress paint. Approved FR9.1–FR9.6 require the screen to open empty with a load button, to poll progress on the same interval and not ask for trains until the day's load succeeds, to keep the button after a failed load, and to show in-flight progress again after a reload. FR8.6 names the progress the empty screen must show (`idle` / `running` / `succeeded` / `failed`, `howFar` 0–100, plus a sentence). FR5.1 says that interval ask is load progress on the empty screen. The mockups instead paint "Loading" on a train page and treat every interval as a train ask. Interaction-spec, design-system-mapping, and accessibility-checklist have the same two pages only. Kept stories US1.1–US3.1 also omit this first screen, so matching those stories is not coverage of FR9. A developer cannot build the opening flow from these pages without inventing it. | Add a first-paint empty screen that shows the load button, the FR8.6 progress states and sentence (including FR8.2 / FR8.3 load-failure words), keeps the button on a failed load, hides the button after success, and lets the two train pages ask only after that success. Do not treat the current "Loading" train-page paint as that screen. | New |
+| R-02 | Major | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/refined-mockups/mockups.md > Data layer | FR5.6 requires a status bar that says `comms is lost` when a hang, a closed connection, or an unreadable response fails an ask while held trains stay, cleared by a later success. The data-layer rule says a failed attempt leaves every held value and "the screen stays as it is." No status bar, and no `comms is lost` sentence, appears on either page. Interaction-spec FailureNotice only covers `missing` / `deleted` / `locked` / `older schema` when the page has no held data. A later failure with trains already on the board would be built as a no-op, which contradicts FR5.6. | Name a status bar (or a pictured panel that plays that role) that shows `comms is lost` on those failed asks while the held list stays, and clears that line on the next success. | New |
+| R-03 | Major | aidlc/spaces/default/intents/261025-local-timetable-viewer/inception/refined-mockups/interaction-spec.md > Station pair chooser | FR2.3 requires the network view to ask on open and on each interval after a successful load, even when the station boxes are empty. The chooser spec says "Both must be non-empty before an ask" and its default state is "Both boxes empty. No ask." Those same two boxes sit at the top of the network page. Mockups.md never says the network ask still goes out with empty boxes. A developer who follows the chooser rule on that page would gate the all-trains ask on two CRS codes. | State that the network page asks with empty boxes, and that the chooser's both-codes rule applies only to the station-pair ask, not to the network ask. | New |
+
+### Summary
+
+The kept mockups still describe a filled two-page board. They do not show the empty screen, load button, or progress poll that approved FR8/FR9 made the first user step, and they omit the `comms is lost` bar and the empty-box network ask from the same rewrite. Approve only if engineering is meant to invent that opening flow from the requirements text alone.

@@ -1,0 +1,50 @@
+---
+description: Senior TypeScript — short pure functions, functional ETL
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# Senior TypeScript
+
+Write like a senior who defaults to small pure functions. ETL is the strict case: parse and reshape as values, and keep I/O at the edge.
+
+## Functions
+
+- One job per function. A block that needs a comment is a function with a name.
+- Names are short and say what the function returns or does: `parseTiploc`, `toJourney`, `acceptHeader`. Avoid `process`, `handle`, `doStuff`.
+- Keep the body on one screen. Extract a step rather than nesting another branch.
+- Type exported boundaries (arguments, records, results). Infer inside the body.
+
+## Purity
+
+- Pure by default: same inputs, same output. Do not mutate arguments, read the clock, touch globals, or perform I/O inside a transform.
+- Inputs are `readonly`. Return a new value.
+- Model a skippable row as data (`{ ok: true, value } | { ok: false, reason }`, or `null` when the reason is obvious). Throw only when the whole run cannot continue.
+
+## ETL
+
+- Split the pipeline: extract yields records, transform maps / filters / folds them, load writes the result.
+- A transform takes data and returns data. It does not open files, insert rows, or log.
+- Compose steps. Do not grow one function that parses, validates, and persists.
+- The orchestrator is the only place that sequences effects around those pure steps.
+
+```typescript
+// ❌ BAD — vague, long, and the write is buried in the parse
+function processLine(line: string, db: Db) {
+  const code = line.slice(0, 2);
+  if (code !== "LO") return;
+  const callingPoint = { tiploc: line.slice(2, 9).trim() /* ... */ };
+  db.insert(callingPoint);
+}
+
+// ✅ GOOD — pure step; the effect stays in the orchestrator
+function toCallingPoint(line: string): CallingPoint | null {
+  if (recordCode(line) !== "LO") return null;
+  return { tiploc: line.slice(2, 9).trim() };
+}
+
+for (const line of lines) {
+  const callingPoint = toCallingPoint(line);
+  if (callingPoint) session.insert(callingPoint);
+}
+```

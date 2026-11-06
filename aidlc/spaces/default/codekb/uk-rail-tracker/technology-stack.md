@@ -1,6 +1,6 @@
 # Technology Stack — uk-rail-tracker
 
-Versions from the prior store, with the live-sched rows replaced from the 2026-10-20 focused scan. Cross-ref dependency graph → `dependencies.md`.
+Versions from the prior store, with the live-sched rows checked against the 2026-10-25 focused scan. Cross-ref dependency graph → `dependencies.md`.
 
 ## Languages and runtimes
 
@@ -10,7 +10,7 @@ Versions from the prior store, with the live-sched rows replaced from the 2026-1
 | Python | ≥3.12 (3.12 in kafka POC, prior scan) | `server/poc/schedule`, `server/poc/kafka`, `server/poc/live-sched` |
 | Markdown / CIF | — | docs, PLAN, timetable samples |
 
-The workflow language list has recorded TypeScript. The tree deep-scanned this run is Python 3.12 (`requires-python = ">=3.12"`).
+The workflow language list has recorded TypeScript. The tree deep-scanned this run is Python (`requires-python = ">=3.12"`). The on-disk `.venv` sits on a `python3.14` path (`server/poc/live-sched/.venv/lib/python3.14/`). That tree was not inspected beyond the path name. The package requirement remains `>=3.12`.
 
 ## Android build and UI
 
@@ -51,7 +51,9 @@ Prior scan. Not re-opened.
 | pytest | ≥8.0,<9 (optional `dev`) | Tests. `testpaths = ["tests"]`, `pythonpath = ["."]` |
 | sqlite3, zipfile, csv, json, argparse, dataclasses, logging | stdlib | Persistence, CFA zip extract, Kafka CSV, CLI |
 
-No web framework, ORM, AWS SDK, Glue client, Athena client, or S3 client. No watchdog: `cfa-update` lists the watch folder once per invocation.
+An unused `.venv` listing shows `pytest-8.4.2`. That install was not executed for this scan. The declared range remains `>=8.0,<9`.
+
+No web framework, ORM, AWS SDK, Glue client, Athena client, or S3 client. No watchdog: `cfa-update` lists the watch folder once per invocation. No HTTP server and no UI toolkit in this tree.
 
 ## Python POC — schedule / kafka (prior)
 
@@ -68,7 +70,7 @@ Not re-opened this run.
 ## Not present in the live-sched tree
 
 - Retrofit (product docs may still mention it; Android transport on the prior scan is OkHttp)
-- First-party server API framework
+- First-party server API framework, HTTP server, or UI toolkit
 - JaCoCo, Kover, coverage.py, or pytest-cov
 - CI workflow, Dockerfile, Makefile, lockfile, or `requirements.txt` under `server/poc/live-sched`
 - AWS SDK, Glue, Athena, or an S3 client

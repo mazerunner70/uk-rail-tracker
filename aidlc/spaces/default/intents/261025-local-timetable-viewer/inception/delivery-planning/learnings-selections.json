@@ -1,0 +1,47 @@
+{
+  "stage_slug": "delivery-planning",
+  "space": "default",
+  "intent": "261025-local-timetable-viewer",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Three units in one chain. Serial construction already chosen. Skeleton ceremony is off. First slice is still the database, one view, and enough screen, now with the empty screen and load button.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Q1 A thin slice is empty screen, load button, pair page. Q2 A no formal score. Q3 B first Bolt cuts across the three units. Q4 A nothing outside holds us. Q5 D nothing in particular.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Q6 A: one Bolt holds all three units. Done includes the network page. No later Bolt.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c4",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Construction check deferred until the first unit is built. No command recorded.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c5",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Construction is staffed from this session. One person, one chain. No separate team owns a unit.",
+      "source": "orchestrator"
+    }
+  ]
+}

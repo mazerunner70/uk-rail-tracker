@@ -1,0 +1,71 @@
+{
+  "stage_slug": "reverse-engineering",
+  "space": "default",
+  "intent": "261025-local-timetable-viewer",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "human chose Focused scan. Snapshot paths server/poc/live-sched, store_generation sha256:125731cd588e65aa541d751cf6f93b0f83e2fad194ce475567120ae7e4a9a540, source_fingerprint git:99dd493302d01daca4b62fdaa26dee42ac41aca2. Developer scan limited to that path.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Kept server/poc/live-sched as the only analyzed path and did not also list it under shallow",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Preserved 2026-10-20 live-sched prose this run did not re-read, and labeled it. That includes the per-module test locks for modules inventoried by name only, and the full-MCA counts. This run counted 45 def test_ functions. The prior store said 44. Which function was added was not reconciled.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c4",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Recorded the local timetable server and UI as absent. The page's three views are described against the existing SQLite file. No new component was invented for them.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c5",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "minted the scope fingerprint in the parent session after the architect shell could not run aidlc",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c6",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Did not run codekb-scope-diff --compare or codekb-publish",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c7",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Left fingerprint empty. The mint command was blocked by the delegated-agent shell guard before it started. It did not fail for a missing repo flag. No hash was invented. Architecture security text does not name Kafka credential environment variables",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c8",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Testing Posture",
+      "text": "Kept the prior test-lock table instead of deleting locks for modules this run did not open. A rebuild from only the four opened modules would drop CFA and service-day behaviour the 2026-10-20 scan recorded.",
+      "source": "orchestrator"
+    }
+  ]
+}

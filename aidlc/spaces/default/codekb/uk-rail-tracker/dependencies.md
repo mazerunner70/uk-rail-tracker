@@ -11,6 +11,8 @@ Library versions: see `technology-stack.md`.
 | National Rail CIF MCA | Schedule POC; Live-sched `load`; Timetable samples | File stream (`RJTTF*.txt` / `.mca`). Default live-sched path `server/poc/timetable/RJTTF944MCA.txt` |
 | Daily CFA update zip | Live-sched `cfa-update` | Local `*.zip` in `CFA_WATCH_DIR`, stdlib `zipfile`, one CFA member. Not an object-store notification |
 
+The local timetable server and UI are not consumers yet. They are described in `docs/future-intents/local-timetable.md` as a later reader of the live-sched SQLite file.
+
 ## Internal cross-package
 
 ```text
@@ -26,13 +28,14 @@ server/poc/live-sched (live_sched)
   └── demo and tests via the package install
   └── scripts/compare_mca_to_db.py duplicates loader flush rules and is excluded from the distribution
   └── does NOT import schedule_poc
-  └── no in-repo Python outside this tree imports live_sched
+  └── no in-repo Python outside this tree imports live_sched (2026-10-20; this run confirmed the live-sched side)
 
 server/poc/schedule (schedule_poc)
   └── sqlite3 schema via db/repository
   └── optional Kafka overlay (classify/harvest/replay)
   └── demo/tests import package via pythonpath
   └── not opened this run
+  └── live-sched and any successor must not import this package
 
 server/poc/kafka
   └── sibling modules: config, consumer_utils, offset_store
@@ -41,11 +44,13 @@ server/poc/kafka
 
 server/poc/timetable
   └── design/sample only — no code dependency edge into schedule/live-sched
-  └── DATA-MODEL.md opening sections skimmed this run
+  └── not opened this run. A prior scan skimmed the opening of DATA-MODEL.md
 
 server/PLAN.md
   └── design reference only — no runtime import
 ```
+
+There is no dependency edge from a local timetable server, because that server does not exist. When it does, it reads the SQLite file. It must not import `schedule_poc`.
 
 ## Build config files
 
@@ -54,12 +59,12 @@ server/PLAN.md
 - Schedule: `server/poc/schedule/{pyproject.toml,requirements.txt}` (prior scan)
 - Kafka: `server/poc/kafka/requirements.txt` (prior scan)
 - Typecheck: `server/pyrightconfig.json` (**kafka only** — live-sched excluded; prior scan)
-- Ignore: root `.gitignore` (CIF dumps, AI-DLC machine-local, `.env` patterns). Live-sched `.gitignore` excludes SQLite, CSV, and `output/db-changes.md`.
+- Ignore: root `.gitignore` (CIF dumps, AI-DLC machine-local, `.env` patterns). Live-sched `.gitignore` excludes `data/*.sqlite`, `output/*.csv`, `output/db-changes.md`, `.venv/`, and `.pytest_cache/`
 
 ## Secrets hygiene
 
-Kafka, schedule, and live-sched `.env` files are gitignored and must not be committed. Android API keys sit in `local.properties` (prior scan). Live-sched README: project-local `.venv` under `server/poc/live-sched`; do not install into the system Python. Required consume secrets are `KAFKA_CONSUMER_KEY` and `KAFKA_CONSUMER_SECRET` (SASL PLAIN over SSL). They are not written to the Kafka CSV.
+Kafka, schedule, and live-sched `.env` files are gitignored and must not be committed. Android API keys sit in `local.properties` (prior scan). Live-sched README: project-local `.venv` under `server/poc/live-sched`; do not install into the system Python. Required consume secrets are `KAFKA_CONSUMER_KEY` and `KAFKA_CONSUMER_SECRET` (SASL PLAIN over SSL). They are not written to the Kafka CSV. This store does not record secret values. Architecture text does not list the setting names; the consume contract in `api-documentation.md` does.
 
 ## Planned (absent)
 
-`server/{api,ingest,infra}` from PLAN Appendix B — no package edges yet. No S3 bucket, Glue job, or Athena workgroup is declared in the live-sched tree.
+`server/{api,ingest,infra}` from PLAN Appendix B — no package edges yet. No S3 bucket, Glue job, or Athena workgroup is declared in the live-sched tree. No local timetable server package and no UI package exist.

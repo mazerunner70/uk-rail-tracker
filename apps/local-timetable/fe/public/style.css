@@ -1,0 +1,530 @@
+:root {
+  --bg: #070d14;
+  --panel: #132033;
+  --text: #e8eef6;
+  --muted: #c5d0de;
+  --accent: #f0b45a;
+  --ok: #7dffa8;
+  --line: #243044;
+  --header: #0b3a28;
+  --header-line: #1f9d55;
+  --focus: #e8eef6;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  min-width: 1100px;
+}
+
+button,
+input {
+  font: inherit;
+  color: var(--text);
+  background: #0c1624;
+  border: 1px solid #3a516c;
+  border-radius: 4px;
+  padding: 0.35rem 0.55rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  background: var(--header);
+  border-bottom: 3px solid var(--header-line);
+}
+
+.brand {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+}
+
+.brand-london {
+  font-weight: 500;
+}
+
+.brand-midland {
+  font-weight: 750;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+}
+
+h2 {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.clock-block {
+  text-align: right;
+}
+
+.clock-block p {
+  margin: 0;
+}
+
+.clock {
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.zone,
+.nodata,
+.tile-label {
+  color: var(--muted);
+}
+
+.mono,
+td.mono,
+.clock {
+  font-family: ui-monospace, monospace;
+}
+
+.status-bar {
+  min-height: 1.25rem;
+  margin: 0;
+  padding: 0.25rem 1rem;
+  font-weight: 650;
+}
+
+.status-bar:empty {
+  padding: 0;
+  min-height: 0;
+}
+
+.toolbar,
+.pair-meta,
+.kpi-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.field input {
+  color: var(--text);
+  min-width: 7rem;
+}
+
+.grow {
+  flex: 1;
+}
+
+.grow input {
+  width: 100%;
+}
+
+.stations {
+  display: flex;
+  align-items: end;
+  gap: 0.45rem;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(340px, 34%) minmax(0, 1fr) minmax(260px, 340px);
+  gap: 0.6rem;
+  padding: 0 0.6rem;
+  flex: 1;
+  min-height: 28rem;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-body {
+  padding: 0.65rem 0.75rem;
+  overflow: auto;
+}
+
+.col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 650;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+td,
+th {
+  padding: 0.32rem 0.45rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.status {
+  font-weight: 750;
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.problem {
+  color: var(--accent);
+}
+
+.schedule-focus {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.5rem;
+}
+
+.problem-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.problem-list li {
+  margin: 0.25rem 0;
+}
+
+.board-footer,
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.6rem;
+}
+
+.kpi-row {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.55rem 0.7rem;
+}
+
+.tile-label {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tile strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty-board {
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.route-filter,
+.pair-meta p,
+.toolbar p {
+  margin: 0;
+}
+
+.crumb {
+  margin-right: 0.6rem;
+}
+
+.crumb-current {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.filter-button.is-selected {
+  border-color: var(--header-line);
+  color: var(--ok);
+}
+
+.filters {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.9rem;
+  margin: 0 0 0.55rem;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.map-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  display: inline-block;
+  border-radius: 2px;
+}
+
+.swatch.spine,
+.swatch.on-time {
+  background: var(--ok);
+}
+
+.swatch.branch,
+.swatch.problem {
+  background: var(--accent);
+}
+
+.network-panel {
+  min-height: 28rem;
+}
+
+.network-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.map-frame {
+  position: relative;
+  flex: none;
+  height: min(72vh, 44rem);
+  min-height: 22rem;
+  overflow: hidden;
+}
+
+.map-tools {
+  position: absolute;
+  z-index: 2;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.map-tools button {
+  min-width: 2rem;
+  background: rgb(12 22 36 / 92%);
+}
+
+.map-hint {
+  position: absolute;
+  z-index: 2;
+  left: 0.55rem;
+  bottom: 0.4rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.network-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #0b1522;
+  border-radius: 4px;
+  touch-action: none;
+  cursor: default;
+}
+
+.network-map:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.network-map .station-mark,
+.network-map .train-marker {
+  cursor: pointer;
+}
+
+.network-map.is-shift,
+.network-map.is-shift .station-mark,
+.network-map.is-shift .train-marker {
+  cursor: grab;
+}
+
+.network-map.is-panning,
+.network-map.is-panning .station-mark,
+.network-map.is-panning .train-marker {
+  cursor: grabbing;
+}
+
+.map-tooltip {
+  position: absolute;
+  z-index: 3;
+  max-width: 16rem;
+  max-height: 10rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #d5e2f0;
+  border-radius: 4px;
+  background: #102033;
+  color: #f7fbff;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+.network-map .corridor {
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.network-map .station-dot {
+  fill: #f7fbff;
+  stroke: #07111c;
+  stroke-width: 1.5px;
+}
+
+.network-map .station-plate {
+  fill: #102033;
+  stroke: #d5e2f0;
+  stroke-width: 1px;
+}
+
+.network-map .station-label {
+  fill: #f7fbff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+}
+
+.network-map .station-badge.is-crowded {
+  display: none;
+}
+
+.network-map .station-mark:hover .station-badge {
+  display: block;
+}
+
+.network-map .train-marker {
+  stroke: #07111c;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+.network-map .train-marker.on-time {
+  fill: var(--ok);
+}
+
+.network-map .train-marker.problem {
+  fill: var(--accent);
+}
+
+.network-map .station-mark.is-selected .station-plate {
+  stroke: var(--accent);
+  stroke-width: 2px;
+}
+
+.network-map .train-marker.is-selected {
+  stroke: var(--accent);
+  stroke-width: 3px;
+}

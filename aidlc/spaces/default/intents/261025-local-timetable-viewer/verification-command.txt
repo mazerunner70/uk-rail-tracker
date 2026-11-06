@@ -1,0 +1,1 @@
+cd /home/william/code/personal/2025/uk-rail-tracker/apps/local-timetable/server && PATH=/home/william/.nvm/versions/node/v22.18.0/bin:$PATH node --import tsx --test test/mca-load/*.test.ts

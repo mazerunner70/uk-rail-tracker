@@ -1,0 +1,23 @@
+{
+  "stage_slug": "requirements-analysis",
+  "space": "default",
+  "intent": "261025-local-timetable",
+  "selections": [
+    {
+      "candidate_id": "c1",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "One question only: what the future-intents part of the page lists. The file path, the local service, the three views, and what is out were already decided.",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Wrote the page from the live-sched store: LM only, deviation is forecast versus booked public time or deactivated, and a station pair is two calling points in order. The store has no train GPS, so where means the latest stop and the next stop.",
+      "source": "orchestrator"
+    }
+  ]
+}
