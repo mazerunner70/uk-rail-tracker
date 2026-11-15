@@ -48,11 +48,18 @@ function unlinkIfPresent(path: string): void {
   }
 }
 
+/** Main file plus WAL sidecars — orphan -wal/-shm without a main DB causes SQLITE_IOERR. */
+function unlinkSqliteTree(sqlitePath: string): void {
+  unlinkIfPresent(sqlitePath);
+  unlinkIfPresent(`${sqlitePath}-wal`);
+  unlinkIfPresent(`${sqlitePath}-shm`);
+}
+
 export function openReplacement(
   sqlitePath: string,
   deps: { openDatabase?: OpenDatabase; afterUnlink?: () => void } = {},
 ): ReplacementSession {
-  unlinkIfPresent(sqlitePath);
+  unlinkSqliteTree(sqlitePath);
   deps.afterUnlink?.();
   const open = deps.openDatabase ?? defaultOpen;
   let db: SqliteDatabase | undefined;
@@ -70,7 +77,7 @@ export function openReplacement(
         // best-effort
       }
     }
-    unlinkIfPresent(sqlitePath);
+    unlinkSqliteTree(sqlitePath);
     throw err;
   }
 
@@ -173,6 +180,7 @@ export function openReplacement(
       }
       insertMetaStmt.run("load_day", meta.loadDay);
       insertMetaStmt.run("hd_sequence", meta.hdSequence);
+      insertMetaStmt.run("loaded_at", new Date().toISOString());
       db.exec("COMMIT");
       committed = true;
       closeQuietly();
@@ -182,7 +190,7 @@ export function openReplacement(
         rollbackQuietly(db);
       }
       closeQuietly();
-      unlinkIfPresent(sqlitePath);
+      unlinkSqliteTree(sqlitePath);
     },
   };
 }

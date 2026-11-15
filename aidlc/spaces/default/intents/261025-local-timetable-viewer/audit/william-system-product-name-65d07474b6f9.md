@@ -26766,3 +26766,4970 @@
 **Session**: 8821acba-2875-4754-8795-62f6415db39f
 
 ---
+
+## Human Turn
+**Timestamp**: 2026-11-06T22:01:00Z
+**Event**: HUMAN_TURN
+**Session**: 8821acba-2875-4754-8795-62f6415db39f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-06T22:05:43Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-06T22:06:50Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:07:11Z
+**Event**: SENSOR_FIRED
+**Fire id**: cdadce9e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaSettings.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:07:12Z
+**Event**: SENSOR_PASSED
+**Fire id**: cdadce9e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaSettings.ts
+**Duration ms**: 1249
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:07:23Z
+**Event**: SENSOR_FIRED
+**Fire id**: 13866d27
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/pushPort.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:07:24Z
+**Event**: SENSOR_PASSED
+**Fire id**: 13866d27
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/pushPort.ts
+**Duration ms**: 834
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:07:27Z
+**Event**: SENSOR_FIRED
+**Fire id**: 3f80bbf7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayPlan.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:07:28Z
+**Event**: SENSOR_PASSED
+**Fire id**: 3f80bbf7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayPlan.ts
+**Duration ms**: 807
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:07:50Z
+**Event**: SENSOR_FIRED
+**Fire id**: 84e3c49a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:07:51Z
+**Event**: SENSOR_PASSED
+**Fire id**: 84e3c49a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+**Duration ms**: 922
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:07:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0d23ce45
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:07:59Z
+**Event**: SENSOR_PASSED
+**Fire id**: 0d23ce45
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+**Duration ms**: 938
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:08:07Z
+**Event**: SENSOR_FIRED
+**Fire id**: 93c77c91
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/pushPort.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:08:07Z
+**Event**: SENSOR_PASSED
+**Fire id**: 93c77c91
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/pushPort.test.ts
+**Duration ms**: 860
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:08:12Z
+**Event**: SENSOR_FIRED
+**Fire id**: 67c4ba91
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayPlan.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:08:12Z
+**Event**: SENSOR_PASSED
+**Fire id**: 67c4ba91
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayPlan.test.ts
+**Duration ms**: 799
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:08:40Z
+**Event**: SENSOR_FIRED
+**Fire id**: 52ba1aa1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:08:41Z
+**Event**: SENSOR_PASSED
+**Fire id**: 52ba1aa1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+**Duration ms**: 777
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:09:16Z
+**Event**: SENSOR_FIRED
+**Fire id**: e39beb14
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:09:17Z
+**Event**: SENSOR_PASSED
+**Fire id**: e39beb14
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+**Duration ms**: 756
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:09:28Z
+**Event**: SENSOR_FIRED
+**Fire id**: 52229d73
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:09:29Z
+**Event**: SENSOR_PASSED
+**Fire id**: 52229d73
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+**Duration ms**: 912
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-06T22:10:31Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:11:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: b88cc2d6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/pushPort.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:11:05Z
+**Event**: SENSOR_PASSED
+**Fire id**: b88cc2d6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/pushPort.test.ts
+**Duration ms**: 728
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-06T22:13:56Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-06T22:15:49Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:18:50Z
+**Event**: SENSOR_FIRED
+**Fire id**: f4d933ac
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaConsumer.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:18:50Z
+**Event**: SENSOR_PASSED
+**Fire id**: f4d933ac
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaConsumer.ts
+**Duration ms**: 903
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:07Z
+**Event**: SENSOR_FIRED
+**Fire id**: 13ad4ce8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaConsumer.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:08Z
+**Event**: SENSOR_PASSED
+**Fire id**: 13ad4ce8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaConsumer.ts
+**Duration ms**: 913
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:13Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0b800cbd
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaWorker.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-06T22:19:14Z
+**Event**: SENSOR_FAILED
+**Fire id**: 0b800cbd
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaWorker.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-0b800cbd.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:19Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4c48e164
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaOverlay.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:19Z
+**Event**: SENSOR_PASSED
+**Fire id**: 4c48e164
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaOverlay.ts
+**Duration ms**: 946
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:25Z
+**Event**: SENSOR_FIRED
+**Fire id**: 76ff3b50
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReplacer.ts
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:26Z
+**Event**: SENSOR_FIRED
+**Fire id**: 9afb9b5d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReader.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:26Z
+**Event**: SENSOR_PASSED
+**Fire id**: 76ff3b50
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReplacer.ts
+**Duration ms**: 1220
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:27Z
+**Event**: SENSOR_PASSED
+**Fire id**: 9afb9b5d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReader.ts
+**Duration ms**: 962
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:35Z
+**Event**: SENSOR_FIRED
+**Fire id**: f78ffe71
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/start.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:36Z
+**Event**: SENSOR_PASSED
+**Fire id**: f78ffe71
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/start.ts
+**Duration ms**: 990
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:38Z
+**Event**: SENSOR_FIRED
+**Fire id**: b038bcc8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/main.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:39Z
+**Event**: SENSOR_PASSED
+**Fire id**: b038bcc8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/main.ts
+**Duration ms**: 1140
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:40Z
+**Event**: SENSOR_FIRED
+**Fire id**: 663a897c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/index.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:41Z
+**Event**: SENSOR_PASSED
+**Fire id**: 663a897c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/index.ts
+**Duration ms**: 899
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:52Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0492d4d0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/loadHandoff.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:53Z
+**Event**: SENSOR_PASSED
+**Fire id**: 0492d4d0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/loadHandoff.test.ts
+**Duration ms**: 748
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:19:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: c96694ce
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/kafkaConsumer.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:19:58Z
+**Event**: SENSOR_PASSED
+**Fire id**: c96694ce
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/kafkaConsumer.test.ts
+**Duration ms**: 740
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:20:00Z
+**Event**: SENSOR_FIRED
+**Fire id**: bf3888d1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/busyTimeout.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:20:01Z
+**Event**: SENSOR_PASSED
+**Fire id**: bf3888d1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/busyTimeout.test.ts
+**Duration ms**: 859
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:22:06Z
+**Event**: SENSOR_FIRED
+**Fire id**: f62e25e0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:22:07Z
+**Event**: SENSOR_FIRED
+**Fire id**: 02bdf7e5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/httpServer.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:22:07Z
+**Event**: SENSOR_PASSED
+**Fire id**: f62e25e0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Duration ms**: 1231
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:22:08Z
+**Event**: SENSOR_PASSED
+**Fire id**: 02bdf7e5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/httpServer.ts
+**Duration ms**: 995
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:22:10Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0ec1fbab
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/httpServer.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:22:11Z
+**Event**: SENSOR_PASSED
+**Fire id**: 0ec1fbab
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/httpServer.ts
+**Duration ms**: 984
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:24:14Z
+**Event**: SENSOR_FIRED
+**Fire id**: df57bc47
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:24:16Z
+**Event**: SENSOR_PASSED
+**Fire id**: df57bc47
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+**Duration ms**: 1384
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:24:19Z
+**Event**: SENSOR_FIRED
+**Fire id**: 8a11ec39
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/apiClient.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:24:21Z
+**Event**: SENSOR_PASSED
+**Fire id**: 8a11ec39
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/apiClient.ts
+**Duration ms**: 1368
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:24:55Z
+**Event**: SENSOR_FIRED
+**Fire id**: a72b1a1e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:24:56Z
+**Event**: SENSOR_PASSED
+**Fire id**: a72b1a1e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1120
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:25:03Z
+**Event**: SENSOR_FIRED
+**Fire id**: 7a813a75
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:25:04Z
+**Event**: SENSOR_PASSED
+**Fire id**: 7a813a75
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1300
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:25:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0936f7ee
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:25:06Z
+**Event**: SENSOR_PASSED
+**Fire id**: 0936f7ee
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 883
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:25:08Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0842b9e3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:25:09Z
+**Event**: SENSOR_PASSED
+**Fire id**: 0842b9e3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 847
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:25:13Z
+**Event**: SENSOR_FIRED
+**Fire id**: 85a79196
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-06T22:25:14Z
+**Event**: SENSOR_FAILED
+**Fire id**: 85a79196
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-85a79196.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:25:18Z
+**Event**: SENSOR_FIRED
+**Fire id**: f85b9e68
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:25:19Z
+**Event**: SENSOR_PASSED
+**Fire id**: f85b9e68
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1259
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:25:27Z
+**Event**: SENSOR_FIRED
+**Fire id**: ed9780c3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/networkDelta.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:25:28Z
+**Event**: SENSOR_PASSED
+**Fire id**: ed9780c3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/networkDelta.test.ts
+**Duration ms**: 935
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:25:42Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4df24c1e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/mca-load/sqliteReplacer.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:25:43Z
+**Event**: SENSOR_PASSED
+**Fire id**: 4df24c1e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/mca-load/sqliteReplacer.test.ts
+**Duration ms**: 745
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:26:10Z
+**Event**: SENSOR_FIRED
+**Fire id**: e5e6e831
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-06T22:26:11Z
+**Event**: SENSOR_FAILED
+**Fire id**: e5e6e831
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-e5e6e831.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:26:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0d04e6f8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-06T22:26:23Z
+**Event**: SENSOR_FAILED
+**Fire id**: 0d04e6f8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-0d04e6f8.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:28:25Z
+**Event**: SENSOR_FIRED
+**Fire id**: d42c18a5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-06T22:28:26Z
+**Event**: SENSOR_FAILED
+**Fire id**: d42c18a5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-d42c18a5.md
+**Findings count**: 24
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-06T22:29:19Z
+**Event**: SENSOR_FIRED
+**Fire id**: c1cf67af
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaWorker.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-06T22:29:20Z
+**Event**: SENSOR_PASSED
+**Fire id**: c1cf67af
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaWorker.ts
+**Duration ms**: 1069
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T09:46:07Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T10:37:19Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T10:47:44Z
+**Event**: HUMAN_TURN
+**Session**: 52f16518-258b-4d44-a160-5b71691289a7
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-07T10:59:37Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:00:12Z
+**Event**: HUMAN_TURN
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T11:00:52Z
+**Event**: SENSOR_FIRED
+**Fire id**: 522ce74d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T11:00:55Z
+**Event**: SENSOR_PASSED
+**Fire id**: 522ce74d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 2174
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T11:00:55Z
+**Event**: SENSOR_FIRED
+**Fire id**: 06022c5e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T11:00:57Z
+**Event**: SENSOR_FIRED
+**Fire id**: c59f2d18
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T11:00:57Z
+**Event**: SENSOR_FAILED
+**Fire id**: 06022c5e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-06022c5e.md
+**Findings count**: 1
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T11:00:58Z
+**Event**: SENSOR_PASSED
+**Fire id**: c59f2d18
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1376
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T11:01:07Z
+**Event**: SENSOR_FIRED
+**Fire id**: a77d0e40
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T11:01:08Z
+**Event**: SENSOR_FAILED
+**Fire id**: a77d0e40
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-a77d0e40.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T11:01:16Z
+**Event**: SENSOR_FIRED
+**Fire id**: 726194c0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T11:01:17Z
+**Event**: SENSOR_FAILED
+**Fire id**: 726194c0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-726194c0.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T11:01:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: 8829fbfb
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T11:01:23Z
+**Event**: SENSOR_FAILED
+**Fire id**: 8829fbfb
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-8829fbfb.md
+**Findings count**: 24
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T11:01:26Z
+**Event**: SENSOR_FIRED
+**Fire id**: e0ecc846
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T11:01:27Z
+**Event**: SENSOR_FAILED
+**Fire id**: e0ecc846
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-e0ecc846.md
+**Findings count**: 24
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-07T11:05:17Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:05:32Z
+**Event**: HUMAN_TURN
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:10:58Z
+**Event**: HUMAN_TURN
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:11:38Z
+**Event**: HUMAN_TURN
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:12:34Z
+**Event**: HUMAN_TURN
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:14:44Z
+**Event**: HUMAN_TURN
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:17:02Z
+**Event**: HUMAN_TURN
+**Session**: 4b9b1b56-dd31-4517-a764-dd0e7987fcd7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:22:20Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:28:15Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:33:06Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-07T12:12:48Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: bbdcca7f-d366-43f0-8206-047446ad91dd
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T12:13:00Z
+**Event**: HUMAN_TURN
+**Session**: bbdcca7f-d366-43f0-8206-047446ad91dd
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T12:15:51Z
+**Event**: HUMAN_TURN
+**Session**: bbdcca7f-d366-43f0-8206-047446ad91dd
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T12:20:27Z
+**Event**: HUMAN_TURN
+**Session**: bbdcca7f-d366-43f0-8206-047446ad91dd
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T12:22:04Z
+**Event**: HUMAN_TURN
+**Session**: bbdcca7f-d366-43f0-8206-047446ad91dd
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T12:31:28Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T12:43:00Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T12:46:44Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:13:11Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:17:32Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:38:33Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:43:55Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:44:16Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:58:40Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:59:50Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:06:42Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:10:30Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:11:28Z
+**Event**: HUMAN_TURN
+**Session**: f991447d-ca90-40d1-84df-3dd9367653df
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-07T14:37:29Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: 18233fc5-41d0-4b60-9ee4-bc0d7b698300
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:37:54Z
+**Event**: HUMAN_TURN
+**Session**: 18233fc5-41d0-4b60-9ee4-bc0d7b698300
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-07T15:11:37Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:14:21Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:14:26Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:17:29Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:26:16Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:26:29Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:27:07Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:36Z
+**Event**: SENSOR_FIRED
+**Fire id**: f550b68b
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T15:27:38Z
+**Event**: SENSOR_FAILED
+**Fire id**: f550b68b
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-f550b68b.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:40Z
+**Event**: SENSOR_FIRED
+**Fire id**: f7ddebdb
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T15:27:41Z
+**Event**: SENSOR_FAILED
+**Fire id**: f7ddebdb
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-f7ddebdb.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:43Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5a8bd237
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:27:44Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5a8bd237
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Duration ms**: 1053
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:46Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4de5bbf0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:27:47Z
+**Event**: SENSOR_PASSED
+**Fire id**: 4de5bbf0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Duration ms**: 912
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:51Z
+**Event**: SENSOR_FIRED
+**Fire id**: 7dd9c728
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:52Z
+**Event**: SENSOR_FIRED
+**Fire id**: 61f8e20d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:27:53Z
+**Event**: SENSOR_PASSED
+**Fire id**: 7dd9c728
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+**Duration ms**: 1744
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:54Z
+**Event**: SENSOR_FIRED
+**Fire id**: 7526337a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:27:54Z
+**Event**: SENSOR_PASSED
+**Fire id**: 61f8e20d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1762
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T15:27:55Z
+**Event**: SENSOR_FAILED
+**Fire id**: 7526337a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-7526337a.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:27:59Z
+**Event**: SENSOR_FIRED
+**Fire id**: b5ccc33d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:28:01Z
+**Event**: SENSOR_PASSED
+**Fire id**: b5ccc33d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1434
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:28:06Z
+**Event**: SENSOR_FIRED
+**Fire id**: 53b5ae06
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:28:07Z
+**Event**: SENSOR_PASSED
+**Fire id**: 53b5ae06
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1203
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:28:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: 1a195525
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:28:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0efcc85b
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T15:28:23Z
+**Event**: SENSOR_FAILED
+**Fire id**: 1a195525
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-1a195525.md
+**Findings count**: 24
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T15:28:23Z
+**Event**: SENSOR_FAILED
+**Fire id**: 0efcc85b
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-0efcc85b.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:28:24Z
+**Event**: SENSOR_FIRED
+**Fire id**: 8791a100
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T15:28:25Z
+**Event**: SENSOR_FAILED
+**Fire id**: 8791a100
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-8791a100.md
+**Findings count**: 24
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:28:31Z
+**Event**: SENSOR_FIRED
+**Fire id**: ef6356f5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:28:32Z
+**Event**: SENSOR_PASSED
+**Fire id**: ef6356f5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+**Duration ms**: 964
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:28:32Z
+**Event**: SENSOR_FIRED
+**Fire id**: 6e49d864
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:28:33Z
+**Event**: SENSOR_PASSED
+**Fire id**: 6e49d864
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+**Duration ms**: 903
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:28:34Z
+**Event**: SENSOR_FIRED
+**Fire id**: 66813386
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T15:28:34Z
+**Event**: SENSOR_PASSED
+**Fire id**: 66813386
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+**Duration ms**: 890
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:34:23Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T15:36:00Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5ef62ece
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T15:36:01Z
+**Event**: SENSOR_FAILED
+**Fire id**: 5ef62ece
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-5ef62ece.md
+**Findings count**: 24
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-07T15:48:38Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: 7000e39d-1af8-4726-b848-39f1cf6f61e6
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T15:49:47Z
+**Event**: HUMAN_TURN
+**Session**: cdfdb299-df94-46de-ae2d-44a61235db2d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T17:04:33Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T17:05:04Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T17:26:00Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T17:27:50Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:28:23Z
+**Event**: SENSOR_FIRED
+**Fire id**: eb9da7fa
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/routeStrip.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:28:25Z
+**Event**: SENSOR_PASSED
+**Fire id**: eb9da7fa
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/routeStrip.ts
+**Duration ms**: 1507
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:28:39Z
+**Event**: SENSOR_FIRED
+**Fire id**: 59237cc1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/routeStrip.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:28:40Z
+**Event**: SENSOR_FAILED
+**Fire id**: 59237cc1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/routeStrip.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-59237cc1.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:28:48Z
+**Event**: SENSOR_FIRED
+**Fire id**: b80a8067
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/routeStrip.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:28:49Z
+**Event**: SENSOR_PASSED
+**Fire id**: b80a8067
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/routeStrip.ts
+**Duration ms**: 1087
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:28:50Z
+**Event**: SENSOR_FIRED
+**Fire id**: f1d40ea1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/routeStrip.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:28:51Z
+**Event**: SENSOR_PASSED
+**Fire id**: f1d40ea1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/routeStrip.ts
+**Duration ms**: 962
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:30:44Z
+**Event**: SENSOR_FIRED
+**Fire id**: 84220c6e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:30:45Z
+**Event**: SENSOR_FAILED
+**Fire id**: 84220c6e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-84220c6e.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:30:48Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4a215649
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:30:49Z
+**Event**: SENSOR_FAILED
+**Fire id**: 4a215649
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-4a215649.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:30:50Z
+**Event**: SENSOR_FIRED
+**Fire id**: fd707b20
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:30:51Z
+**Event**: SENSOR_FIRED
+**Fire id**: 667e4c65
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:30:52Z
+**Event**: SENSOR_PASSED
+**Fire id**: fd707b20
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Duration ms**: 1266
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:30:53Z
+**Event**: SENSOR_FIRED
+**Fire id**: 29bf5c88
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:30:53Z
+**Event**: SENSOR_PASSED
+**Fire id**: 667e4c65
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+**Duration ms**: 1808
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:30:54Z
+**Event**: SENSOR_PASSED
+**Fire id**: 29bf5c88
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+**Duration ms**: 1052
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:30:55Z
+**Event**: SENSOR_FIRED
+**Fire id**: 1ec35043
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:30:56Z
+**Event**: SENSOR_PASSED
+**Fire id**: 1ec35043
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/trainViews.test.ts
+**Duration ms**: 761
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:31:26Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4580a4be
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:31:27Z
+**Event**: SENSOR_FAILED
+**Fire id**: 4580a4be
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-4580a4be.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:31:29Z
+**Event**: SENSOR_FIRED
+**Fire id**: 1b23d2e6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:31:30Z
+**Event**: SENSOR_PASSED
+**Fire id**: 1b23d2e6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 926
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:31:31Z
+**Event**: SENSOR_FIRED
+**Fire id**: fb014a75
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:31:32Z
+**Event**: SENSOR_FAILED
+**Fire id**: fb014a75
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-fb014a75.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:31:35Z
+**Event**: SENSOR_FIRED
+**Fire id**: 19a7b780
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:31:36Z
+**Event**: SENSOR_PASSED
+**Fire id**: 19a7b780
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1021
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:31:38Z
+**Event**: SENSOR_FIRED
+**Fire id**: f136e582
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:31:39Z
+**Event**: SENSOR_PASSED
+**Fire id**: f136e582
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1469
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:31:47Z
+**Event**: SENSOR_FIRED
+**Fire id**: 53de8c54
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:31:48Z
+**Event**: SENSOR_FAILED
+**Fire id**: 53de8c54
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-53de8c54.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:31:49Z
+**Event**: SENSOR_FIRED
+**Fire id**: e645ee2f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:31:50Z
+**Event**: SENSOR_PASSED
+**Fire id**: e645ee2f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 935
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:32:00Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0cb5f136
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:32:01Z
+**Event**: SENSOR_FAILED
+**Fire id**: 0cb5f136
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-0cb5f136.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:32:29Z
+**Event**: SENSOR_FIRED
+**Fire id**: c4418f44
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:32:30Z
+**Event**: SENSOR_PASSED
+**Fire id**: c4418f44
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1371
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:32:31Z
+**Event**: SENSOR_FIRED
+**Fire id**: d262d8e3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:32:33Z
+**Event**: SENSOR_FAILED
+**Fire id**: d262d8e3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-d262d8e3.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:32:40Z
+**Event**: SENSOR_FIRED
+**Fire id**: 32fc08a6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:32:41Z
+**Event**: SENSOR_PASSED
+**Fire id**: 32fc08a6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1385
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:32:52Z
+**Event**: SENSOR_FIRED
+**Fire id**: ee8e0317
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:32:53Z
+**Event**: SENSOR_FAILED
+**Fire id**: ee8e0317
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-ee8e0317.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:32:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: 02fd454a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:32:59Z
+**Event**: SENSOR_PASSED
+**Fire id**: 02fd454a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1351
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:33:15Z
+**Event**: SENSOR_FIRED
+**Fire id**: 07fbfbda
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:33:17Z
+**Event**: SENSOR_PASSED
+**Fire id**: 07fbfbda
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1456
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:33:35Z
+**Event**: SENSOR_FIRED
+**Fire id**: 86d6a987
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:33:36Z
+**Event**: SENSOR_PASSED
+**Fire id**: 86d6a987
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+**Duration ms**: 899
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:34:16Z
+**Event**: SENSOR_FIRED
+**Fire id**: 085e6872
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:34:17Z
+**Event**: SENSOR_FAILED
+**Fire id**: 085e6872
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-085e6872.md
+**Findings count**: 22
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:34:34Z
+**Event**: SENSOR_FIRED
+**Fire id**: e2fc09fc
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/routeStrip.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:34:35Z
+**Event**: SENSOR_FAILED
+**Fire id**: e2fc09fc
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/routeStrip.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-e2fc09fc.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:35:12Z
+**Event**: SENSOR_FIRED
+**Fire id**: f165ab2b
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:35:14Z
+**Event**: SENSOR_PASSED
+**Fire id**: f165ab2b
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1672
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:35:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0c81b7a7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:35:23Z
+**Event**: SENSOR_PASSED
+**Fire id**: 0c81b7a7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+**Duration ms**: 1044
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T17:41:16Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:43:25Z
+**Event**: SENSOR_FIRED
+**Fire id**: c8331aa1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReplacer.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:43:25Z
+**Event**: SENSOR_PASSED
+**Fire id**: c8331aa1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReplacer.ts
+**Duration ms**: 869
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:43:27Z
+**Event**: SENSOR_FIRED
+**Fire id**: 523411a6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReplacer.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:43:28Z
+**Event**: SENSOR_PASSED
+**Fire id**: 523411a6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteReplacer.ts
+**Duration ms**: 1010
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:43:31Z
+**Event**: SENSOR_FIRED
+**Fire id**: 7bf22fc8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/mca-load/sqliteReplacer.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:43:32Z
+**Event**: SENSOR_PASSED
+**Fire id**: 7bf22fc8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/mca-load/sqliteReplacer.test.ts
+**Duration ms**: 936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T17:52:31Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T17:58:19Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:58:49Z
+**Event**: SENSOR_FIRED
+**Fire id**: a6c51da0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:58:50Z
+**Event**: SENSOR_FAILED
+**Fire id**: a6c51da0
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-a6c51da0.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:58:52Z
+**Event**: SENSOR_FIRED
+**Fire id**: b200c5ec
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:58:53Z
+**Event**: SENSOR_FAILED
+**Fire id**: b200c5ec
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-b200c5ec.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:58:54Z
+**Event**: SENSOR_FIRED
+**Fire id**: 90b25ea7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:58:55Z
+**Event**: SENSOR_FAILED
+**Fire id**: 90b25ea7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-90b25ea7.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:58:56Z
+**Event**: SENSOR_FIRED
+**Fire id**: 8364734a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:58:57Z
+**Event**: SENSOR_PASSED
+**Fire id**: 8364734a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 986
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:58:59Z
+**Event**: SENSOR_FIRED
+**Fire id**: 04c173f8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:59:00Z
+**Event**: SENSOR_PASSED
+**Fire id**: 04c173f8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1382
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:59:09Z
+**Event**: SENSOR_FIRED
+**Fire id**: b1715bf9
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T17:59:10Z
+**Event**: SENSOR_PASSED
+**Fire id**: b1715bf9
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1096
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:59:11Z
+**Event**: SENSOR_FIRED
+**Fire id**: f4461bfc
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:59:12Z
+**Event**: SENSOR_FAILED
+**Fire id**: f4461bfc
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-f4461bfc.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:59:18Z
+**Event**: SENSOR_FIRED
+**Fire id**: dddaf38d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:59:19Z
+**Event**: SENSOR_FAILED
+**Fire id**: dddaf38d
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-dddaf38d.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T17:59:20Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5f237901
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-07T17:59:21Z
+**Event**: SENSOR_FAILED
+**Fire id**: 5f237901
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-5f237901.md
+**Findings count**: 22
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T18:04:42Z
+**Event**: HUMAN_TURN
+**Session**: dd65f4cf-da94-41d9-b995-ebf1b4ec1a08
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-07T18:09:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: eed83ce2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaWorker.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-07T18:09:23Z
+**Event**: SENSOR_PASSED
+**Fire id**: eed83ce2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/kafkaWorker.ts
+**Duration ms**: 868
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T18:18:37Z
+**Event**: HUMAN_TURN
+**Session**: 7000e39d-1af8-4726-b848-39f1cf6f61e6
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T18:24:11Z
+**Event**: HUMAN_TURN
+**Session**: 7000e39d-1af8-4726-b848-39f1cf6f61e6
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T18:24:24Z
+**Event**: HUMAN_TURN
+**Session**: 7000e39d-1af8-4726-b848-39f1cf6f61e6
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:56:13Z
+**Event**: HUMAN_TURN
+**Session**: 7000e39d-1af8-4726-b848-39f1cf6f61e6
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T10:56:46Z
+**Event**: SENSOR_FIRED
+**Fire id**: bcf21cda
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/eventTags.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T10:56:47Z
+**Event**: SENSOR_PASSED
+**Fire id**: bcf21cda
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/eventTags.ts
+**Duration ms**: 890
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T10:57:00Z
+**Event**: SENSOR_FIRED
+**Fire id**: e6d91399
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/eventTags.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T10:57:01Z
+**Event**: SENSOR_PASSED
+**Fire id**: e6d91399
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/eventTags.test.ts
+**Duration ms**: 844
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T10:57:19Z
+**Event**: SENSOR_FIRED
+**Fire id**: de88d414
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayPlan.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T10:57:20Z
+**Event**: SENSOR_PASSED
+**Fire id**: de88d414
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayPlan.ts
+**Duration ms**: 1166
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T10:57:20Z
+**Event**: SENSOR_FIRED
+**Fire id**: 02ecf34e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T10:57:22Z
+**Event**: SENSOR_PASSED
+**Fire id**: 02ecf34e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+**Duration ms**: 1145
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:16Z
+**Event**: SENSOR_FIRED
+**Fire id**: 3894896e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:06:17Z
+**Event**: SENSOR_PASSED
+**Fire id**: 3894896e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+**Duration ms**: 1071
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:18Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5e6c49ae
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:06:19Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5e6c49ae
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+**Duration ms**: 909
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:20Z
+**Event**: SENSOR_FIRED
+**Fire id**: 39fd90be
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:06:21Z
+**Event**: SENSOR_PASSED
+**Fire id**: 39fd90be
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+**Duration ms**: 797
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: ab305342
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:06:23Z
+**Event**: SENSOR_FAILED
+**Fire id**: ab305342
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/overlayWriter.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-ab305342.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:30Z
+**Event**: SENSOR_FIRED
+**Fire id**: 890fbea7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayPlan.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:06:31Z
+**Event**: SENSOR_PASSED
+**Fire id**: 890fbea7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayPlan.test.ts
+**Duration ms**: 708
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:38Z
+**Event**: SENSOR_FIRED
+**Fire id**: befa5736
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:06:39Z
+**Event**: SENSOR_PASSED
+**Fire id**: befa5736
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+**Duration ms**: 1000
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:52Z
+**Event**: SENSOR_FIRED
+**Fire id**: 36452475
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:06:53Z
+**Event**: SENSOR_PASSED
+**Fire id**: 36452475
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+**Duration ms**: 717
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:06:57Z
+**Event**: SENSOR_FIRED
+**Fire id**: f7da077e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:06:58Z
+**Event**: SENSOR_FAILED
+**Fire id**: f7da077e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-f7da077e.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:07:03Z
+**Event**: SENSOR_FIRED
+**Fire id**: 132a8cf5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:07:04Z
+**Event**: SENSOR_FAILED
+**Fire id**: 132a8cf5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-132a8cf5.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:07:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: 3f2af3fc
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:07:06Z
+**Event**: SENSOR_PASSED
+**Fire id**: 3f2af3fc
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Duration ms**: 952
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:08:59Z
+**Event**: SENSOR_FIRED
+**Fire id**: 40244bca
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:09:00Z
+**Event**: SENSOR_PASSED
+**Fire id**: 40244bca
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/overlayWriter.test.ts
+**Duration ms**: 772
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:09:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: 8f08d44e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:09:05Z
+**Event**: SENSOR_PASSED
+**Fire id**: 8f08d44e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Duration ms**: 862
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:09:21Z
+**Event**: SENSOR_FIRED
+**Fire id**: 91c02b3c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:09:22Z
+**Event**: SENSOR_FAILED
+**Fire id**: 91c02b3c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-91c02b3c.md
+**Findings count**: 3
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:09:32Z
+**Event**: SENSOR_FIRED
+**Fire id**: ca768946
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:09:33Z
+**Event**: SENSOR_PASSED
+**Fire id**: ca768946
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/trainViews.ts
+**Duration ms**: 828
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:00Z
+**Event**: SENSOR_FIRED
+**Fire id**: 46fa9cf9
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:10:02Z
+**Event**: SENSOR_PASSED
+**Fire id**: 46fa9cf9
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/types.ts
+**Duration ms**: 1462
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:02Z
+**Event**: SENSOR_FIRED
+**Fire id**: 92f19bb4
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:10:03Z
+**Event**: SENSOR_PASSED
+**Fire id**: 92f19bb4
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 838
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: c6ce5797
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:10:06Z
+**Event**: SENSOR_FAILED
+**Fire id**: c6ce5797
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-c6ce5797.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:07Z
+**Event**: SENSOR_FIRED
+**Fire id**: 0a19afad
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:10:08Z
+**Event**: SENSOR_PASSED
+**Fire id**: 0a19afad
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1222
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:14Z
+**Event**: SENSOR_FIRED
+**Fire id**: 8a62b091
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:10:15Z
+**Event**: SENSOR_FAILED
+**Fire id**: 8a62b091
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-8a62b091.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:16Z
+**Event**: SENSOR_FIRED
+**Fire id**: ec7a9b3e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:10:17Z
+**Event**: SENSOR_PASSED
+**Fire id**: ec7a9b3e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 813
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:32Z
+**Event**: SENSOR_FIRED
+**Fire id**: a43c3981
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:10:33Z
+**Event**: SENSOR_PASSED
+**Fire id**: a43c3981
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/controller.ts
+**Duration ms**: 1276
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:45Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4ff6f44a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:10:47Z
+**Event**: SENSOR_PASSED
+**Fire id**: 4ff6f44a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1377
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:10:54Z
+**Event**: SENSOR_FIRED
+**Fire id**: 2fbba958
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:10:55Z
+**Event**: SENSOR_FAILED
+**Fire id**: 2fbba958
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-2fbba958.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:11:01Z
+**Event**: SENSOR_FIRED
+**Fire id**: 271fe5d3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:11:02Z
+**Event**: SENSOR_PASSED
+**Fire id**: 271fe5d3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1319
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:11:10Z
+**Event**: SENSOR_FIRED
+**Fire id**: 7eb7f72e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:11:11Z
+**Event**: SENSOR_PASSED
+**Fire id**: 7eb7f72e
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1227
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:11:21Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4d9fc067
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:11:22Z
+**Event**: SENSOR_FAILED
+**Fire id**: 4d9fc067
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-4d9fc067.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:11:23Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5a3eb03c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:11:24Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5a3eb03c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/dom.ts
+**Duration ms**: 1163
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:11:28Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5ebba62f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:11:29Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5ebba62f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+**Duration ms**: 924
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:11:30Z
+**Event**: SENSOR_FIRED
+**Fire id**: 9be9c03a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:11:31Z
+**Event**: SENSOR_PASSED
+**Fire id**: 9be9c03a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/src/main.ts
+**Duration ms**: 948
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:11:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: 05b23fc5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:11:59Z
+**Event**: SENSOR_FAILED
+**Fire id**: 05b23fc5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-05b23fc5.md
+**Findings count**: 22
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:12:03Z
+**Event**: SENSOR_FIRED
+**Fire id**: f5c31ee8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:12:04Z
+**Event**: SENSOR_FAILED
+**Fire id**: f5c31ee8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/dom.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-f5c31ee8.md
+**Findings count**: 22
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:12:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: 43a7cd72
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:12:06Z
+**Event**: SENSOR_FAILED
+**Fire id**: 43a7cd72
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-43a7cd72.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:12:18Z
+**Event**: SENSOR_FIRED
+**Fire id**: f2c22305
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-08T11:12:19Z
+**Event**: SENSOR_FAILED
+**Fire id**: f2c22305
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/fe/test/controller.test.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-f2c22305.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:25:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: 36a5ea73
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/networkDelta.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:25:23Z
+**Event**: SENSOR_PASSED
+**Fire id**: 36a5ea73
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/kafka-overlay/networkDelta.test.ts
+**Duration ms**: 701
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:42:15Z
+**Event**: SENSOR_FIRED
+**Fire id**: 400ab079
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:42:17Z
+**Event**: SENSOR_PASSED
+**Fire id**: 400ab079
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+**Duration ms**: 1163
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-08T11:42:25Z
+**Event**: SENSOR_FIRED
+**Fire id**: 229b36b6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-08T11:42:26Z
+**Event**: SENSOR_PASSED
+**Fire id**: 229b36b6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/sqliteSchema.ts
+**Duration ms**: 989
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-08T14:08:40Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:11:13Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:16:58Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:20:04Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:20:51Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:22:27Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:23:15Z
+**Event**: SENSOR_FIRED
+**Fire id**: d44fbd76
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/stationGeo.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:23:17Z
+**Event**: SENSOR_PASSED
+**Fire id**: d44fbd76
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/stationGeo.ts
+**Duration ms**: 1511
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:23:29Z
+**Event**: SENSOR_FIRED
+**Fire id**: 9789fc97
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:23:30Z
+**Event**: SENSOR_PASSED
+**Fire id**: 9789fc97
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1001
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:23:47Z
+**Event**: SENSOR_FIRED
+**Fire id**: 2c16d353
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:23:48Z
+**Event**: SENSOR_PASSED
+**Fire id**: 2c16d353
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1073
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:23:51Z
+**Event**: SENSOR_FIRED
+**Fire id**: dab4ff0c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:23:52Z
+**Event**: SENSOR_PASSED
+**Fire id**: dab4ff0c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1101
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:24:03Z
+**Event**: SENSOR_FIRED
+**Fire id**: d66b6318
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-14T14:24:04Z
+**Event**: SENSOR_FAILED
+**Fire id**: d66b6318
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-d66b6318.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:24:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: a1d88a30
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:24:06Z
+**Event**: SENSOR_PASSED
+**Fire id**: a1d88a30
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1117
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:24:07Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5d003f58
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:24:08Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5d003f58
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+**Duration ms**: 910
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:24:09Z
+**Event**: SENSOR_FIRED
+**Fire id**: 768ab77c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:24:10Z
+**Event**: SENSOR_PASSED
+**Fire id**: 768ab77c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+**Duration ms**: 783
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:25:27Z
+**Event**: SENSOR_FIRED
+**Fire id**: 084f6bb1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:25:28Z
+**Event**: SENSOR_PASSED
+**Fire id**: 084f6bb1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 794
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:25:58Z
+**Event**: SENSOR_FIRED
+**Fire id**: 5a067aed
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:25:59Z
+**Event**: SENSOR_PASSED
+**Fire id**: 5a067aed
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 727
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:26:21Z
+**Event**: SENSOR_FIRED
+**Fire id**: 3b14e067
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:26:22Z
+**Event**: SENSOR_PASSED
+**Fire id**: 3b14e067
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 726
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:28:10Z
+**Event**: SENSOR_FIRED
+**Fire id**: dff9bcc2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:28:11Z
+**Event**: SENSOR_PASSED
+**Fire id**: dff9bcc2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 740
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:33:57Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:34:44Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:42:34Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:48:23Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:50:38Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:51:29Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:52:01Z
+**Event**: SENSOR_FIRED
+**Fire id**: 30836813
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-14T14:52:02Z
+**Event**: SENSOR_FAILED
+**Fire id**: 30836813
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-30836813.md
+**Findings count**: 3
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:52:24Z
+**Event**: SENSOR_FIRED
+**Fire id**: ac392c98
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-14T14:52:25Z
+**Event**: SENSOR_FAILED
+**Fire id**: ac392c98
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-ac392c98.md
+**Findings count**: 2
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:52:27Z
+**Event**: SENSOR_FIRED
+**Fire id**: abddc9f7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:52:28Z
+**Event**: SENSOR_PASSED
+**Fire id**: abddc9f7
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 943
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:52:44Z
+**Event**: SENSOR_FIRED
+**Fire id**: 502ee040
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:52:45Z
+**Event**: SENSOR_PASSED
+**Fire id**: 502ee040
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 762
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T14:52:53Z
+**Event**: SENSOR_FIRED
+**Fire id**: 9cace3f2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T14:52:54Z
+**Event**: SENSOR_PASSED
+**Fire id**: 9cace3f2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 752
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T14:58:03Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:00:55Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:06:35Z
+**Event**: SENSOR_FIRED
+**Fire id**: 1a999985
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:06:36Z
+**Event**: SENSOR_PASSED
+**Fire id**: 1a999985
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1010
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:06:45Z
+**Event**: SENSOR_FIRED
+**Fire id**: 7bf44906
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:06:46Z
+**Event**: SENSOR_PASSED
+**Fire id**: 7bf44906
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 987
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:06:51Z
+**Event**: SENSOR_FIRED
+**Fire id**: daa9a9f9
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:06:52Z
+**Event**: SENSOR_PASSED
+**Fire id**: daa9a9f9
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 842
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:13:30Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:13:49Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:15:27Z
+**Event**: SENSOR_FIRED
+**Fire id**: e520913a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:15:28Z
+**Event**: SENSOR_PASSED
+**Fire id**: e520913a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 951
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:17:35Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4aa6841c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:17:36Z
+**Event**: SENSOR_PASSED
+**Fire id**: 4aa6841c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1158
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:17:41Z
+**Event**: SENSOR_FIRED
+**Fire id**: 6f0aa1f6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:17:42Z
+**Event**: SENSOR_PASSED
+**Fire id**: 6f0aa1f6
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1024
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:17:43Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4410d49c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:17:44Z
+**Event**: SENSOR_PASSED
+**Fire id**: 4410d49c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1050
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:17:46Z
+**Event**: SENSOR_FIRED
+**Fire id**: 579e2790
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:17:47Z
+**Event**: SENSOR_PASSED
+**Fire id**: 579e2790
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 993
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:19:10Z
+**Event**: SENSOR_FIRED
+**Fire id**: 33ac0b1f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:19:11Z
+**Event**: SENSOR_PASSED
+**Fire id**: 33ac0b1f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1040
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:19:49Z
+**Event**: SENSOR_FIRED
+**Fire id**: f08f5401
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:19:50Z
+**Event**: SENSOR_PASSED
+**Fire id**: f08f5401
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 980
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:20:49Z
+**Event**: SENSOR_FIRED
+**Fire id**: 012d62f1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:20:49Z
+**Event**: SENSOR_PASSED
+**Fire id**: 012d62f1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 785
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:33:14Z
+**Event**: HUMAN_TURN
+**Session**: 92537e65-600b-4361-ac36-dc54cf958708
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T15:33:36Z
+**Event**: SENSOR_FIRED
+**Fire id**: 6d1b08f4
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T15:33:37Z
+**Event**: SENSOR_PASSED
+**Fire id**: 6d1b08f4
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 966
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-14T15:35:38Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:39:06Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:45:07Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:48:52Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T15:52:24Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:00:47Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Session End
+**Timestamp**: 2026-11-14T16:02:54Z
+**Event**: SESSION_ENDED
+**Reason**: user_close
+
+---
+
+## Session End
+**Timestamp**: 2026-11-14T16:03:02Z
+**Event**: SESSION_ENDED
+**Reason**: user_close
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:05:43Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:11:47Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:13:48Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:14:40Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:25:52Z
+**Event**: SENSOR_FIRED
+**Fire id**: 1a49790c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:25:53Z
+**Event**: SENSOR_PASSED
+**Fire id**: 1a49790c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1082
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:26:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: dd7d13b5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:26:06Z
+**Event**: SENSOR_PASSED
+**Fire id**: dd7d13b5
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1229
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:26:18Z
+**Event**: SENSOR_FIRED
+**Fire id**: 05bd0b0f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:26:19Z
+**Event**: SENSOR_PASSED
+**Fire id**: 05bd0b0f
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+**Duration ms**: 799
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:26:31Z
+**Event**: SENSOR_FIRED
+**Fire id**: fbb050c1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:26:32Z
+**Event**: SENSOR_PASSED
+**Fire id**: fbb050c1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+**Duration ms**: 787
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:27:05Z
+**Event**: SENSOR_FIRED
+**Fire id**: cb7e9b08
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:27:07Z
+**Event**: SENSOR_PASSED
+**Fire id**: cb7e9b08
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+**Duration ms**: 1103
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:27:13Z
+**Event**: SENSOR_FIRED
+**Fire id**: 277fec3c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/start.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:27:14Z
+**Event**: SENSOR_PASSED
+**Fire id**: 277fec3c
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/start.ts
+**Duration ms**: 899
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:28:16Z
+**Event**: SENSOR_FIRED
+**Fire id**: 3459b849
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:28:17Z
+**Event**: SENSOR_PASSED
+**Fire id**: 3459b849
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 761
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:28:21Z
+**Event**: SENSOR_FIRED
+**Fire id**: ff80d8ab
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/httpServer.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:28:22Z
+**Event**: SENSOR_PASSED
+**Fire id**: ff80d8ab
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/httpServer.test.ts
+**Duration ms**: 790
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:28:39Z
+**Event**: SENSOR_FIRED
+**Fire id**: c206f7e8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutBridge.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:28:40Z
+**Event**: SENSOR_PASSED
+**Fire id**: c206f7e8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutBridge.test.ts
+**Duration ms**: 699
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:28:51Z
+**Event**: SENSOR_FIRED
+**Fire id**: 1fb11db1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutOptiMods.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:28:52Z
+**Event**: SENSOR_PASSED
+**Fire id**: 1fb11db1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutOptiMods.test.ts
+**Duration ms**: 741
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:40:23Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:43:48Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:44:25Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T16:44:41Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:52:22Z
+**Event**: SENSOR_FIRED
+**Fire id**: 9bb8361a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:52:23Z
+**Event**: SENSOR_PASSED
+**Fire id**: 9bb8361a
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+**Duration ms**: 975
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:52:27Z
+**Event**: SENSOR_FIRED
+**Fire id**: 49973a01
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-14T16:52:28Z
+**Event**: SENSOR_FAILED
+**Fire id**: 49973a01
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-49973a01.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:52:30Z
+**Event**: SENSOR_FIRED
+**Fire id**: 9d68eaa3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+
+---
+
+## Sensor Failed
+**Timestamp**: 2026-11-14T16:52:31Z
+**Event**: SENSOR_FAILED
+**Fire id**: 9d68eaa3
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+**Detail path**: aidlc/spaces/default/intents/261025-local-timetable-viewer/.aidlc-engine/sensors/build-and-test/type-check-9d68eaa3.md
+**Findings count**: 1
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:52:34Z
+**Event**: SENSOR_FIRED
+**Fire id**: c8031608
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:52:35Z
+**Event**: SENSOR_PASSED
+**Fire id**: c8031608
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematicFile.ts
+**Duration ms**: 1122
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:52:45Z
+**Event**: SENSOR_FIRED
+**Fire id**: 4e4472cf
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutOptiMods.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:52:46Z
+**Event**: SENSOR_PASSED
+**Fire id**: 4e4472cf
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutOptiMods.test.ts
+**Duration ms**: 905
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:52:54Z
+**Event**: SENSOR_FIRED
+**Fire id**: 01aa4be2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutBridge.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:52:55Z
+**Event**: SENSOR_PASSED
+**Fire id**: 01aa4be2
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutBridge.test.ts
+**Duration ms**: 1087
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:53:33Z
+**Event**: SENSOR_FIRED
+**Fire id**: cce4d476
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:53:34Z
+**Event**: SENSOR_PASSED
+**Fire id**: cce4d476
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/metroLayoutBridge.ts
+**Duration ms**: 918
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:54:01Z
+**Event**: SENSOR_FIRED
+**Fire id**: 509ea521
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:54:02Z
+**Event**: SENSOR_PASSED
+**Fire id**: 509ea521
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1239
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:54:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: 6a24e488
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutBridge.test.ts
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:54:04Z
+**Event**: SENSOR_FIRED
+**Fire id**: 50fa3ac8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:54:06Z
+**Event**: SENSOR_PASSED
+**Fire id**: 6a24e488
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/metroLayoutBridge.test.ts
+**Duration ms**: 1948
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:54:06Z
+**Event**: SENSOR_PASSED
+**Fire id**: 50fa3ac8
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1927
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T16:54:08Z
+**Event**: SENSOR_FIRED
+**Fire id**: b6974a18
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T16:54:09Z
+**Event**: SENSOR_PASSED
+**Fire id**: b6974a18
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1546
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T17:03:34Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T17:29:02Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T17:43:21Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Session Compacted
+**Timestamp**: 2026-11-14T17:45:36Z
+**Event**: SESSION_COMPACTED
+**Current Stage**: build-and-test
+**State Validity**: valid
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T17:46:00Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T17:55:33Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T18:01:16Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T18:04:40Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T18:07:34Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T18:08:50Z
+**Event**: SENSOR_FIRED
+**Fire id**: 718878e1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T18:08:51Z
+**Event**: SENSOR_PASSED
+**Fire id**: 718878e1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/src/networkSchematic.ts
+**Duration ms**: 1103
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-11-14T18:08:59Z
+**Event**: SENSOR_FIRED
+**Fire id**: 1442e1b1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-11-14T18:09:00Z
+**Event**: SENSOR_PASSED
+**Fire id**: 1442e1b1
+**Sensor ID**: type-check
+**Stage slug**: build-and-test
+**Output path**: apps/local-timetable/server/test/timetable-query/networkSchematic.test.ts
+**Duration ms**: 700
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T18:18:47Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T18:25:07Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-14T18:26:54Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-15T10:23:26Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-15T10:27:06Z
+**Event**: HUMAN_TURN
+**Session**: b7a32a3d-51dd-4f9b-94f4-0a771d58126f
+
+---

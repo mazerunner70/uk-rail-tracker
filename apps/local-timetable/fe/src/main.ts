@@ -2,8 +2,11 @@ import { createApiClient } from "./apiClient.js";
 import { renderApp, schedulePick } from "./dom.js";
 import {
   createScreenController,
+  findHeldTrain,
   formatLondonClock,
+  isEventTag,
   isPairFilter,
+  nextNetworkEventFilter,
   nextScheduleFocus,
   parseIntervalInput,
 } from "./controller.js";
@@ -60,6 +63,18 @@ function readStations(): void {
   controller.setPairCrs(earlier?.value ?? "", later?.value ?? "");
 }
 
+function openTrainByGuid(serviceGuid: string): boolean {
+  const train = findHeldTrain(controller.getView(), serviceGuid);
+  if (!train) return false;
+  return controller.openRouteFromTrain(train);
+}
+
+function firstServiceGuid(raw: string | null): string | null {
+  if (!raw) return null;
+  const ids = raw.split(",").filter((id) => id.length > 0);
+  return ids[0] ?? null;
+}
+
 function bindControlsOnce(): void {
   if (controlsBound) return;
   controlsBound = true;
@@ -82,21 +97,60 @@ function bindControlsOnce(): void {
       refresh();
     }
     if (target.closest('[data-testid="open-network"]')) {
+      controller.clearRoute();
       controller.setPage("network");
       refresh();
     }
     if (target.closest('[data-testid="clear-schedule-focus"]')) {
       controller.setScheduleFocus(null);
+      controller.setNetworkEventFilter(null);
       refresh();
+    }
+    const eventFilterRow = target.closest("[data-event-filter]");
+    if (eventFilterRow instanceof HTMLElement) {
+      const value = eventFilterRow.getAttribute("data-event-filter") ?? "";
+      if (isEventTag(value)) {
+        const current = controller.getView().networkEventFilter;
+        controller.setNetworkEventFilter(nextNetworkEventFilter(current, value));
+        refresh();
+        return;
+      }
+    }
+    const scheduleRow = target.closest(".schedule-row");
+    if (scheduleRow instanceof HTMLElement) {
+      const guid = scheduleRow.getAttribute("data-service");
+      if (guid && openTrainByGuid(guid)) {
+        refresh();
+        return;
+      }
+    }
+    const routeTrain = target.closest(".route-train");
+    if (routeTrain instanceof Element) {
+      const guid = firstServiceGuid(routeTrain.getAttribute("data-service"));
+      if (guid) {
+        controller.selectRouteTrain(guid);
+        refresh();
+        return;
+      }
     }
     const map = target.closest(".network-map");
     if (map instanceof Element && !ev.shiftKey) {
+      const train = target.closest(".train-marker");
+      if (train) {
+        const guid = firstServiceGuid(train.getAttribute("data-service"));
+        if (guid && openTrainByGuid(guid)) {
+          refresh();
+          return;
+        }
+      }
       const pick = schedulePick(target);
-      const current = controller.getView().scheduleFocus;
-      const next = pick ? nextScheduleFocus(current, pick) : null;
-      if (next !== current) {
-        controller.setScheduleFocus(next);
-        refresh();
+      if (pick?.kind === "station") {
+        const current = controller.getView().scheduleFocus;
+        const next = nextScheduleFocus(current, pick);
+        if (next !== current) {
+          controller.setScheduleFocus(next);
+          refresh();
+        }
       }
     }
     const filterButton = target.closest("[data-pair-filter]");
@@ -107,6 +161,42 @@ function bindControlsOnce(): void {
         refresh();
       }
     }
+  });
+
+  root.addEventListener("pointerover", (ev) => {
+    if (controller.getView().page !== "network") return;
+    const target = ev.target;
+    if (!(target instanceof Element)) return;
+    const row = target.closest(".schedule-row");
+    if (row) {
+      const guid = row.getAttribute("data-service");
+      if (guid && controller.setRoutePreview({ serviceGuid: guid })) refresh();
+      return;
+    }
+    const train = target.closest(".train-marker");
+    if (train) {
+      const guid = firstServiceGuid(train.getAttribute("data-service"));
+      if (guid && controller.setRoutePreview({ serviceGuid: guid })) refresh();
+    }
+  });
+
+  root.addEventListener("pointerout", (ev) => {
+    if (controller.getView().page !== "network") return;
+    if (!controller.getView().routePreview) return;
+    const related = ev.relatedTarget;
+    if (related instanceof Element) {
+      if (related.closest(".schedule-row")) return;
+      if (related.closest(".train-marker")) return;
+      if (related.closest('[data-testid="route-preview-card"]')) return;
+    }
+    const leaving = ev.target;
+    if (!(leaving instanceof Element)) return;
+    const fromPreviewSurface =
+      leaving.closest(".schedule-row")
+      || leaving.closest(".train-marker")
+      || leaving.closest('[data-testid="route-preview-card"]');
+    if (!fromPreviewSurface) return;
+    if (controller.setRoutePreview(null)) refresh();
   });
 
   root.addEventListener("change", (ev) => {

@@ -1,9 +1,20 @@
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type BetterSqlite3 from "better-sqlite3";
-import { layoutDiagram, type DiagramBody, type SchematicJourney } from "./networkSchematic.js";
+import {
+  diagramFromOctLayoutResult,
+  metroLayoutEngine,
+  runMilpLayout,
+} from "./metroLayoutBridge.js";
+import {
+  buildLayoutInput,
+  layoutDiagram,
+  type DiagramBody,
+  type SchematicJourney,
+} from "./networkSchematic.js";
 import { NETWORK_SCHEMATIC_FILENAME } from "./paths.js";
 import { openTimetableReader } from "./sqliteReader.js";
+import { loadStationGeo } from "./stationGeo.js";
 import type { FailureBody } from "./trainViews.js";
 
 export type NetworkDiagram = DiagramBody & {
@@ -37,7 +48,13 @@ function journeysFrom(rows: readonly CallingRow[]): SchematicJourney[] {
   return [...byGuid.values()].map((stops) => ({ stops }));
 }
 
-export function buildNetworkDiagram(sqlitePath: string): NetworkDiagram | FailureBody {
+type JourneyBundle = {
+  journeys: SchematicJourney[];
+  loadDay: string;
+  hdSequence: string;
+};
+
+function readJourneys(sqlitePath: string): JourneyBundle | FailureBody {
   const opened = openTimetableReader(sqlitePath);
   if (!opened.ok) return { reason: opened.reason };
   const db = opened.db;
@@ -53,10 +70,40 @@ export function buildNetworkDiagram(sqlitePath: string): NetworkDiagram | Failur
          ORDER BY cp.service_guid, cp.seq`,
       )
       .all() as CallingRow[];
-    return { ...layoutDiagram(journeysFrom(rows)), loadDay, hdSequence };
+    return { journeys: journeysFrom(rows), loadDay, hdSequence };
   } finally {
     db.close();
   }
+}
+
+/** Sync geo/schematic layout (tests / METRO_LAYOUT_ENGINE=geo). */
+export function buildNetworkDiagramGeo(sqlitePath: string): NetworkDiagram | FailureBody {
+  const bundle = readJourneys(sqlitePath);
+  if ("reason" in bundle) return bundle;
+  return {
+    ...layoutDiagram(bundle.journeys, { geo: loadStationGeo() }),
+    loadDay: bundle.loadDay,
+    hdSequence: bundle.hdSequence,
+  };
+}
+
+/** @deprecated Prefer buildNetworkDiagramGeo or writeNetworkDiagram; kept for callers. */
+export function buildNetworkDiagram(sqlitePath: string): NetworkDiagram | FailureBody {
+  return buildNetworkDiagramGeo(sqlitePath);
+}
+
+async function buildNetworkDiagramMilp(
+  sqlitePath: string,
+): Promise<NetworkDiagram | FailureBody> {
+  const bundle = readJourneys(sqlitePath);
+  if ("reason" in bundle) return bundle;
+  const input = buildLayoutInput(bundle.journeys, { geo: loadStationGeo() });
+  const oct = await runMilpLayout(input);
+  return {
+    ...diagramFromOctLayoutResult(oct),
+    loadDay: bundle.loadDay,
+    hdSequence: bundle.hdSequence,
+  };
 }
 
 function isDiagram(value: unknown): value is NetworkDiagram {
@@ -84,31 +131,33 @@ function writeAtomic(path: string, diagram: NetworkDiagram): void {
   renameSync(tmp, path);
 }
 
-export function writeNetworkDiagram(sqlitePath: string): void {
-  const built = buildNetworkDiagram(sqlitePath);
+/**
+ * Build and atomically write network-schematic.json.
+ * Uses PuLP+HiGHS when METRO_LAYOUT_ENGINE=milp (default);
+ * uses the in-process geo schematic when METRO_LAYOUT_ENGINE=geo.
+ */
+export async function writeNetworkDiagram(sqlitePath: string): Promise<void> {
+  const engine = metroLayoutEngine();
+  const built =
+    engine === "geo"
+      ? buildNetworkDiagramGeo(sqlitePath)
+      : await buildNetworkDiagramMilp(sqlitePath);
   if ("reason" in built) {
-    console.error("network schematic was not written", built.reason);
-    return;
+    throw new Error(`network schematic was not built: ${built.reason}`);
   }
-  try {
-    writeAtomic(networkSchematicPath(sqlitePath), built);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("network schematic was not written", message);
-  }
+  writeAtomic(networkSchematicPath(sqlitePath), built);
 }
 
+/**
+ * Read a previously written schematic. Does not run the MILP (long-running).
+ * Returns { reason: "missing" } when the file is absent.
+ */
 export function readNetworkDiagram(sqlitePath: string): NetworkDiagram | FailureBody {
   const path = networkSchematicPath(sqlitePath);
   const stored = readStored(path);
   if (stored) return stored;
-  const built = buildNetworkDiagram(sqlitePath);
-  if ("reason" in built) return built;
-  try {
-    writeAtomic(path, built);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("network schematic was not written", message);
-  }
-  return built;
+  const opened = openTimetableReader(sqlitePath);
+  if (!opened.ok) return { reason: opened.reason };
+  opened.db.close();
+  return { reason: "missing" };
 }

@@ -1,3 +1,5 @@
+import type { GeoIndex } from "./stationGeo.js";
+
 const RANK_STEP = 72;
 const LANE_STEP = 48;
 const PAD = 36;
@@ -7,10 +9,22 @@ const PERP_X = Math.SQRT1_2;
 const PERP_Y = Math.SQRT1_2;
 const SPINE_COLOR = "#7dffa8";
 const BRANCH_COLORS = ["#f0b45a", "#e07a3d", "#3dbebf", "#6aa0ff"] as const;
+const GEO_SCALE_PX_PER_DEG = 900;
+const DOT_RADIUS = 5;
+const DOT_MIN_DIST = DOT_RADIUS * 2 + 4;
+const BADGE_HALF_W = 18;
+const BADGE_HALF_H = 9;
+const BADGE_OFFSET_DIST = 28;
+const NUDGE_ITERATIONS = 60;
+const NUDGE_STEP = 4;
 
 export type SchematicStop = { crs?: string | null };
 
 export type SchematicJourney = { stops: readonly SchematicStop[] };
+
+export type LayoutOptions = {
+  geo?: GeoIndex;
+};
 
 export type StationLayout = {
   crs: string;
@@ -33,6 +47,53 @@ export type DiagramBody = {
   corridors: CorridorLayout[];
   width: number;
   height: number;
+};
+
+export type LayoutInputNode = {
+  crs: string;
+  x: number;
+  y: number;
+  rank: number;
+  lane: number;
+};
+
+export type LayoutInputEdge = {
+  from: string;
+  to: string;
+  weight: number;
+};
+
+export type LayoutInputLineHop = {
+  linename: string;
+  from: string;
+  to: string;
+};
+
+export type LayoutInput = {
+  nodes: LayoutInputNode[];
+  edges: LayoutInputEdge[];
+  lines: LayoutInputLineHop[];
+};
+
+/** Pixel scale applied to MILP integer grid coordinates. */
+export const OCT_CELL_PX = 48;
+
+export class LayoutDegreeError extends Error {
+  readonly maxDegree: number;
+  readonly crs: string;
+
+  constructor(crs: string, maxDegree: number) {
+    super(
+      `Station ${crs} has degree ${maxDegree}; octilinear layout requires degree ≤ 8.`,
+    );
+    this.name = "LayoutDegreeError";
+    this.crs = crs;
+    this.maxDegree = maxDegree;
+  }
+}
+
+type Proj = {
+  toXY: (lat: number, lon: number) => { x: number; y: number };
 };
 
 type Edge = { from: string; to: string; weight: number };
@@ -171,6 +232,8 @@ function dropSubsetWalks(walks: readonly Walk[], drop: Set<string>): void {
 }
 
 function markSkippedPairs(graph: Graph, stops: readonly string[], drop: Set<string>): void {
+  // Drop every non-adjacent pair on this journey (A-C, A-D, A-E, B-E, …)
+  // when a direct hop for that pair also exists somewhere in the graph.
   for (let i = 0; i < stops.length; i++) {
     for (let j = i + 2; j < stops.length; j++) {
       const left = stops[i]!;
@@ -181,9 +244,133 @@ function markSkippedPairs(graph: Graph, stops: readonly string[], drop: Set<stri
   }
 }
 
-function bridgedHops(graph: Graph): Set<string> {
+/** Equirectangular km-ish units for comparing path length vs chord length. */
+function geoDist(
+  left: string,
+  right: string,
+  geo: GeoIndex,
+): number | null {
+  const a = geo.get(left);
+  const b = geo.get(right);
+  if (!a || !b) return null;
+  const midLat = ((a.lat + b.lat) / 2) * (Math.PI / 180);
+  const dx = (b.lon - a.lon) * Math.cos(midLat);
+  const dy = b.lat - a.lat;
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * Drop chord u-v when a longer hop-path u-…-v exists that is nearly as short
+ * geographically (composed local services covering an express skip), for any
+ * span (A-C, A-D, A-E, …).
+ */
+function markGeoShortcuts(graph: Graph, geo: GeoIndex, drop: Set<string>): void {
+  const maxHops = 12;
+  const slack = 1.35;
+  const edges: { left: string; right: string }[] = [];
+  const seen = new Set<string>();
+  for (const [left, neighbors] of graph.adj) {
+    for (const right of neighbors.keys()) {
+      const key = edgeKey(left, right);
+      if (seen.has(key) || drop.has(key)) continue;
+      seen.add(key);
+      edges.push({ left, right });
+    }
+  }
+  for (const { left, right } of edges) {
+    const direct = geoDist(left, right, geo);
+    if (direct === null || direct < 1e-9) continue;
+    const blocked = edgeKey(left, right);
+    const queue: { crs: string; hops: number; pathKm: number }[] = [{ crs: left, hops: 0, pathKm: 0 }];
+    const best = new Map<string, { hops: number; pathKm: number }>([[left, { hops: 0, pathKm: 0 }]]);
+    let found = false;
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (cur.crs === right && cur.hops >= 2) {
+        if (cur.pathKm <= direct * slack) {
+          found = true;
+          break;
+        }
+        continue;
+      }
+      if (cur.hops >= maxHops) continue;
+      for (const next of graph.adj.get(cur.crs)?.keys() ?? []) {
+        const hop = edgeKey(cur.crs, next);
+        if (hop === blocked) continue;
+        const hopKm = geoDist(cur.crs, next, geo);
+        if (hopKm === null) continue;
+        const pathKm = cur.pathKm + hopKm;
+        if (pathKm > direct * slack) continue;
+        const hops = cur.hops + 1;
+        const prev = best.get(next);
+        if (prev && prev.pathKm <= pathKm && prev.hops <= hops) continue;
+        best.set(next, { hops, pathKm });
+        queue.push({ crs: next, hops, pathKm });
+      }
+    }
+    if (found) drop.add(blocked);
+  }
+}
+
+/**
+ * Put back dropped hops that would split the hop graph into more components
+ * than the full adjacency (e.g. WOS–DTW / WOF–DTW both marked as skip chords).
+ * Prefers heavier edges when several candidates reconnect the same cut.
+ */
+function restoreConnectivityDrops(graph: Graph, drop: Set<string>): void {
+  if (drop.size === 0) return;
+
+  const parent = new Map<string, string>();
+  const find = (crs: string): string => {
+    const current = parent.get(crs) ?? crs;
+    if (current === crs) return crs;
+    const root = find(current);
+    parent.set(crs, root);
+    return root;
+  };
+  const unite = (left: string, right: string): boolean => {
+    const a = find(left);
+    const b = find(right);
+    if (a === b) return false;
+    parent.set(a, b);
+    return true;
+  };
+
+  for (const crs of graph.adj.keys()) parent.set(crs, crs);
+
+  const kept: { left: string; right: string; weight: number }[] = [];
+  const candidates: { left: string; right: string; weight: number }[] = [];
+  const seen = new Set<string>();
+  for (const [left, neighbors] of graph.adj) {
+    for (const [right, weight] of neighbors) {
+      const key = edgeKey(left, right);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const edge = {
+        left: left < right ? left : right,
+        right: left < right ? right : left,
+        weight,
+      };
+      if (drop.has(key)) candidates.push(edge);
+      else kept.push(edge);
+    }
+  }
+
+  for (const edge of kept) unite(edge.left, edge.right);
+
+  candidates.sort((a, b) => {
+    if (b.weight !== a.weight) return b.weight - a.weight;
+    return edgeKey(a.left, a.right) < edgeKey(b.left, b.right) ? -1 : 1;
+  });
+  for (const edge of candidates) {
+    if (unite(edge.left, edge.right)) drop.delete(edgeKey(edge.left, edge.right));
+  }
+}
+
+function bridgedHops(graph: Graph, geo?: GeoIndex): Set<string> {
   const drop = new Set<string>();
   for (const stops of graph.stopLists) markSkippedPairs(graph, stops, drop);
+  if (geo && geo.size > 0) markGeoShortcuts(graph, geo, drop);
   const groups = new Map<string, Walk[]>();
   for (const walk of walksBetweenJunctions(graph, drop)) {
     const key = `${walk.from}|${walk.to}`;
@@ -192,11 +379,12 @@ function bridgedHops(graph: Graph): Set<string> {
     groups.set(key, list);
   }
   for (const walks of groups.values()) dropSubsetWalks(walks, drop);
+  restoreConnectivityDrops(graph, drop);
   return drop;
 }
 
-function reducedEdges(graph: Graph): Edge[] {
-  const drop = bridgedHops(graph);
+function reducedEdges(graph: Graph, geo?: GeoIndex): Edge[] {
+  const drop = bridgedHops(graph, geo);
   const edges: Edge[] = [];
   const seen = new Set<string>();
   for (const [left, neighbors] of graph.adj) {
@@ -514,8 +702,353 @@ function paintCorridor(from: StationLayout, to: StationLayout): CorridorLayout {
   return { from: to.crs, to: from.crs, via: [], points: [...points].reverse(), color };
 }
 
+function paintCorridorGeo(from: StationLayout, to: StationLayout): CorridorLayout {
+  const points = [
+    { x: from.x, y: from.y },
+    { x: to.x, y: to.y },
+  ];
+  const color = strokeColor(from.lane, to.lane);
+  if (from.crs < to.crs) return { from: from.crs, to: to.crs, via: [], points, color };
+  return { from: to.crs, to: from.crs, via: [], points: [...points].reverse(), color };
+}
+
+type Box = { left: number; top: number; right: number; bottom: number };
+
+function makeProjection(
+  points: readonly { lat: number; lon: number }[],
+  scalePxPerDeg: number,
+): Proj {
+  const lat0 = points.reduce((sum, point) => sum + point.lat, 0) / points.length;
+  const lon0 = points.reduce((sum, point) => sum + point.lon, 0) / points.length;
+  const cos = Math.cos((lat0 * Math.PI) / 180);
+  return {
+    toXY(lat, lon) {
+      return {
+        x: (lon - lon0) * cos * scalePxPerDeg,
+        y: (lat0 - lat) * scalePxPerDeg,
+      };
+    },
+  };
+}
+
+function badgeOffset(lane: number): { x: number; y: number } {
+  const sign = lane === 0 ? -1 : Math.sign(lane) || -1;
+  return { x: PERP_X * sign * BADGE_OFFSET_DIST, y: PERP_Y * sign * BADGE_OFFSET_DIST };
+}
+
+function badgeBox(station: StationLayout): Box {
+  const offset = badgeOffset(station.lane);
+  const cx = station.x + offset.x;
+  const cy = station.y + offset.y;
+  return {
+    left: cx - BADGE_HALF_W,
+    top: cy - BADGE_HALF_H,
+    right: cx + BADGE_HALF_W,
+    bottom: cy + BADGE_HALF_H,
+  };
+}
+
+function boxesOverlap(left: Box, right: Box): boolean {
+  return !(left.right <= right.left || right.right <= left.left || left.bottom <= right.top || right.bottom <= left.top);
+}
+
+function dotsCollide(left: StationLayout, right: StationLayout): boolean {
+  return Math.hypot(right.x - left.x, right.y - left.y) < DOT_MIN_DIST;
+}
+
+function stationsCollide(left: StationLayout, right: StationLayout): boolean {
+  return dotsCollide(left, right) || boxesOverlap(badgeBox(left), badgeBox(right));
+}
+
+function collisionScore(stations: readonly StationLayout[]): number {
+  let score = 0;
+  for (let i = 0; i < stations.length; i++) {
+    for (let j = i + 1; j < stations.length; j++) {
+      const left = stations[i]!;
+      const right = stations[j]!;
+      if (dotsCollide(left, right)) {
+        score += DOT_MIN_DIST - Math.hypot(right.x - left.x, right.y - left.y);
+      }
+      if (boxesOverlap(badgeBox(left), badgeBox(right))) score += BADGE_HALF_W;
+    }
+  }
+  return score;
+}
+
+function neighbourAverageDir(
+  station: StationLayout,
+  byCrs: ReadonlyMap<string, StationLayout>,
+  adj: Map<string, Map<string, number>>,
+): { x: number; y: number } {
+  let sx = 0;
+  let sy = 0;
+  for (const neighbor of adj.get(station.crs)?.keys() ?? []) {
+    const other = byCrs.get(neighbor);
+    if (!other) continue;
+    sx += other.x - station.x;
+    sy += other.y - station.y;
+  }
+  const len = Math.hypot(sx, sy);
+  if (len < 1e-6) return { x: 1, y: 0 };
+  return { x: sx / len, y: sy / len };
+}
+
+function degreeOf(crs: string, adj: Map<string, Map<string, number>>): number {
+  return adj.get(crs)?.size ?? 0;
+}
+
+function preferMove(
+  left: StationLayout,
+  right: StationLayout,
+  adj: Map<string, Map<string, number>>,
+): StationLayout {
+  const leftDeg = degreeOf(left.crs, adj);
+  const rightDeg = degreeOf(right.crs, adj);
+  if (leftDeg !== rightDeg) return leftDeg < rightDeg ? left : right;
+  return left.crs > right.crs ? left : right;
+}
+
+function northUpPlace(
+  meta: readonly StationLayout[],
+  adj: Map<string, Map<string, number>>,
+  geo: GeoIndex,
+): { stations: StationLayout[]; applied: boolean } {
+  const withGeo = meta.flatMap((station) => {
+    const point = geo.get(station.crs);
+    return point ? [{ crs: station.crs, lat: point.lat, lon: point.lon }] : [];
+  });
+  if (withGeo.length === 0) return { stations: [...meta], applied: false };
+
+  const proj = makeProjection(withGeo, GEO_SCALE_PX_PER_DEG);
+  const byCrs = new Map(meta.map((station) => [station.crs, { ...station }]));
+  const placed = new Set<string>();
+
+  for (const station of meta) {
+    const point = geo.get(station.crs);
+    if (!point) continue;
+    const xy = proj.toXY(point.lat, point.lon);
+    const current = byCrs.get(station.crs)!;
+    byCrs.set(station.crs, { ...current, x: xy.x, y: xy.y });
+    placed.add(station.crs);
+  }
+
+  let pending = meta.filter((station) => !placed.has(station.crs)).map((station) => station.crs);
+  let guard = pending.length + 3;
+  while (pending.length > 0 && guard-- > 0) {
+    const still: string[] = [];
+    let progressed = false;
+    for (const crs of pending) {
+      const neighbors = [...(adj.get(crs)?.keys() ?? [])].filter((neighbor) => placed.has(neighbor));
+      if (neighbors.length === 0) {
+        still.push(crs);
+        continue;
+      }
+      const x = neighbors.reduce((sum, neighbor) => sum + byCrs.get(neighbor)!.x, 0) / neighbors.length;
+      const y = neighbors.reduce((sum, neighbor) => sum + byCrs.get(neighbor)!.y, 0) / neighbors.length;
+      const current = byCrs.get(crs)!;
+      byCrs.set(crs, { ...current, x, y });
+      placed.add(crs);
+      progressed = true;
+    }
+    if (!progressed) {
+      const anchored = [...placed].map((crs) => byCrs.get(crs)!);
+      const cx = anchored.reduce((sum, station) => sum + station.x, 0) / Math.max(1, anchored.length);
+      const cy = anchored.reduce((sum, station) => sum + station.y, 0) / Math.max(1, anchored.length);
+      for (const crs of still) {
+        const current = byCrs.get(crs)!;
+        byCrs.set(crs, { ...current, x: cx, y: cy });
+        placed.add(crs);
+      }
+      break;
+    }
+    pending = still;
+  }
+
+  return { stations: [...byCrs.values()], applied: true };
+}
+
+function resolveCollisions(
+  stations: readonly StationLayout[],
+  adj: Map<string, Map<string, number>>,
+): StationLayout[] {
+  const out = stations.map((station) => ({ ...station }));
+  const byCrs = () => new Map(out.map((station) => [station.crs, station]));
+
+  // Phase 1: expand short graph hops along the edge so corridor order stays geographic.
+  for (let step = 0; step < NUDGE_ITERATIONS; step++) {
+    let moved = false;
+    const seen = new Set<string>();
+    for (const [leftCrs, neighbors] of adj) {
+      for (const rightCrs of neighbors.keys()) {
+        const key = edgeKey(leftCrs, rightCrs);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const left = byCrs().get(leftCrs);
+        const right = byCrs().get(rightCrs);
+        if (!left || !right) continue;
+        const dx = right.x - left.x;
+        const dy = right.y - left.y;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        if (dist >= DOT_MIN_DIST) continue;
+        const push = (DOT_MIN_DIST - dist) / 2;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        left.x -= ux * push;
+        left.y -= uy * push;
+        right.x += ux * push;
+        right.y += uy * push;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+
+  // Phase 2: clear badge overlaps with a perpendicular nudge (preserves along-track place).
+  for (let step = 0; step < NUDGE_ITERATIONS; step++) {
+    let moved = false;
+    for (let i = 0; i < out.length; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        const left = out[i]!;
+        const right = out[j]!;
+        if (!boxesOverlap(badgeBox(left), badgeBox(right))) continue;
+        const primary = preferMove(left, right, adj);
+        const along = neighbourAverageDir(primary, byCrs(), adj);
+        // Perpendicular to the local corridor / neighbour average.
+        const dir = { x: -along.y, y: along.x };
+        const before = collisionScore([left, right]);
+        const ox = primary.x;
+        const oy = primary.y;
+        primary.x += dir.x * NUDGE_STEP;
+        primary.y += dir.y * NUDGE_STEP;
+        if (collisionScore([left, right]) < before) {
+          moved = true;
+          continue;
+        }
+        primary.x = ox - dir.x * NUDGE_STEP;
+        primary.y = oy - dir.y * NUDGE_STEP;
+        if (collisionScore([left, right]) < before) {
+          moved = true;
+          continue;
+        }
+        primary.x = ox;
+        primary.y = oy;
+      }
+    }
+    if (!moved) break;
+  }
+  return out;
+}
+
 function emptyDiagram(): DiagramBody {
   return { stations: [], corridors: [], width: PAD * 2, height: PAD * 2 };
+}
+
+function edgeDegrees(edges: readonly Edge[]): Map<string, number> {
+  const degree = new Map<string, number>();
+  for (const edge of edges) {
+    degree.set(edge.from, (degree.get(edge.from) ?? 0) + 1);
+    degree.set(edge.to, (degree.get(edge.to) ?? 0) + 1);
+  }
+  return degree;
+}
+
+function assertOctilinearDegree(edges: readonly Edge[]): void {
+  for (const [crs, degree] of edgeDegrees(edges)) {
+    if (degree > 8) throw new LayoutDegreeError(crs, degree);
+  }
+}
+
+function lineHopsFromStopLists(
+  stopLists: readonly string[][],
+  edgeKeys: ReadonlySet<string>,
+): LayoutInputLineHop[] {
+  const hops: LayoutInputLineHop[] = [];
+  const seenPaths = new Set<string>();
+  let lineIndex = 0;
+  for (const stops of stopLists) {
+    const pathKey = stops.join("|");
+    if (seenPaths.has(pathKey)) continue;
+    seenPaths.add(pathKey);
+    const linename = `L${lineIndex++}`;
+    for (let i = 0; i < stops.length - 1; i++) {
+      const from = stops[i]!;
+      const to = stops[i + 1]!;
+      if (!edgeKeys.has(edgeKey(from, to))) continue;
+      hops.push({ linename, from, to });
+    }
+  }
+  return hops;
+}
+
+/**
+ * Topology + geographic seed for the PuLP+HiGHS octilinear MILP.
+ * Positions come from north-up geo projection without collision nudging.
+ */
+export function buildLayoutInput(
+  journeys: readonly SchematicJourney[],
+  options: LayoutOptions = {},
+): LayoutInput {
+  const graph = buildGraph(journeys);
+  if (graph.adj.size === 0) return { nodes: [], edges: [], lines: [] };
+  const geo = options.geo && options.geo.size > 0 ? options.geo : undefined;
+  const edges = reducedEdges(graph, geo);
+  assertOctilinearDegree(edges);
+  const links = treeLinks(maximumSpanningTree(edges));
+  const meta = placeStations([...graph.adj.keys()], links, graph.originCount, graph.destCount);
+  let placed = meta;
+  if (geo) {
+    const projected = northUpPlace(meta, graph.adj, geo);
+    if (projected.applied) placed = projected.stations;
+  }
+  const byCrs = new Map(placed.map((station) => [station.crs, station]));
+  const edgeKeys = new Set(edges.map((edge) => edgeKey(edge.from, edge.to)));
+  return {
+    nodes: [...byCrs.values()]
+      .map((station) => ({
+        crs: station.crs,
+        x: station.x,
+        y: station.y,
+        rank: station.rank,
+        lane: station.lane,
+      }))
+      .sort((a, b) => (a.crs < b.crs ? -1 : 1)),
+    edges: edges
+      .map((edge) => ({ from: edge.from, to: edge.to, weight: edge.weight }))
+      .sort((a, b) => (edgeKey(a.from, a.to) < edgeKey(b.from, b.to) ? -1 : 1)),
+    lines: lineHopsFromStopLists(graph.stopLists, edgeKeys),
+  };
+}
+
+export type OctStationCoord = {
+  crs: string;
+  x: number;
+  y: number;
+  rank: number;
+  lane: number;
+};
+
+/** Build a DiagramBody from MILP (or fixture) octilinear station coordinates. */
+export function diagramFromOctCoords(
+  stations: readonly OctStationCoord[],
+  edges: readonly { from: string; to: string }[],
+  scalePx = OCT_CELL_PX,
+): DiagramBody {
+  const scaled: StationLayout[] = stations.map((station) => ({
+    crs: station.crs,
+    x: station.x * scalePx,
+    y: station.y * scalePx,
+    rank: station.rank,
+    lane: station.lane,
+  }));
+  const byCrs = new Map(scaled.map((station) => [station.crs, station]));
+  const corridors: CorridorLayout[] = [];
+  for (const edge of edges) {
+    const from = byCrs.get(edge.from);
+    const to = byCrs.get(edge.to);
+    if (!from || !to) continue;
+    corridors.push(paintCorridorGeo(from, to));
+  }
+  return fit(scaled, corridors);
 }
 
 function fit(stations: StationLayout[], corridors: CorridorLayout[]): DiagramBody {
@@ -549,19 +1082,32 @@ function fit(stations: StationLayout[], corridors: CorridorLayout[]): DiagramBod
   };
 }
 
-export function layoutDiagram(journeys: readonly SchematicJourney[]): DiagramBody {
+export function layoutDiagram(
+  journeys: readonly SchematicJourney[],
+  options: LayoutOptions = {},
+): DiagramBody {
   const graph = buildGraph(journeys);
   if (graph.adj.size === 0) return emptyDiagram();
-  const edges = reducedEdges(graph);
-  const tree = maximumSpanningTree(edges);
-  const placed = placeStations([...graph.adj.keys()], treeLinks(tree), graph.originCount, graph.destCount);
+  const geo = options.geo && options.geo.size > 0 ? options.geo : undefined;
+  const edges = reducedEdges(graph, geo);
+  const links = treeLinks(maximumSpanningTree(edges));
+  const meta = placeStations([...graph.adj.keys()], links, graph.originCount, graph.destCount);
+  let placed = meta;
+  let useGeo = false;
+  if (geo) {
+    const projected = northUpPlace(meta, graph.adj, geo);
+    placed = projected.stations;
+    useGeo = projected.applied;
+    if (useGeo) placed = resolveCollisions(placed, graph.adj);
+  }
   const byCrs = new Map(placed.map((station) => [station.crs, station]));
   const corridors: CorridorLayout[] = [];
+  const paint = useGeo ? paintCorridorGeo : paintCorridor;
   for (const edge of edges) {
     const from = byCrs.get(edge.from);
     const to = byCrs.get(edge.to);
     if (!from || !to) continue;
-    corridors.push(paintCorridor(from, to));
+    corridors.push(paint(from, to));
   }
   return fit(placed, corridors);
 }

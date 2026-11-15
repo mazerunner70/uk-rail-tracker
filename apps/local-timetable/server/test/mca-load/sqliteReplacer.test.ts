@@ -185,6 +185,7 @@ describe("SqliteReplacer", () => {
     const map = Object.fromEntries(rows.map((row) => [row.key, row.value]));
     assert.equal(map.load_day, "20261027");
     assert.equal(map.hd_sequence, "991");
+    assert.ok(typeof map.loaded_at === "string" && map.loaded_at.length > 0);
     assert.equal("kafka_password" in map, false);
     assert.equal("darwin_key" in map, false);
   });
@@ -210,6 +211,35 @@ describe("SqliteReplacer", () => {
       ),
     );
     assert.equal(existsSync(sqlitePath), false);
+  });
+
+  it("clears orphan WAL sidecars before opening a replacement", async () => {
+    const dir = await tempDir();
+    const sqlitePath = join(dir, "timetable.sqlite");
+    await writeFile(`${sqlitePath}-wal`, "");
+    await writeFile(`${sqlitePath}-shm`, "x".repeat(32768));
+    replaceFromJourneys(sqlitePath, [journey()], {
+      loadDay: "20261027",
+      hdSequence: "991",
+    });
+    assert.equal(existsSync(sqlitePath), true);
+    const db = openDb(sqlitePath);
+    const rows = db.prepare("SELECT COUNT(*) AS n FROM journeys").get() as { n: number };
+    db.close();
+    assert.equal(rows.n, 1);
+  });
+
+  it("abort removes wal and shm sidecars with the main file", async () => {
+    const { openReplacement } = await import("../../src/sqliteReplacer.js");
+    const dir = await tempDir();
+    const sqlitePath = join(dir, "timetable.sqlite");
+    const session = openReplacement(sqlitePath);
+    session.insertJourney(journey());
+    assert.equal(existsSync(`${sqlitePath}-wal`) || existsSync(sqlitePath), true);
+    session.abortMissing();
+    assert.equal(existsSync(sqlitePath), false);
+    assert.equal(existsSync(`${sqlitePath}-wal`), false);
+    assert.equal(existsSync(`${sqlitePath}-shm`), false);
   });
 
   it("never unlinks the host timetable.sqlite", async () => {

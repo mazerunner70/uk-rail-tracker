@@ -103,5 +103,6 @@ export function openTimetableReader(
     db.close();
     return { ok: false, reason: "older-schema" };
   }
+  db.pragma("busy_timeout = 5000");
   return { ok: true, db };
 }

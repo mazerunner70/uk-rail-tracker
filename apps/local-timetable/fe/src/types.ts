@@ -12,6 +12,28 @@ export type NetworkStop = {
   dep: string | null;
 };
 
+export type StatusLabel = "cancelled" | "deactivated" | "delayed" | "on time";
+
+/** Matches server EventTag / kafka-parsing §6. */
+export type EventTag =
+  | "arrived"
+  | "departed"
+  | "pass_forecast"
+  | "passed_location"
+  | "call_forecast"
+  | "delayed"
+  | "actual_removed"
+  | "cancelled"
+  | "cancel_cleared"
+  | "deactivated"
+  | "platform_set"
+  | "platform_suppressed"
+  | "length_reported"
+  | "formation_changed"
+  | "rerouted"
+  | "associated"
+  | "alert";
+
 export type NetworkTrain = {
   serviceGuid: string;
   originCrs?: string | null;
@@ -20,12 +42,25 @@ export type NetworkTrain = {
   nextCrs?: string | null;
   scheduledTime?: string | null;
   problem: boolean;
+  statusLabel?: StatusLabel;
+  delayMinutes?: number | null;
   stops?: NetworkStop[];
+  eventTags?: EventTag[];
+};
+
+export type RemovedTrain = {
+  serviceGuid: string;
+  trainUid: string;
+  eventTags?: EventTag[];
 };
 
 export type NetworkAnswer = {
   calendarDate: string;
   trains: NetworkTrain[];
+  generation: string;
+  revision: number;
+  full: boolean;
+  removed: RemovedTrain[];
 };
 
 export type StationLayout = {

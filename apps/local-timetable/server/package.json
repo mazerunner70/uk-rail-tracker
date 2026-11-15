@@ -15,12 +15,15 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/main.js",
-    "test": "node --import tsx --test test/mca-load/*.test.ts test/timetable-query/*.test.ts",
-    "test:mca-load": "node --import tsx --test test/mca-load/*.test.ts",
-    "test:timetable-query": "node --import tsx --test test/timetable-query/*.test.ts"
+    "test": "METRO_LAYOUT_ENGINE=geo node --import tsx --test test/mca-load/*.test.ts test/timetable-query/*.test.ts test/kafka-overlay/*.test.ts",
+    "test:mca-load": "METRO_LAYOUT_ENGINE=geo node --import tsx --test test/mca-load/*.test.ts",
+    "test:timetable-query": "METRO_LAYOUT_ENGINE=geo node --import tsx --test test/timetable-query/*.test.ts",
+    "test:kafka-overlay": "METRO_LAYOUT_ENGINE=geo node --import tsx --test test/kafka-overlay/*.test.ts",
+    "test:metro-layout": "METRO_LAYOUT_ENGINE=geo METRO_LAYOUT_PYTHON=${METRO_LAYOUT_PYTHON:-python3} node --import tsx --test test/timetable-query/metroLayoutBridge.test.ts test/timetable-query/metroLayoutMilp.test.ts"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0"
+    "better-sqlite3": "^11.10.0",
+    "kafkajs": "^2.2.4"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
@@ -30,6 +33,8 @@
   },
   "packageManager": "pnpm@10.12.1",
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }

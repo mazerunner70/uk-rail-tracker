@@ -20,6 +20,11 @@ import {
   type ReplacementSession,
 } from "./sqliteReplacer.js";
 
+export type OverlayHooks = {
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
+};
+
 export type LoadController = {
   start: () => LoadProgress;
   progress: () => LoadProgress;
@@ -32,6 +37,7 @@ export type LoadControllerOptions = {
   calendarDate?: string;
   beforeWork?: () => Promise<void>;
   openDatabase?: OpenDatabase;
+  overlay?: OverlayHooks;
 };
 
 type LoadFailReason = keyof typeof LOAD_FAIL_SENTENCE;
@@ -83,8 +89,10 @@ async function runLoad(options: {
   calendarDate: string;
   beforeWork?: () => Promise<void>;
   openDatabase?: OpenDatabase;
+  overlay?: OverlayHooks;
 }): Promise<void> {
-  const { store } = options;
+  const { store, overlay } = options;
+  await overlay?.pause();
   await options.beforeWork?.();
 
   const located = locateDayMca(options.mcaDir, options.calendarDate);
@@ -93,6 +101,7 @@ async function runLoad(options: {
       store,
       locateFailureSentence(located.reason, options.calendarDate),
     );
+    await overlay?.resume();
     return;
   }
 
@@ -118,6 +127,7 @@ async function runLoad(options: {
         }
         if (header.kind === "invalid") {
           failLoadReason(store, "headerRefused");
+          await overlay?.resume();
           return;
         }
         headerAccepted = true;
@@ -148,10 +158,12 @@ async function runLoad(options: {
 
     if (!headerAccepted) {
       failLoadReason(store, "headerRefused");
+      await overlay?.resume();
       return;
     }
     if (!session) {
       failLoadReason(store, "mcaFileUnreadable");
+      await overlay?.resume();
       return;
     }
     insertIfReady(session, flushBodyDraft(body));
@@ -159,7 +171,24 @@ async function runLoad(options: {
       loadDay: options.calendarDate,
       hdSequence: sequence,
     });
-    writeNetworkDiagram(options.sqlitePath);
+    const afterWrite = store.get();
+    store.set({
+      state: "running",
+      howFar: afterWrite.howFar ?? "100",
+      sentence: "Laying out the network map.",
+      bytesRead: afterWrite.bytesRead,
+      fileBytes: afterWrite.fileBytes,
+    });
+    try {
+      await writeNetworkDiagram(options.sqlitePath);
+    } catch (layoutErr) {
+      const message = layoutErr instanceof Error ? layoutErr.message : String(layoutErr);
+      console.error("network schematic layout failed", message);
+      failLoad(store, "The network map could not be laid out.");
+      // Timetable file remains; overlay resumes so live data can still attach.
+      await overlay?.resume();
+      return;
+    }
     store.set({
       state: "succeeded",
       howFar: "100",
@@ -167,12 +196,16 @@ async function runLoad(options: {
       bytesRead: store.get().bytesRead ?? store.get().fileBytes,
       fileBytes: store.get().fileBytes,
     });
+    await overlay?.resume();
   } catch (err) {
     session?.abortMissing();
     failLoadReason(store, headerAccepted ? "writeFailed" : "mcaFileUnreadable");
     if (headerAccepted) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("mca-load failed", message);
+      // File deleted by abortMissing — stay paused.
+    } else {
+      await overlay?.resume();
     }
   }
 }
@@ -202,6 +235,7 @@ export function createLoadController(
         calendarDate,
         beforeWork: options.beforeWork,
         openDatabase: options.openDatabase,
+        overlay: options.overlay,
       });
       return store.get();
     },

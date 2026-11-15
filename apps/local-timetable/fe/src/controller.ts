@@ -1,21 +1,37 @@
 import type { ApiClient } from "./apiClient.js";
 import type {
   AskResult,
+  EventTag,
   LoadProgress,
   NetworkAnswer,
   NetworkDiagram,
   NetworkTrain,
   PairTrain,
+  RemovedTrain,
   StationPairAnswer,
 } from "./types.js";
+import {
+  reachedAndNextCrs,
+  scheduledHhmm,
+  type StopRow,
+} from "./stopTime.js";
+import { trainEnds } from "./routeStrip.js";
 
 export type ScreenPhase = "empty" | "loaded";
-export type ScreenPage = "network" | "pair";
+export type ScreenPage = "network" | "pair" | "route";
 export type PairFilter = "all" | "on time" | "delayed" | "cancelled";
 
 export type ScheduleFocus =
   | { kind: "station"; crs: string }
   | { kind: "services"; serviceGuids: readonly string[] };
+
+export type RoutePreview = { serviceGuid: string };
+
+export type RouteView = {
+  originCrs: string;
+  destCrs: string;
+  selectedServiceGuid: string;
+};
 
 export type ScreenViewModel = {
   phase: ScreenPhase;
@@ -26,6 +42,7 @@ export type ScreenViewModel = {
   commsLost: boolean;
   statusLine: string;
   networkHeld: NetworkAnswer | null;
+  cancellationsHeld: Array<RemovedTrain & { stops?: NetworkTrain["stops"] }>;
   diagramHeld: NetworkDiagram | null;
   diagramStale: boolean;
   pairHeld: StationPairAnswer | null;
@@ -33,9 +50,41 @@ export type ScreenViewModel = {
   pairLater: string;
   searchText: string;
   scheduleFocus: ScheduleFocus | null;
+  networkEventFilter: EventTag | null;
+  routePreview: RoutePreview | null;
+  routeView: RouteView | null;
   pairFilter: PairFilter;
   emptyMessage: string;
+  updatesPerMin: number | null;
 };
+
+export type DisruptionSummaryRow = {
+  tag: EventTag;
+  count: number;
+};
+
+/** Display order for non-zero summary rows. */
+export const EVENT_TAG_ORDER: readonly EventTag[] = [
+  "cancelled",
+  "deactivated",
+  "delayed",
+  "actual_removed",
+  "rerouted",
+  "associated",
+  "alert",
+  "arrived",
+  "departed",
+  "passed_location",
+  "pass_forecast",
+  "call_forecast",
+  "platform_set",
+  "platform_suppressed",
+  "length_reported",
+  "cancel_cleared",
+  "formation_changed",
+] as const;
+
+const EVENT_TAG_SET = new Set<string>(EVENT_TAG_ORDER);
 
 export type NetworkFooter =
   | { ready: false }
@@ -45,6 +94,7 @@ export type NetworkFooter =
       onTime: number;
       onTimePercent: number | null;
       delayed: number;
+      updatesPerMin: number | null;
     };
 
 export type PairCounts =
@@ -69,6 +119,7 @@ export function createInitialViewModel(): ScreenViewModel {
     commsLost: false,
     statusLine: "",
     networkHeld: null,
+    cancellationsHeld: [],
     diagramHeld: null,
     diagramStale: true,
     pairHeld: null,
@@ -76,9 +127,57 @@ export function createInitialViewModel(): ScreenViewModel {
     pairLater: "",
     searchText: "",
     scheduleFocus: null,
+    networkEventFilter: null,
+    routePreview: null,
+    routeView: null,
     pairFilter: "all",
     emptyMessage: "",
+    updatesPerMin: null,
   };
+}
+
+export function isEventTag(value: string): value is EventTag {
+  return EVENT_TAG_SET.has(value);
+}
+
+export function nextNetworkEventFilter(
+  current: EventTag | null,
+  pick: EventTag,
+): EventTag | null {
+  return current === pick ? null : pick;
+}
+
+export function eventTagLabel(tag: EventTag): string {
+  return tag.replaceAll("_", " ");
+}
+
+export function updatesPerMinute(
+  applied: number,
+  intervalSeconds: number,
+): number {
+  if (intervalSeconds <= 0) return 0;
+  return Math.round((Math.max(0, applied) * 60) / intervalSeconds);
+}
+
+export function recordPollUpdates(
+  vm: ScreenViewModel,
+  previous: { generation: string; revision: number } | null,
+  next: NetworkAnswer,
+): void {
+  if (
+    previous &&
+    previous.generation === next.generation &&
+    !next.full
+  ) {
+    vm.updatesPerMin = updatesPerMinute(
+      next.revision - previous.revision,
+      vm.intervalSeconds,
+    );
+    return;
+  }
+  if (!previous || previous.generation !== next.generation) {
+    vm.updatesPerMin = null;
+  }
 }
 
 function applyLoadProgress(vm: ScreenViewModel, progress: LoadProgress): void {
@@ -119,6 +218,134 @@ function applyTrainAsk<T>(
   vm.statusLine = "comms is lost";
 }
 
+function stopsAsRows(train: NetworkTrain): StopRow[] {
+  return (train.stops ?? []).map((stop, seq) => ({
+    seq,
+    crs: stop.crs ?? null,
+    publicArr: stop.arr,
+    publicDep: stop.dep,
+    forecastArr: null,
+    forecastDep: null,
+  }));
+}
+
+export function withLiveFields(trains: NetworkTrain[], nowHhmm: string): NetworkTrain[] {
+  return trains.map((train) => {
+    const rows = stopsAsRows(train);
+    if (rows.length === 0) {
+      return train;
+    }
+    const { reachedCrs, nextCrs } = reachedAndNextCrs(rows, nowHhmm);
+    return {
+      ...train,
+      reachedCrs,
+      nextCrs,
+      scheduledTime: scheduledHhmm(rows, nowHhmm),
+    };
+  });
+}
+
+export function pairMatchesCallingPoints(
+  points: Array<{ crs?: string | null }>,
+  earlierCrs: string,
+  laterCrs: string,
+): boolean {
+  let earlierIndex = -1;
+  for (let i = 0; i < points.length; i++) {
+    if (points[i]?.crs === earlierCrs) {
+      earlierIndex = i;
+      break;
+    }
+  }
+  if (earlierIndex === -1) {
+    return false;
+  }
+  for (let j = earlierIndex + 1; j < points.length; j++) {
+    if (points[j]?.crs === laterCrs) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function derivePairHeld(vm: ScreenViewModel, nowHhmm: string): void {
+  if (vm.pairEarlier.length !== 3 || vm.pairLater.length !== 3 || !vm.networkHeld) {
+    vm.pairHeld = null;
+    return;
+  }
+  const live = withLiveFields(vm.networkHeld.trains, nowHhmm);
+  const trains: PairTrain[] = [];
+  for (const train of live) {
+    if (!pairMatchesCallingPoints(train.stops ?? [], vm.pairEarlier, vm.pairLater)) {
+      continue;
+    }
+    trains.push({
+      serviceGuid: train.serviceGuid,
+      status: train.statusLabel ?? (train.problem ? "delayed" : "on time"),
+      reachedCrs: train.reachedCrs ?? null,
+      nextCrs: train.nextCrs ?? null,
+      issue: train.problem,
+    });
+  }
+  for (const cancelled of vm.cancellationsHeld) {
+    const stops = cancelled.stops ?? [];
+    if (stops.length > 0 && !pairMatchesCallingPoints(stops, vm.pairEarlier, vm.pairLater)) {
+      continue;
+    }
+    trains.push({
+      serviceGuid: null,
+      trainUid: cancelled.trainUid,
+      cancellationLabel: "cancelled",
+      status: "cancelled",
+      reachedCrs: null,
+      nextCrs: null,
+      issue: true,
+    });
+  }
+  vm.pairHeld = {
+    calendarDate: vm.networkHeld.calendarDate,
+    earlierCrs: vm.pairEarlier,
+    laterCrs: vm.pairLater,
+    trains,
+  };
+}
+
+export function mergeNetworkAnswer(
+  vm: ScreenViewModel,
+  data: NetworkAnswer,
+): void {
+  if (data.full || vm.networkHeld?.generation !== data.generation) {
+    vm.networkHeld = data;
+    vm.cancellationsHeld = [];
+    return;
+  }
+  const byGuid = new Map(
+    (vm.networkHeld?.trains ?? []).map((train) => [train.serviceGuid, train]),
+  );
+  for (const train of data.trains) {
+    byGuid.set(train.serviceGuid, train);
+    vm.cancellationsHeld = vm.cancellationsHeld.filter(
+      (row) => row.serviceGuid !== train.serviceGuid,
+    );
+  }
+  for (const removed of data.removed) {
+    const prior = byGuid.get(removed.serviceGuid);
+    byGuid.delete(removed.serviceGuid);
+    if (!vm.cancellationsHeld.some((row) => row.serviceGuid === removed.serviceGuid)) {
+      vm.cancellationsHeld.push({
+        ...removed,
+        stops: prior?.stops,
+      });
+    }
+  }
+  vm.networkHeld = {
+    ...data,
+    full: false,
+    trains: [...byGuid.values()],
+    removed: data.removed,
+  };
+}
+
 const PAIR_FILTERS: readonly PairFilter[] = ["all", "on time", "delayed", "cancelled"];
 
 export function isPairFilter(value: string): value is PairFilter {
@@ -133,10 +360,38 @@ export type ScreenController = {
   setPage: (page: ScreenPage) => void;
   setSearchText: (text: string) => void;
   setScheduleFocus: (focus: ScheduleFocus | null) => void;
+  setNetworkEventFilter: (tag: EventTag | null) => void;
+  setRoutePreview: (preview: RoutePreview | null) => boolean;
+  openRouteFromTrain: (train: NetworkTrain) => boolean;
+  selectRouteTrain: (serviceGuid: string) => void;
+  clearRoute: () => void;
   setPairFilter: (filter: PairFilter) => void;
   startLoad: () => Promise<void>;
   tick: () => Promise<void>;
 };
+
+export function findHeldTrain(
+  vm: ScreenViewModel,
+  serviceGuid: string,
+): NetworkTrain | null {
+  return vm.networkHeld?.trains.find((train) => train.serviceGuid === serviceGuid) ?? null;
+}
+
+export function openRouteFromTrainOn(
+  vm: ScreenViewModel,
+  train: NetworkTrain,
+): boolean {
+  const ends = trainEnds(train);
+  if (!ends) return false;
+  vm.routeView = {
+    originCrs: ends.originCrs,
+    destCrs: ends.destCrs,
+    selectedServiceGuid: train.serviceGuid,
+  };
+  vm.routePreview = null;
+  vm.page = "route";
+  return true;
+}
 
 export function createScreenController(api: ApiClient): ScreenController {
   const vm = createInitialViewModel();
@@ -149,20 +404,50 @@ export function createScreenController(api: ApiClient): ScreenController {
     setPairCrs(earlier: string, later: string) {
       vm.pairEarlier = earlier.trim().toUpperCase();
       vm.pairLater = later.trim().toUpperCase();
+      derivePairHeld(vm, londonHhmm());
     },
     swapStations() {
       const earlier = vm.pairEarlier;
       vm.pairEarlier = vm.pairLater;
       vm.pairLater = earlier;
+      derivePairHeld(vm, londonHhmm());
     },
     setPage(page: ScreenPage) {
       vm.page = page;
+      if (page !== "route") {
+        vm.routeView = null;
+      }
+      if (page !== "network") {
+        vm.routePreview = null;
+      }
     },
     setSearchText(text: string) {
       vm.searchText = text;
     },
     setScheduleFocus(focus: ScheduleFocus | null) {
       vm.scheduleFocus = focus;
+    },
+    setNetworkEventFilter(tag: EventTag | null) {
+      vm.networkEventFilter = tag;
+    },
+    setRoutePreview(preview: RoutePreview | null) {
+      const nextGuid = preview?.serviceGuid ?? null;
+      const curGuid = vm.routePreview?.serviceGuid ?? null;
+      if (nextGuid === curGuid) return false;
+      vm.routePreview = preview;
+      return true;
+    },
+    openRouteFromTrain(train: NetworkTrain) {
+      return openRouteFromTrainOn(vm, train);
+    },
+    selectRouteTrain(serviceGuid: string) {
+      if (!vm.routeView) return;
+      vm.routeView = { ...vm.routeView, selectedServiceGuid: serviceGuid };
+    },
+    clearRoute() {
+      vm.routeView = null;
+      vm.routePreview = null;
+      vm.page = "network";
     },
     setPairFilter(filter: PairFilter) {
       vm.pairFilter = filter;
@@ -173,6 +458,7 @@ export function createScreenController(api: ApiClient): ScreenController {
         applyLoadProgress(vm, result.data);
         vm.diagramStale = true;
         vm.diagramHeld = null;
+        vm.updatesPerMin = null;
         vm.commsLost = false;
       } else if (result.kind === "comms") {
         vm.commsLost = true;
@@ -216,17 +502,26 @@ export function createScreenController(api: ApiClient): ScreenController {
         }
       }
 
-      const network = await api.getNetwork();
+      const cursor =
+        vm.networkHeld?.generation !== undefined &&
+        vm.networkHeld.revision !== undefined
+          ? {
+              since: vm.networkHeld.revision,
+              generation: vm.networkHeld.generation,
+            }
+          : undefined;
+      const network = await api.getNetwork(cursor);
       applyTrainAsk(vm, network, (data) => {
-        vm.networkHeld = data;
+        const previous = vm.networkHeld
+          ? {
+              generation: vm.networkHeld.generation,
+              revision: vm.networkHeld.revision,
+            }
+          : null;
+        mergeNetworkAnswer(vm, data);
+        recordPollUpdates(vm, previous, data);
       });
-
-      if (vm.pairEarlier.length === 3 && vm.pairLater.length === 3) {
-        const pair = await api.postPair(vm.pairEarlier, vm.pairLater);
-        applyTrainAsk(vm, pair, (data) => {
-          vm.pairHeld = data;
-        });
-      }
+      derivePairHeld(vm, londonHhmm());
     },
   };
 }
@@ -318,22 +613,124 @@ export function nextScheduleFocus(
   return sameScheduleFocus(current, pick) ? null : pick;
 }
 
-export function visibleNetworkTrains(vm: ScreenViewModel, now = new Date()): NetworkTrain[] {
-  const nowHhmm = londonHhmm(now);
+function trainHasTag(train: NetworkTrain, tag: EventTag): boolean {
+  return (train.eventTags ?? []).includes(tag);
+}
+
+function cancelledAsNetworkTrain(
+  row: RemovedTrain & { stops?: NetworkTrain["stops"] },
+): NetworkTrain {
+  const tags = row.eventTags ?? [];
+  return {
+    serviceGuid: row.serviceGuid,
+    problem: true,
+    statusLabel: "cancelled",
+    eventTags: tags.includes("cancelled") ? tags : [...tags, "cancelled"],
+    stops: row.stops,
+  };
+}
+
+function applyBaseNetworkFilters(
+  trains: NetworkTrain[],
+  vm: ScreenViewModel,
+  nowHhmm: string,
+): NetworkTrain[] {
   const query = vm.searchText.trim().toLowerCase();
   const focus = vm.scheduleFocus;
-  const held = vm.networkHeld?.trains ?? [];
+  const held = withLiveFields(trains, nowHhmm);
   const rows = focus?.kind === "services"
     ? held.filter((train) => focus.serviceGuids.includes(train.serviceGuid))
     : held.filter((train) => inScheduleWindow(train, nowHhmm));
   return rows
     .filter((train) => matchesSearch(train, query))
-    .filter((train) => focus?.kind !== "station" || callsAt(train, focus.crs))
-    .sort(byScheduledTime(nowHhmm));
+    .filter((train) => focus?.kind !== "station" || callsAt(train, focus.crs));
 }
 
-export function problemTrains(vm: ScreenViewModel): NetworkTrain[] {
-  return (vm.networkHeld?.trains ?? []).filter((train) => train.problem);
+/** Live-schedule window + search + map focus (before event-tag filter). */
+export function baseVisibleNetworkTrains(
+  vm: ScreenViewModel,
+  now = new Date(),
+): NetworkTrain[] {
+  const nowHhmm = londonHhmm(now);
+  return applyBaseNetworkFilters(vm.networkHeld?.trains ?? [], vm, nowHhmm).sort(
+    byScheduledTime(nowHhmm),
+  );
+}
+
+function matchingCancelledTrains(
+  vm: ScreenViewModel,
+  nowHhmm: string,
+): NetworkTrain[] {
+  const cancelled = vm.cancellationsHeld.map(cancelledAsNetworkTrain);
+  const query = vm.searchText.trim().toLowerCase();
+  const focus = vm.scheduleFocus;
+  return cancelled
+    .filter((train) => matchesSearch(train, query))
+    .filter((train) => {
+      if (focus?.kind === "services") {
+        return focus.serviceGuids.includes(train.serviceGuid);
+      }
+      if (focus?.kind === "station") {
+        return callsAt(train, focus.crs);
+      }
+      return true;
+    })
+    .map((train) => {
+      const live = withLiveFields([train], nowHhmm)[0] ?? train;
+      return live;
+    });
+}
+
+export function disruptionSummary(
+  vm: ScreenViewModel,
+  now = new Date(),
+): DisruptionSummaryRow[] {
+  const nowHhmm = londonHhmm(now);
+  const trains = [
+    ...baseVisibleNetworkTrains(vm, now),
+    ...matchingCancelledTrains(vm, nowHhmm),
+  ];
+  const counts = new Map<EventTag, number>();
+  for (const train of trains) {
+    const seen = new Set<EventTag>();
+    for (const tag of train.eventTags ?? []) {
+      if (seen.has(tag)) continue;
+      seen.add(tag);
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  const rows: DisruptionSummaryRow[] = [];
+  for (const tag of EVENT_TAG_ORDER) {
+    const count = counts.get(tag) ?? 0;
+    if (count > 0) {
+      rows.push({ tag, count });
+    }
+  }
+  for (const [tag, count] of counts) {
+    if (!EVENT_TAG_ORDER.includes(tag) && count > 0) {
+      rows.push({ tag, count });
+    }
+  }
+  return rows;
+}
+
+export function visibleNetworkTrains(vm: ScreenViewModel, now = new Date()): NetworkTrain[] {
+  const nowHhmm = londonHhmm(now);
+  const filter = vm.networkEventFilter;
+  if (filter === "cancelled") {
+    return matchingCancelledTrains(vm, nowHhmm)
+      .filter((train) => trainHasTag(train, "cancelled"))
+      .sort(byScheduledTime(nowHhmm));
+  }
+  const base = baseVisibleNetworkTrains(vm, now);
+  if (!filter) {
+    return base;
+  }
+  return base.filter((train) => trainHasTag(train, filter));
+}
+
+export function problemTrains(vm: ScreenViewModel, now = new Date()): NetworkTrain[] {
+  return baseVisibleNetworkTrains(vm, now).filter((train) => train.problem);
 }
 
 export function networkListMessage(vm: ScreenViewModel, now = new Date()): string {
@@ -342,8 +739,11 @@ export function networkListMessage(vm: ScreenViewModel, now = new Date()): strin
     if (vm.emptyMessage) return vm.emptyMessage;
     return "Loading";
   }
-  if (vm.networkHeld.trains.length === 0) return "No trains";
+  if (vm.networkHeld.trains.length === 0 && vm.cancellationsHeld.length === 0) {
+    return "No trains";
+  }
   if (visibleNetworkTrains(vm, now).length === 0) {
+    if (vm.networkEventFilter) return "Nothing in this filter";
     if (vm.scheduleFocus?.kind === "station") return "No trains through this station";
     if (vm.scheduleFocus?.kind === "services") return "No trains on this arrow";
     return "Nothing matches";
@@ -351,13 +751,13 @@ export function networkListMessage(vm: ScreenViewModel, now = new Date()): strin
   return "";
 }
 
-export function disruptionMessage(vm: ScreenViewModel): string {
+export function disruptionMessage(vm: ScreenViewModel, now = new Date()): string {
   if (vm.commsLost && !vm.networkHeld) return "";
   if (!vm.networkHeld) {
     if (vm.emptyMessage) return vm.emptyMessage;
     return "Loading";
   }
-  if (problemTrains(vm).length === 0) return "No problems";
+  if (disruptionSummary(vm, now).length === 0) return "No interesting events";
   return "";
 }
 
@@ -378,6 +778,7 @@ export function networkFooter(vm: ScreenViewModel): NetworkFooter {
     onTime,
     onTimePercent: active > 0 ? Math.round((onTime / active) * 100) : null,
     delayed,
+    updatesPerMin: vm.updatesPerMin,
   };
 }
 
@@ -459,4 +860,20 @@ export function calendarLabelFor(vm: ScreenViewModel, now = new Date()): string 
       ? (vm.pairHeld?.calendarDate ?? vm.networkHeld?.calendarDate ?? null)
       : (vm.networkHeld?.calendarDate ?? vm.pairHeld?.calendarDate ?? null);
   return formatCalendarLabel(token, now);
+}
+
+export function previewTrain(vm: ScreenViewModel, now = new Date()): NetworkTrain | null {
+  const guid = vm.routePreview?.serviceGuid;
+  if (!guid || !vm.networkHeld) return null;
+  const held = findHeldTrain(vm, guid);
+  if (!held) return null;
+  return withLiveFields([held], londonHhmm(now))[0] ?? null;
+}
+
+export function selectedRouteTrain(vm: ScreenViewModel, now = new Date()): NetworkTrain | null {
+  const guid = vm.routeView?.selectedServiceGuid;
+  if (!guid || !vm.networkHeld) return null;
+  const held = findHeldTrain(vm, guid);
+  if (!held) return null;
+  return withLiveFields([held], londonHhmm(now))[0] ?? null;
 }

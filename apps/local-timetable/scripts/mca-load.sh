@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE="${ROOT}/compose.yaml"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_compose.sh
+source "${DIR}/_compose.sh"
 
-docker compose -f "${COMPOSE}" exec ${MCA_CALENDAR_DATE:+-e "MCA_CALENDAR_DATE=${MCA_CALENDAR_DATE}"} server node --input-type=module -e "
+compose exec ${MCA_CALENDAR_DATE:+-e "MCA_CALENDAR_DATE=${MCA_CALENDAR_DATE}"} server node --input-type=module -e "
 import { start, progress } from './dist/index.js';
 const loadStarted = Date.now();
 const formatRate = (bytesPerSec) => {
