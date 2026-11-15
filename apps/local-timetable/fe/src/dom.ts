@@ -1,19 +1,32 @@
-import type { NetworkFooter, PairCounts, ScheduleFocus, ScreenViewModel } from "./controller.js";
+import type {
+  DisruptionSummaryRow,
+  NetworkFooter,
+  PairCounts,
+  ScheduleFocus,
+  ScreenViewModel,
+} from "./controller.js";
+import type { EventTag } from "./types.js";
 import { stationName } from "./stationNames.js";
 import {
   calendarLabelFor,
   disruptionMessage,
+  disruptionSummary,
+  eventTagLabel,
+  findHeldTrain,
   formatLondonClock,
   networkFooter,
   networkListMessage,
   isCancellationRow,
   pairCounts,
   pairListMessage,
+  previewTrain,
   problemTrains,
+  selectedRouteTrain,
   systemAlertsMessage,
   londonHhmm,
   visibleNetworkTrains,
   visiblePairTrains,
+  withLiveFields,
 } from "./controller.js";
 import {
   clampCamera,
@@ -33,7 +46,16 @@ import {
   type Schematic,
   type StationLayout,
 } from "./networkMap.js";
-import type { NetworkTrain, PairTrain } from "./types.js";
+import {
+  corridorHopsOnSpine,
+  corridorTouchesSpine,
+  spinePath,
+  stripLayout,
+  trainsOnSpine,
+  type SegmentSeverity,
+  type StripLayout,
+} from "./routeStrip.js";
+import type { NetworkDiagram, NetworkTrain, PairTrain } from "./types.js";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -63,10 +85,20 @@ function noDataPanel(title: string, testId: string): HTMLElement {
   return panel(title, testId, [el("p", { class: "nodata" }, ["This panel has no data"])]);
 }
 
-function statusWord(problem: boolean): HTMLElement {
-  return el("span", { class: problem ? "status problem" : "status ok" }, [
-    problem ? "problem" : "on time",
-  ]);
+function statusWord(opts: {
+  label: string;
+  changeFromScheduled: boolean;
+}): HTMLElement {
+  return el("span", {
+    class: opts.changeFromScheduled ? "status problem" : "status ok",
+  }, [opts.label]);
+}
+
+function networkStatusWord(train: NetworkTrain): HTMLElement {
+  return statusWord({
+    label: train.statusLabel ?? (train.problem ? "delayed" : "on time"),
+    changeFromScheduled: train.problem,
+  });
 }
 
 function textCell(text: string, className = "mono"): HTMLElement {
@@ -154,23 +186,66 @@ function scheduleTable(vm: ScreenViewModel, now: Date): HTMLElement {
     el("thead", {}, [
       el("tr", {}, [
         el("th", {}, ["Train"]),
-        el("th", {}, ["Origin"]),
-        el("th", {}, ["Destination"]),
-        el("th", {}, ["Reached"]),
+        el("th", {}, ["From"]),
+        el("th", {}, ["To"]),
+        el("th", {}, ["At"]),
         el("th", {}, ["Next"]),
-        el("th", {}, ["Scheduled"]),
+        el("th", {}, ["Time"]),
         el("th", {}, ["Status"]),
-        el("th", {}, ["Headcode"]),
         el("th", {}, ["Plat"]),
       ]),
     ]),
   ]);
   const body = el("tbody");
+  const previewGuid = vm.routePreview?.serviceGuid ?? null;
   for (const train of visibleNetworkTrains(vm, now)) {
-    body.append(scheduleRow(train));
+    body.append(scheduleRow(train, train.serviceGuid === previewGuid));
   }
   table.append(body);
   return table;
+}
+
+function delayStatusText(train: NetworkTrain): string {
+  const where = train.reachedCrs ? stationName(train.reachedCrs) : "route";
+  if (train.delayMinutes != null && train.delayMinutes > 0) {
+    return `Delayed +${train.delayMinutes}m at ${where}`;
+  }
+  const label = train.statusLabel ?? (train.problem ? "delayed" : "on time");
+  if (label === "on time") return `On time at ${where}`;
+  return `${label} at ${where}`;
+}
+
+function journeyCard(train: NetworkTrain, progress: number | null, testId: string): HTMLElement {
+  const origin = stationName(train.originCrs ?? "");
+  const dest = stationName(train.destCrs ?? "");
+  const pct = progress === null ? 0 : Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  return el("aside", { class: "journey-card", "data-testid": testId }, [
+    el("p", { class: "journey-card-title" }, [
+      "SELECTED TRAIN: ",
+      el("span", { class: "mono" }, [train.serviceGuid]),
+    ]),
+    el("p", { class: "journey-card-sub" }, [
+      `(${train.scheduledTime ?? "----"} ${origin} to ${dest})`,
+    ]),
+    el("div", { class: "journey-progress", "aria-hidden": "true" }, [
+      el("div", {
+        class: "journey-progress-bar",
+        style: `width:${pct}%`,
+      }),
+    ]),
+    el("p", { class: "journey-meta" }, [
+      el("span", { class: "dot location" }, []),
+      " Current Location: ",
+      stationName(train.reachedCrs ?? train.originCrs ?? ""),
+    ]),
+    el("p", { class: "journey-meta" }, [
+      el("span", {
+        class: train.problem ? "dot severe" : "dot ok",
+      }, []),
+      " ",
+      delayStatusText(train),
+    ]),
+  ]);
 }
 
 function scheduledCell(time: string | null | undefined): HTMLElement {
@@ -178,16 +253,21 @@ function scheduledCell(time: string | null | undefined): HTMLElement {
   return textCell(time);
 }
 
-function scheduleRow(train: NetworkTrain): HTMLElement {
-  return el("tr", { "data-service": train.serviceGuid }, [
+function scheduleRow(train: NetworkTrain, previewed: boolean): HTMLElement {
+  const attrs: Record<string, string> = {
+    "data-service": train.serviceGuid,
+    "data-testid": "schedule-row",
+    class: previewed ? "schedule-row is-preview" : "schedule-row",
+    tabindex: "0",
+  };
+  return el("tr", attrs, [
     textCell(train.serviceGuid),
     textCell(train.originCrs ?? ""),
     textCell(train.destCrs ?? ""),
     textCell(train.reachedCrs ?? ""),
     textCell(train.nextCrs ?? ""),
     scheduledCell(train.scheduledTime),
-    el("td", {}, [statusWord(train.problem)]),
-    textCell("no data", "nodata"),
+    el("td", {}, [networkStatusWord(train)]),
     textCell("no data", "nodata"),
   ]);
 }
@@ -203,8 +283,36 @@ function problemList(trains: NetworkTrain[]): HTMLElement {
         " ",
         el("span", { class: "mono" }, [train.destCrs ?? ""]),
         " ",
-        statusWord(true),
+        networkStatusWord(train),
       ]),
+    );
+  }
+  return list;
+}
+
+function disruptionSummaryList(
+  rows: DisruptionSummaryRow[],
+  selected: EventTag | null,
+): HTMLElement {
+  const list = el("ul", { class: "problem-list summary-list", "data-testid": "disruption-summary" });
+  for (const row of rows) {
+    const pressed = selected === row.tag;
+    list.append(
+      el(
+        "li",
+        {
+          class: pressed ? "summary-row is-selected" : "summary-row",
+          "data-event-filter": row.tag,
+          "data-testid": `event-filter-${row.tag}`,
+          tabindex: "0",
+          role: "button",
+          "aria-pressed": pressed ? "true" : "false",
+        },
+        [
+          el("span", { class: "summary-label" }, [eventTagLabel(row.tag)]),
+          el("span", { class: "summary-count mono" }, [String(row.count)]),
+        ],
+      ),
     );
   }
   return list;
@@ -212,15 +320,25 @@ function problemList(trains: NetworkTrain[]): HTMLElement {
 
 function scheduleFocusNote(vm: ScreenViewModel): HTMLElement | null {
   const focus = vm.scheduleFocus;
-  if (!focus) return null;
-  const label = focus.kind === "station"
-    ? `Trains through ${stationName(focus.crs)}`
-    : "Trains on this arrow";
-  return el("p", { class: "schedule-focus", "data-testid": "schedule-focus" }, [
-    label,
-    " ",
+  const eventFilter = vm.networkEventFilter;
+  if (!focus && !eventFilter) return null;
+  const parts: (Node | string)[] = [];
+  if (focus) {
+    parts.push(
+      focus.kind === "station"
+        ? `Trains through ${stationName(focus.crs)}`
+        : "Trains on this arrow",
+    );
+  }
+  if (eventFilter) {
+    if (parts.length > 0) parts.push(" · ");
+    parts.push(`Event: ${eventTagLabel(eventFilter)}`);
+  }
+  parts.push(" ");
+  parts.push(
     el("button", { type: "button", "data-testid": "clear-schedule-focus" }, ["Show all"]),
-  ]);
+  );
+  return el("p", { class: "schedule-focus", "data-testid": "schedule-focus" }, parts);
 }
 
 export function schedulePick(target: Element): ScheduleFocus | null {
@@ -256,11 +374,16 @@ function footerTile(label: string, value: string, testId: string): HTMLElement {
 function networkFooterBar(footer: NetworkFooter): HTMLElement {
   const active = footer.ready ? String(footer.active) : "no data";
   const delayed = footer.ready ? String(footer.delayed) : "no data";
+  const updates =
+    footer.ready && footer.updatesPerMin !== null
+      ? String(footer.updatesPerMin)
+      : "no data";
   return el("footer", { class: "board-footer", "data-testid": "network-footer" }, [
     footerTile("Active", active, "footer-active"),
     footerTile("On time", onTimeText(footer), "footer-on-time"),
     footerTile("Delayed", delayed, "footer-delayed"),
     footerTile("Cancelled", "no data", "footer-cancelled"),
+    footerTile("Updates / min", updates, "footer-updates-per-min"),
   ]);
 }
 
@@ -656,9 +779,30 @@ function markerSelected(marker: MarkerLayout, focus: ScheduleFocus | null): bool
   return ids.length === focus.serviceGuids.length && ids.every((id, index) => id === focus.serviceGuids[index]);
 }
 
-function schematicSvg(map: Schematic, focus: ScheduleFocus | null): SVGSVGElement {
+function previewSpine(vm: ScreenViewModel): string[] | null {
+  const guid = vm.routePreview?.serviceGuid;
+  if (!guid || !vm.diagramHeld) return null;
+  const train = findHeldTrain(vm, guid);
+  if (!train) return null;
+  const origin = train.originCrs
+    ?? train.stops?.find((stop) => stop.crs)?.crs
+    ?? null;
+  const dest = train.destCrs
+    ?? [...(train.stops ?? [])].reverse().find((stop) => stop.crs)?.crs
+    ?? null;
+  if (!origin || !dest) return null;
+  return spinePath(vm.diagramHeld, origin, dest);
+}
+
+function schematicSvg(
+  map: Schematic,
+  focus: ScheduleFocus | null,
+  previewGuid: string | null,
+  spine: readonly string[] | null,
+  diagram: NetworkDiagram | null,
+): SVGSVGElement {
   const svg = svgEl("svg", {
-    class: "network-map",
+    class: spine ? "network-map has-route-preview" : "network-map",
     viewBox: formatViewBox(frameCamera(map.width, map.height, 0, 0)),
     role: "group",
     tabindex: "0",
@@ -666,17 +810,29 @@ function schematicSvg(map: Schematic, focus: ScheduleFocus | null): SVGSVGElemen
     "aria-describedby": "map-hint",
     "data-testid": "network-map",
   });
+  const spineSet = spine ? new Set(spine) : null;
+  const spineHops = spine && diagram ? corridorHopsOnSpine(diagram, spine) : null;
   for (const corridor of map.corridors) {
+    const onSpine = spineHops
+      ? corridorTouchesSpine(corridor.from, corridor.to, corridor.via, spineHops)
+      : false;
+    const classes = onSpine ? "corridor is-spine" : spine ? "corridor is-dim" : "corridor";
     svg.append(svgEl("path", {
-      class: "corridor",
+      class: classes,
       d: pathD(corridor.points),
       fill: "none",
       stroke: corridor.color,
     }));
   }
-  for (const marker of map.markers) svg.append(trainMarker(marker, markerSelected(marker, focus)));
+  for (const marker of map.markers) {
+    const ids = marker.serviceGuid.split(",").filter((id) => id.length > 0);
+    const previewed = previewGuid !== null && ids.includes(previewGuid);
+    svg.append(trainMarker(marker, markerSelected(marker, focus) || previewed));
+  }
   for (const station of map.stations) {
-    svg.append(stationMark(station, focus?.kind === "station" && focus.crs === station.crs));
+    const selected = (focus?.kind === "station" && focus.crs === station.crs)
+      || (spineSet?.has(station.crs) ?? false);
+    svg.append(stationMark(station, selected));
   }
   return svg;
 }
@@ -694,16 +850,31 @@ function networkOverview(vm: ScreenViewModel, now: Date): HTMLElement {
     const message = vm.emptyMessage || "Loading";
     return panel("Network overview", "network-overview", [el("p", { class: "nodata" }, [message])]);
   }
-  const map = markersOn(vm.diagramHeld, vm.networkHeld.trains, londonHhmm(now));
-  const svg = schematicSvg(map, vm.scheduleFocus);
-  const frame = el("div", { class: "map-frame" }, [
+  const nowHhmm = londonHhmm(now);
+  const live = withLiveFields(vm.networkHeld.trains, nowHhmm);
+  const map = markersOn(vm.diagramHeld, live, nowHhmm);
+  const spine = previewSpine(vm);
+  const svg = schematicSvg(
+    map,
+    vm.scheduleFocus,
+    vm.routePreview?.serviceGuid ?? null,
+    spine,
+    vm.diagramHeld,
+  );
+  const preview = previewTrain(vm, now);
+  const frameChildren: (Node | string)[] = [
     mapTools(),
     el("p", { class: "map-hint", id: "map-hint" }, [
-      "Scroll to zoom. Hold Shift and drag to move. Click a station or train to list it.",
+      "Scroll to zoom. Hold Shift and drag to move. Click a station to list it. Hover or click a train for its route.",
     ]),
     el("div", { class: "map-tooltip", "data-testid": "map-tooltip", hidden: "" }),
     svg,
-  ]);
+  ];
+  if (preview && spine) {
+    const layout = stripLayout(spine, [preview], nowHhmm, preview.serviceGuid);
+    frameChildren.push(journeyCard(preview, layout.selectedProgress, "route-preview-card"));
+  }
+  const frame = el("div", { class: "map-frame" }, frameChildren);
   mountMap(svg, map);
   const section = panel("Network overview", "network-overview", [mapLegend(), frame]);
   section.classList.add("network-panel");
@@ -713,8 +884,17 @@ function networkOverview(vm: ScreenViewModel, now: Date): HTMLElement {
 function renderNetwork(vm: ScreenViewModel, now: Date): HTMLElement {
   const message = networkListMessage(vm, now);
   const note = scheduleFocusNote(vm);
-  const problems = problemTrains(vm);
-  const disruption = disruptionMessage(vm);
+  const problems = problemTrains(vm, now);
+  const summary = disruptionSummary(vm, now);
+  const disruption = disruptionMessage(vm, now);
+  const incidentEmpty =
+    vm.commsLost && !vm.networkHeld
+      ? ""
+      : !vm.networkHeld
+        ? vm.emptyMessage || "Loading"
+        : problems.length === 0
+          ? "No problems"
+          : "";
   const schedules = panel("Live schedules", "live-schedules", [
     ...(note ? [note] : []),
     ...(message ? [el("p", { "data-testid": "network-message", class: "panel-message" }, [message])] : []),
@@ -743,12 +923,16 @@ function renderNetwork(vm: ScreenViewModel, now: Date): HTMLElement {
       schedules,
       el("div", { class: "col-side" }, [
         panel(
-          "Disruptions",
+          "Disruption summary",
           "disruptions",
-          messageOr(disruption, problemList(problems)),
+          messageOr(disruption, disruptionSummaryList(summary, vm.networkEventFilter)),
         ),
         noDataPanel("Disruption trend", "disruption-trend"),
-        panel("Incident logs", "incident-logs", messageOr(disruption, problemList(problems))),
+        panel(
+          "Incident logs",
+          "incident-logs",
+          messageOr(incidentEmpty, problemList(problems)),
+        ),
         panel("System alerts", "system-alerts", [
           el("p", { class: "nodata" }, [systemAlertsMessage(vm)]),
         ]),
@@ -769,18 +953,15 @@ function pairCountValue(counts: PairCounts, key: "running" | "problems" | "cance
 function pairRow(train: PairTrain, earlier: string, later: string): HTMLElement {
   const cancelled = isCancellationRow(train);
   const id = cancelled ? (train.trainUid ?? "") : (train.serviceGuid ?? "");
-  const flag = cancelled
-    ? el("span", { class: "status problem" }, ["cancelled"])
-    : el("span", { class: train.issue ? "status problem" : "status ok" }, [
-        train.issue ? "issue" : "on time",
-      ]);
+  const label = cancelled ? "cancelled" : train.status;
+  const changeFromScheduled = cancelled || train.issue;
   return el("tr", {}, [
     textCell(id),
     textCell(earlier),
     textCell(later),
     textCell(cancelled ? "" : (train.reachedCrs ?? "")),
     textCell(cancelled ? "" : (train.nextCrs ?? "")),
-    el("td", {}, [flag]),
+    el("td", {}, [statusWord({ label, changeFromScheduled })]),
   ]);
 }
 
@@ -883,14 +1064,169 @@ function renderPair(vm: ScreenViewModel): HTMLElement {
   ]);
 }
 
+function severityClass(severity: SegmentSeverity): string {
+  if (severity === "minor") return "sev-minor";
+  if (severity === "severe") return "sev-severe";
+  return "sev-ok";
+}
+
+function severityStroke(severity: SegmentSeverity): string {
+  if (severity === "minor") return "#f0b45a";
+  if (severity === "severe") return "#ff6b6b";
+  return "#7dffa8";
+}
+
+function routeStripSvg(layout: StripLayout, selectedGuid: string): SVGSVGElement {
+  const svg = svgEl("svg", {
+    class: "route-strip",
+    viewBox: `0 0 ${layout.width} ${layout.height}`,
+    role: "group",
+    "aria-label": "Route live track",
+    "data-testid": "route-strip",
+  });
+  for (const segment of layout.segments) {
+    svg.append(svgEl("line", {
+      class: `route-segment ${severityClass(segment.severity)}`,
+      x1: String(segment.x1),
+      y1: String(segment.y),
+      x2: String(segment.x2),
+      y2: String(segment.y),
+      stroke: severityStroke(segment.severity),
+      "stroke-width": "6",
+      "stroke-linecap": "round",
+    }));
+  }
+  for (const station of layout.stations) {
+    const group = svgEl("g", {
+      class: "route-station",
+      transform: `translate(${station.x} ${station.y})`,
+      "data-crs": station.crs,
+    });
+    group.append(svgEl("circle", { r: "7", class: "route-station-dot" }));
+    const label = svgEl("text", {
+      class: "route-station-label",
+      x: "0",
+      y: "28",
+      "text-anchor": "middle",
+    });
+    label.textContent = stationName(station.crs);
+    group.append(label);
+    svg.append(group);
+  }
+  for (const marker of layout.markers) {
+    const selected = marker.serviceGuid === selectedGuid;
+    const group = svgEl("g", {
+      class: selected
+        ? `route-train ${severityClass(marker.severity)} is-selected`
+        : `route-train ${severityClass(marker.severity)}`,
+      transform: `translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)}) rotate(${((marker.angle * 180) / Math.PI).toFixed(1)})`,
+      "data-testid": "route-train",
+      "data-service": marker.serviceGuid,
+    });
+    group.append(svgEl("polygon", { points: "-8,-5 12,0 -8,5" }));
+    const title = svgEl("title", {});
+    title.textContent = marker.serviceGuid;
+    group.append(title);
+    const tag = svgEl("text", {
+      class: "route-train-label",
+      x: "0",
+      y: marker.above ? "-12" : "18",
+      "text-anchor": "middle",
+      transform: `rotate(${((-marker.angle * 180) / Math.PI).toFixed(1)})`,
+    });
+    tag.textContent = marker.serviceGuid;
+    group.append(tag);
+    svg.append(group);
+  }
+  return svg;
+}
+
+function routeLegend(): HTMLElement {
+  return el("div", { class: "route-legend", "data-testid": "route-legend" }, [
+    el("span", { class: "legend-item" }, [el("span", { class: "swatch sev-ok" }, []), "On Time"]),
+    el("span", { class: "legend-item" }, [el("span", { class: "swatch sev-minor" }, []), "Minor"]),
+    el("span", { class: "legend-item" }, [el("span", { class: "swatch sev-severe" }, []), "Severe"]),
+  ]);
+}
+
+function worstAlert(layout: StripLayout): { status: boolean; severe: boolean } {
+  let status = false;
+  let severe = false;
+  for (const segment of layout.segments) {
+    if (segment.severity === "minor") status = true;
+    if (segment.severity === "severe") severe = true;
+  }
+  return { status, severe };
+}
+
+function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
+  const route = vm.routeView;
+  if (!route || !vm.diagramHeld || !vm.networkHeld) {
+    return el("div", { class: "page" }, [
+      el("p", { class: "panel-message" }, ["Route unavailable"]),
+      el("button", { type: "button", "data-testid": "open-network" }, ["Back to network"]),
+    ]);
+  }
+  const nowHhmm = londonHhmm(now);
+  const spine = spinePath(vm.diagramHeld, route.originCrs, route.destCrs);
+  const live = withLiveFields(vm.networkHeld.trains, nowHhmm);
+  const onSpine = trainsOnSpine(live, spine, nowHhmm);
+  const layout = stripLayout(spine, onSpine, nowHhmm, route.selectedServiceGuid);
+  const selected = selectedRouteTrain(vm, now);
+  const alerts = worstAlert(layout);
+  const originName = stationName(route.originCrs);
+  const destName = stationName(route.destCrs);
+  return el("div", { class: "page route-page" }, [
+    el("div", { class: "toolbar" }, [
+      el("p", {}, [
+        el("button", { type: "button", "data-testid": "open-network", class: "crumb" }, [
+          "Network Overview",
+        ]),
+        el("span", { class: "crumb-current" }, ["Route detail"]),
+      ]),
+      intervalField(vm),
+    ]),
+    el("div", { class: "route-header" }, [
+      el("p", { class: "route-selected", "data-testid": "selected-route" }, [
+        "SELECTED ACTIVE ROUTE: ",
+        el("strong", {}, [`${originName} → ${destName}`]),
+      ]),
+      el("div", { class: "route-stats", "data-testid": "route-stats" }, [
+        el("p", {}, [`Active Trains: ${onSpine.length}`]),
+        el("p", { class: "service-alerts" }, [
+          "Service Alerts ",
+          ...(alerts.status
+            ? [el("span", { class: "badge minor" }, ["Status"])]
+            : []),
+          ...(alerts.severe
+            ? [el("span", { class: "badge severe" }, ["Severe"])]
+            : [el("span", { class: "badge ok" }, ["Clear"])]),
+        ]),
+      ]),
+    ]),
+    panel("Route & Live Track", "route-track", [
+      routeStripSvg(layout, route.selectedServiceGuid),
+    ]),
+    el("div", { class: "route-footer" }, [
+      selected
+        ? journeyCard(selected, layout.selectedProgress, "selected-train-card")
+        : el("p", { class: "nodata" }, ["No selected train"]),
+      routeLegend(),
+    ]),
+  ]);
+}
+
 export function renderApp(root: HTMLElement, vm: ScreenViewModel, now = new Date()): void {
   root.replaceChildren();
   const title = vm.page === "pair" && vm.phase === "loaded"
     ? "WEST COAST SOUTH CONTROL"
-    : "JOURNEY CONTROL CENTRE";
+    : vm.page === "route" && vm.phase === "loaded"
+      ? "Route & Live Track"
+      : "JOURNEY CONTROL CENTRE";
   const shell = el("div", { class: "shell" }, [header(vm, title), statusBar(vm)]);
   if (vm.phase === "empty") shell.append(renderEmpty(vm));
   else if (vm.page === "pair") shell.append(renderPair(vm));
+  else if (vm.page === "route") shell.append(renderRoute(vm, now));
   else shell.append(renderNetwork(vm, now));
   root.append(shell);
 }

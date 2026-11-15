@@ -85,7 +85,8 @@ export function createTimetableHttpServer(
 
   return createServer(async (req, res) => {
     try {
-      const url = req.url?.split("?")[0] ?? "/";
+      const requestUrl = new URL(req.url ?? "/", "http://localhost");
+      const url = requestUrl.pathname;
       if (url === "/load") {
         if (!load) {
           sendJson(res, 503, { error: "load not configured" }, req);
@@ -114,7 +115,18 @@ export function createTimetableHttpServer(
       }
 
       if (url === "/network" && req.method === "GET") {
-        const answer = buildNetworkAnswer({ sqlitePath, clock });
+        const sinceRaw = requestUrl.searchParams.get("since");
+        const generation = requestUrl.searchParams.get("generation") ?? undefined;
+        const since =
+          sinceRaw !== null && sinceRaw !== "" && /^\d+$/.test(sinceRaw)
+            ? Number(sinceRaw)
+            : undefined;
+        const answer = buildNetworkAnswer({
+          sqlitePath,
+          clock,
+          since,
+          generation,
+        });
         if (isFailureBody(answer)) {
           sendJson(res, 503, answer, req);
           return;

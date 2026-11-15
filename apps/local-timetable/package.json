@@ -1,12 +1,15 @@
 {
   "name": "local-timetable",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "Local timetable compose stack (server + screen)",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "rebuild-server": "bash scripts/rebuild-server.sh",
+    "start-server": "bash scripts/start-server.sh",
+    "rebuild-and-start-server": "bash scripts/rebuild-and-start-server.sh",
+    "rebuild-and-deploy": "bash scripts/rebuild-and-deploy.sh",
+    "mca-load": "bash scripts/mca-load.sh",
+    "logs:server": "bash scripts/show-server-logs.sh"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC"
 }

@@ -7,10 +7,15 @@ import type {
   StationPairAnswer,
 } from "./types.js";
 
+export type NetworkCursor = {
+  since?: number;
+  generation?: string;
+};
+
 export type ApiClient = {
   startLoad: () => Promise<AskResult<LoadProgress>>;
   getLoadProgress: () => Promise<AskResult<LoadProgress>>;
-  getNetwork: () => Promise<AskResult<NetworkAnswer>>;
+  getNetwork: (cursor?: NetworkCursor) => Promise<AskResult<NetworkAnswer>>;
   getNetworkMap: () => Promise<AskResult<NetworkDiagram>>;
   postPair: (earlierCrs: string, laterCrs: string) => Promise<AskResult<StationPairAnswer>>;
 };
@@ -72,8 +77,21 @@ export function createApiClient(baseUrl: string, fetchFn: typeof fetch = fetch):
       ask<LoadProgress>("/load", { method: "POST" }, false),
     getLoadProgress: () =>
       ask<LoadProgress>("/load", { method: "GET" }, false),
-    getNetwork: () =>
-      ask<NetworkAnswer>("/network", { method: "GET" }, true),
+    getNetwork: (cursor = {}) => {
+      const params = new URLSearchParams();
+      if (cursor.since !== undefined) {
+        params.set("since", String(cursor.since));
+      }
+      if (cursor.generation !== undefined) {
+        params.set("generation", cursor.generation);
+      }
+      const query = params.toString();
+      return ask<NetworkAnswer>(
+        `/network${query ? `?${query}` : ""}`,
+        { method: "GET" },
+        true,
+      );
+    },
     getNetworkMap: () =>
       ask<NetworkDiagram>("/network-map", { method: "GET" }, true),
     postPair: (earlierCrs, laterCrs) =>

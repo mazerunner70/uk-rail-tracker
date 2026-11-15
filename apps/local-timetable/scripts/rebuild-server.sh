@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE="${ROOT}/compose.yaml"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_compose.sh
+source "${DIR}/_compose.sh"
 
-docker compose -f "${COMPOSE}" build server
+compose build server

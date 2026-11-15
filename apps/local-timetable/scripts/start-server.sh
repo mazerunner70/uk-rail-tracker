@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE="${ROOT}/compose.yaml"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_compose.sh
+source "${DIR}/_compose.sh"
 
-docker compose -f "${COMPOSE}" up -d server
+compose up -d server
 
 echo "Server is up. Follow logs:"
-echo "  docker compose -f ${COMPOSE} logs -f server"
+echo "  docker compose ${COMPOSE_ARGS[*]} logs -f server"

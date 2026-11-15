@@ -1,8 +1,12 @@
 import { createLoadController } from "./start.js";
 
 export type { LoadProgress, LoadState } from "./loadProgress.js";
-export type { LoadController, LoadControllerOptions } from "./start.js";
+export type { LoadController, LoadControllerOptions, OverlayHooks } from "./start.js";
 export { createLoadController } from "./start.js";
+export {
+  createKafkaOverlay,
+  createIdleKafkaOverlay,
+} from "./kafkaOverlay.js";
 export {
   CONTAINER_DB_DIR,
   CONTAINER_MCA_DIR,

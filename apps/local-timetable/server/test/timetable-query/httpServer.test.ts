@@ -101,12 +101,13 @@ describe("httpServer", () => {
     assert.equal(json.trains.length, 1);
   });
 
-  it("writes a missing network map when it is requested", async () => {
+  it("returns 503 for network-map when the schematic file is missing", async () => {
     const { sqlitePath, db } = await createFixtureDb();
     insertLmJourney(db);
     db.prepare("INSERT INTO feed_meta (key, value) VALUES ('load_day', '20261027')").run();
     db.prepare("INSERT INTO feed_meta (key, value) VALUES ('hd_sequence', '004')").run();
     db.close();
+    assert.equal(existsSync(networkSchematicPath(sqlitePath)), false);
     const server = createTimetableHttpServer({ sqlitePath });
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const address = server.address();
@@ -115,10 +116,7 @@ describe("httpServer", () => {
     }
     const response = await request(address.port, "GET", "/network-map");
     server.close();
-    assert.equal(response.status, 200);
-    const json = response.json as { hdSequence: string; stations: { crs: string }[] };
-    assert.equal(json.hdSequence, "004");
-    assert.ok(json.stations.some((station) => station.crs === "CRE"));
-    assert.equal(existsSync(networkSchematicPath(sqlitePath)), true);
+    assert.equal(response.status, 503);
+    assert.deepEqual(response.json, { reason: "missing" });
   });
 });

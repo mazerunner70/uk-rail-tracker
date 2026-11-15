@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS applied_updates (
     rid TEXT,
     payload_json TEXT NOT NULL,
     applied_at TEXT NOT NULL,
-    source_offset INTEGER
+    source_offset INTEGER,
+    event_tags TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS service_aliases (
@@ -87,3 +88,17 @@ export const TABLE_NAMES = [
 ] as const;
 
 export const OVERLAY_TABLES = ["kafka_offsets", "applied_updates"] as const;
+
+/** Upgrade existing DBs created before event_tags existed. */
+export function ensureAppliedUpdatesEventTags(db: {
+  pragma: (source: string) => unknown;
+  exec: (source: string) => unknown;
+}): void {
+  const cols = db.pragma(`table_info(applied_updates)`) as Array<{ name: string }>;
+  if (cols.some((col) => col.name === "event_tags")) {
+    return;
+  }
+  db.exec(
+    `ALTER TABLE applied_updates ADD COLUMN event_tags TEXT NOT NULL DEFAULT '[]'`,
+  );
+}

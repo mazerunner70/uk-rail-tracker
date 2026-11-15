@@ -14,8 +14,22 @@ services:
     volumes:
       - ./mca:/mca:ro
       - ./db:/db
+    # Workspace-root .env (same file scripts/_compose.sh passes as --env-file).
+    # Without this, bare `docker compose up` starts with empty KAFKA_* and the
+    # overlay stays idle with no applied_updates.
+    env_file:
+      - path: ../../.env
+        required: false
     environment:
       TZ: Europe/London
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-}
+      KAFKA_CONSUMER_KEY: ${KAFKA_CONSUMER_KEY:-}
+      KAFKA_CONSUMER_SECRET: ${KAFKA_CONSUMER_SECRET:-}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-}
+      KAFKA_TOPIC_JSON: ${KAFKA_TOPIC_JSON:-}
+      KAFKA_SSL_CA_LOCATION: ${KAFKA_SSL_CA_LOCATION:-}
+      METRO_LAYOUT_ENGINE: ${METRO_LAYOUT_ENGINE:-milp}
+      METRO_LAYOUT_TIME_LIMIT_SEC: ${METRO_LAYOUT_TIME_LIMIT_SEC:-1200}
     restart: unless-stopped
   screen:
     build:

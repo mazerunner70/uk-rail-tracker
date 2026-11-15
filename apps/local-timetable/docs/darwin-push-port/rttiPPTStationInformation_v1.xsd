@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:ct="http://www.thalesgroup.com/rtti/PushPort/CommonTypes/v1" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://www.hitachirail.com/rtti/PushPort/StationInformation/v1" targetNamespace="http://www.hitachirail.com/rtti/PushPort/StationInformation/v1" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0">
+  <!--  Copyright (c) 2026 RDG & Hitachi -->
+  <!--  Project 753 ATOC REAL TIME TRAIN INFORMATION -->
+  <!--  Project WA063A0 ATOC DARWIN -->
+  <!--  PUSH PORTS STATION INFORMATION SCHEMA -->
+  <!--  
+  14/01/2026	Version 1: New StationInformation message.
+	-->
+  <xs:import namespace="http://www.thalesgroup.com/rtti/PushPort/CommonTypes/v1" schemaLocation="rttiPPTCommonTypes_V1.xsd"/>
+
+  <xs:simpleType name="LiftIdentifier">
+    <xs:annotation>
+      <xs:documentation>An identifier for a Lift at a Station. E.g. "1".</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="20"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="LiftDescription">
+    <xs:annotation>
+      <xs:documentation>A description for a Lift at a Station, e.g. "between concourse and Platform 1".</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="50"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="LiftStatus">
+    <xs:annotation>
+      <xs:documentation>An enumeration representing the status of a lift.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Normal"/>
+      <xs:enumeration value="OutOfService"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="LiftStatusData">
+    <xs:annotation>
+      <xs:documentation>The current status of a lift</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="liftID" type="tns:LiftIdentifier">
+        <xs:annotation>
+          <xs:documentation>
+            The unique identifier for the lift at the station.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="status" type="tns:LiftStatus">
+        <xs:annotation>
+          <xs:documentation>The current status of this lift.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="description" type="tns:LiftDescription" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            The textual description of where the lift is located.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+
+  </xs:complexType>
+
+  <xs:complexType name="LiftInformation">
+    <xs:annotation>
+      <xs:documentation>The information about all Lifts at a Station.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="LiftStatus" type="tns:LiftStatusData" minOccurs="1" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>The Lift information for the Station</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="StationInformation">
+    <xs:annotation>
+      <xs:documentation>The information about a Station identified by their CRS code.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+    <xs:element name="Station">
+      <xs:annotation>
+        <xs:documentation>The Station the information is applicable to</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:attribute name="crs" type="ct:CrsType" use="required"/>
+      </xs:complexType>
+    </xs:element>
+    <xs:element name="LiftInformation" type="tns:LiftInformation" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            Lift information for this station
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

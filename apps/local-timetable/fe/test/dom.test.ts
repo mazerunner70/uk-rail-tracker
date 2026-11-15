@@ -55,6 +55,10 @@ describe("network page", () => {
     vm.diagramHeld = heldDiagram([["EUS", "MKC"], ["CRE", "STA"]]);
     vm.networkHeld = {
       calendarDate: "251102",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
       trains: [
         {
           serviceGuid: "on-time-1",
@@ -64,6 +68,7 @@ describe("network page", () => {
           nextCrs: "MKC",
           scheduledTime: "1400",
           problem: false,
+          statusLabel: "on time",
           stops: [
             { crs: "EUS", arr: null, dep: "1200" },
             { crs: "MKC", arr: "1400", dep: null },
@@ -77,6 +82,8 @@ describe("network page", () => {
           nextCrs: null,
           scheduledTime: "1200",
           problem: true,
+          statusLabel: "delayed",
+          eventTags: ["delayed", "call_forecast"],
           stops: [
             { crs: "CRE", arr: null, dep: "1100" },
             { crs: "STA", arr: "1250", dep: "1330" },
@@ -103,22 +110,35 @@ describe("network page", () => {
       root.querySelector('[data-service="late-1"]')?.getAttribute("data-at-station"),
       "true",
     );
+    assert.match(text(root, "network-list"), /From/);
+    assert.match(text(root, "network-list"), /To/);
+    assert.match(text(root, "network-list"), /At/);
+    assert.match(text(root, "network-list"), /Time/);
+    assert.doesNotMatch(text(root, "network-list"), /Headcode/);
     assert.match(text(root, "network-list"), /on time/);
-    assert.match(text(root, "network-list"), /problem/);
+    assert.match(text(root, "network-list"), /delayed/);
     assert.match(text(root, "network-list"), /EUS/);
-    assert.match(text(root, "network-list"), /1200/);
+    assert.match(text(root, "network-list"), /1330/);
     assert.match(text(root, "network-list"), /1400/);
     assert.match(text(root, "network-list"), /no data/);
-    assert.match(text(root, "disruptions"), /late-1/);
-    assert.match(text(root, "disruptions"), /problem/);
-    assert.doesNotMatch(text(root, "disruptions"), /on-time-1/);
+    assert.match(text(root, "disruptions"), /Disruption summary|delayed/);
+    assert.match(text(root, "disruption-summary"), /delayed/);
+    assert.match(text(root, "disruption-summary"), /1/);
+    assert.doesNotMatch(text(root, "disruption-summary"), /on-time-1/);
     assert.match(text(root, "disruption-trend"), /This panel has no data/);
     assert.match(text(root, "incident-logs"), /late-1/);
     assert.match(text(root, "footer-active"), /2/);
     assert.match(text(root, "footer-on-time"), /1 \(50%\)/);
     assert.match(text(root, "footer-delayed"), /1/);
     assert.match(text(root, "footer-cancelled"), /no data/);
+    assert.match(text(root, "footer-updates-per-min"), /no data/);
     assert.equal(root.querySelectorAll(".board > *").length, 3);
+
+    vm.searchText = "eus";
+    const filtered = render(vm);
+    assert.match(text(filtered, "disruptions"), /No interesting events/);
+    assert.doesNotMatch(text(filtered, "incident-logs"), /late-1/);
+    assert.match(text(filtered, "incident-logs"), /No problems/);
   });
 
   it("zooms the map and returns to the whole network", () => {
@@ -128,6 +148,10 @@ describe("network page", () => {
     vm.diagramHeld = heldDiagram([["EUS", "MKC"], ["CRE", "STA"]]);
     vm.networkHeld = {
       calendarDate: "251102",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
       trains: [
         {
           serviceGuid: "on-time-1",
@@ -163,6 +187,10 @@ describe("network page", () => {
     vm.diagramHeld = heldDiagram([["EUS", "MKC"], ["CRE", "STA"]]);
     vm.networkHeld = {
       calendarDate: "251102",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
       trains: [
         {
           serviceGuid: "on-time-1",
@@ -206,13 +234,17 @@ describe("network page", () => {
     assert.equal(svg.classList.contains("is-shift"), false);
   });
 
-  it("lists the live trains for a clicked station or arrow", () => {
+  it("lists the live trains for a clicked station", () => {
     const vm = createInitialViewModel();
     vm.phase = "loaded";
     vm.loadSucceeded = true;
     vm.diagramHeld = heldDiagram([["EUS", "MKC"], ["CRE", "STA"]]);
     vm.networkHeld = {
       calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
       trains: [
         {
           serviceGuid: "via-mkc",
@@ -246,19 +278,96 @@ describe("network page", () => {
       Array.from(stationView.querySelectorAll('[data-testid="network-list"] tbody tr')).map((row) => row.getAttribute("data-service")),
       ["via-mkc"],
     );
+    assert.match(text(stationView, "disruptions"), /No interesting events/);
     const station = stationView.querySelector(".station-mark");
     assert.ok(station);
     assert.equal(schedulePick(station)?.kind, "station");
+  });
 
-    const arrow = stationView.querySelector(".train-marker");
-    assert.ok(arrow);
-    const pick = schedulePick(arrow);
-    assert.equal(pick?.kind, "services");
-    vm.scheduleFocus = pick;
-    const arrowView = render(vm);
-    const selected = arrowView.querySelector(".train-marker.is-selected");
-    assert.equal(selected?.getAttribute("data-service"), arrow.getAttribute("data-service"));
-    assert.match(text(arrowView, "schedule-focus"), /Trains on this arrow/);
+  it("shows a route preview card when a train is hovered", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.diagramHeld = heldDiagram([["EUS", "WFJ", "MKC", "BHM"]]);
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "1M45",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          reachedCrs: "MKC",
+          scheduledTime: "1530",
+          problem: true,
+          statusLabel: "delayed",
+          delayMinutes: 14,
+          stops: [
+            { crs: "EUS", arr: null, dep: "1200" },
+            { crs: "MKC", arr: "1400", dep: "1405" },
+            { crs: "BHM", arr: "1600", dep: null },
+          ],
+        },
+      ],
+    };
+    vm.routePreview = { serviceGuid: "1M45" };
+    const root = render(vm);
+    assert.ok(root.querySelector(".network-map.has-route-preview"));
+    assert.match(text(root, "route-preview-card"), /SELECTED TRAIN: 1M45/);
+    assert.match(text(root, "route-preview-card"), /Delayed \+14m/);
+    assert.ok(root.querySelector(".schedule-row.is-preview"));
+  });
+});
+
+describe("route detail page", () => {
+  it("renders the corridor strip with intermediate stations and selected train", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.page = "route";
+    vm.diagramHeld = heldDiagram([["EUS", "WFJ", "MKC", "NMP", "BHM"]]);
+    vm.routeView = {
+      originCrs: "EUS",
+      destCrs: "BHM",
+      selectedServiceGuid: "1M45",
+    };
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "1M45",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          reachedCrs: "NMP",
+          scheduledTime: "1530",
+          problem: true,
+          statusLabel: "delayed",
+          delayMinutes: 14,
+          stops: [
+            { crs: "EUS", arr: null, dep: "1200" },
+            { crs: "MKC", arr: "1330", dep: "1335" },
+            { crs: "BHM", arr: "1600", dep: null },
+          ],
+        },
+      ],
+    };
+    const root = render(vm);
+    assert.match(root.textContent ?? "", /Route & Live Track/);
+    assert.match(text(root, "selected-route"), /London Euston → Birmingham New Street/);
+    assert.match(text(root, "route-stats"), /Active Trains: 1/);
+    assert.ok(root.querySelector('[data-testid="route-strip"]'));
+    assert.match(text(root, "route-track"), /Watford Junction/);
+    assert.match(text(root, "route-track"), /Northampton/);
+    assert.match(text(root, "selected-train-card"), /1M45/);
+    assert.match(text(root, "route-legend"), /On Time/);
+    assert.ok(root.querySelector('[data-testid="open-network"]'));
   });
 });
 
@@ -271,6 +380,10 @@ describe("station pair page", () => {
     vm.pairLater = "BHM";
     vm.networkHeld = {
       calendarDate: "251102",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
       trains: [{ serviceGuid: "kept", problem: false }],
     };
     vm.pairHeld = {
@@ -278,7 +391,7 @@ describe("station pair page", () => {
       earlierCrs: "CRE",
       laterCrs: "BHM",
       trains: [
-        { serviceGuid: "run-1", status: "published", reachedCrs: "CRE", nextCrs: "BHM", issue: true },
+        { serviceGuid: "run-1", status: "delayed", reachedCrs: "CRE", nextCrs: "BHM", issue: true },
         {
           serviceGuid: null,
           trainUid: "C9",
@@ -290,7 +403,7 @@ describe("station pair page", () => {
     };
     const root = render(vm);
     assert.match(root.textContent ?? "", /WEST COAST SOUTH CONTROL/);
-    assert.match(text(root, "pair-list"), /issue/);
+    assert.match(text(root, "pair-list"), /delayed/);
     assert.match(text(root, "pair-list"), /cancelled/);
     assert.match(text(root, "pair-list"), /C9/);
     assert.match(text(root, "berth-schematic"), /This panel has no data/);

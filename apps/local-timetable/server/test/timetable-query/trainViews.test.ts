@@ -64,6 +64,9 @@ describe("trainViews network", () => {
     assert.equal(answer.trains[0]?.originCrs, "CRE");
     assert.equal(answer.trains[0]?.destCrs, "BHM");
     assert.equal(answer.trains[0]?.scheduledTime, "1025");
+    assert.equal(answer.trains[0]?.problem, false);
+    assert.equal(answer.trains[0]?.statusLabel, "on time");
+    assert.equal(answer.trains[0]?.delayMinutes, null);
     assert.deepEqual(answer.trains[0]?.stops, [
       { crs: "CRE", arr: null, dep: "0925" },
       { crs: "BHM", arr: "1025", dep: "1025" },
@@ -98,6 +101,9 @@ describe("trainViews network", () => {
     assert.equal(stops[2]?.arr, "1040");
     assert.equal(stops[2]?.dep, "1042");
     assert.equal(Object.hasOwn(stops[2] ?? {}, "crs"), false);
+    assert.equal(answer.trains[0]?.problem, true);
+    assert.equal(answer.trains[0]?.statusLabel, "delayed");
+    assert.equal(answer.trains[0]?.delayMinutes, 5);
   });
 
   it("marks deactivated journeys as problems", async () => {
@@ -117,6 +123,7 @@ describe("trainViews network", () => {
       return;
     }
     assert.equal(answer.trains[0]?.problem, true);
+    assert.equal(answer.trains[0]?.statusLabel, "deactivated");
   });
 });
 
@@ -163,6 +170,7 @@ describe("trainViews pair", () => {
     assert.equal(answer.trains.length, 1);
     assert.equal(answer.trains[0]?.serviceGuid, null);
     assert.equal(answer.trains[0]?.issue, true);
+    assert.equal(answer.trains[0]?.status, "cancelled");
   });
 
   it("does not change sqlite bytes on a train ask", async () => {
