@@ -1,6 +1,9 @@
 # CIF timetable dumps — full Basic Timetable Detail refreshes are hundreds of MB
 server/poc/timetable/RJTTF*.txt
 
+# sql-workspace
+sql-workspace/
+
 **/.env
 # BEGIN AI-DLC:gitignore
 # Logs
