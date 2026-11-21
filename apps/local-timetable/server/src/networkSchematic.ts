@@ -42,9 +42,16 @@ export type CorridorLayout = {
   color: string;
 };
 
+/** Ordered CRS sequence for tracking / topology (junction→…→junction walks). */
+export type SchematicLine = {
+  id: string;
+  stations: string[];
+};
+
 export type DiagramBody = {
   stations: StationLayout[];
   corridors: CorridorLayout[];
+  lines: SchematicLine[];
   width: number;
   height: number;
 };
@@ -940,7 +947,46 @@ function resolveCollisions(
 }
 
 function emptyDiagram(): DiagramBody {
-  return { stations: [], corridors: [], width: PAD * 2, height: PAD * 2 };
+  return { stations: [], corridors: [], lines: [], width: PAD * 2, height: PAD * 2 };
+}
+
+/**
+ * Ordered line paths from the same reduced journey graph the layout uses.
+ * Each entry is a junction-to-junction walk (terminals count as junctions).
+ */
+export function linePathsFromJourneys(
+  journeys: readonly SchematicJourney[],
+  options: LayoutOptions = {},
+): SchematicLine[] {
+  const graph = buildGraph(journeys);
+  if (graph.adj.size === 0) return [];
+  const geo = options.geo && options.geo.size > 0 ? options.geo : undefined;
+  const drop = bridgedHops(graph, geo);
+  const walks = walksBetweenJunctions(graph, drop);
+  const lines: SchematicLine[] = [];
+  const seen = new Set<string>();
+  for (const walk of walks) {
+    const stations = [walk.from, ...walk.via, walk.to];
+    if (stations.length < 2) continue;
+    const id = stations.join("|");
+    if (seen.has(id)) continue;
+    seen.add(id);
+    lines.push({ id, stations });
+  }
+  return lines.sort((a, b) => (a.id < b.id ? -1 : 1));
+}
+
+export function withSchematicLines(
+  body: Omit<DiagramBody, "lines"> & { lines?: SchematicLine[] },
+  lines: SchematicLine[],
+): DiagramBody {
+  return {
+    stations: body.stations,
+    corridors: body.corridors,
+    width: body.width,
+    height: body.height,
+    lines,
+  };
 }
 
 function edgeDegrees(edges: readonly Edge[]): Map<string, number> {
@@ -1077,6 +1123,7 @@ function fit(stations: StationLayout[], corridors: CorridorLayout[]): DiagramBod
         points: corridor.points.map((point) => ({ x: point.x + shiftX, y: point.y + shiftY })),
       }))
       .sort((a, b) => (routeName(a) < routeName(b) ? -1 : 1)),
+    lines: [],
     width: maxX - minX + PAD * 2 + 28,
     height: maxY - minY + PAD * 2 + 8,
   };
@@ -1109,5 +1156,5 @@ export function layoutDiagram(
     if (!from || !to) continue;
     corridors.push(paint(from, to));
   }
-  return fit(placed, corridors);
+  return withSchematicLines(fit(placed, corridors), linePathsFromJourneys(journeys, options));
 }

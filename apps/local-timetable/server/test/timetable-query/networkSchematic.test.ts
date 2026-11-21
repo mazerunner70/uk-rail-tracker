@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { describe, it } from "node:test";
-import { layoutDiagram, type StationLayout } from "../../src/networkSchematic.js";
+import {
+  layoutDiagram,
+  linePathsFromJourneys,
+  type StationLayout,
+} from "../../src/networkSchematic.js";
 import {
   networkSchematicPath,
   readNetworkDiagram,
@@ -339,15 +343,43 @@ describe("network schematic file", () => {
       loadDay: string;
       hdSequence: string;
       stations: { crs: string }[];
+      lines: { id: string; stations: string[] }[];
     };
     assert.equal(written.loadDay, "20261027");
     assert.equal(written.hdSequence, "007");
     assert.ok(written.stations.some((station) => station.crs === "CRE"));
     assert.ok(written.stations.some((station) => station.crs === "BHM"));
+    assert.ok(Array.isArray(written.lines));
+    assert.ok(written.lines.length > 0);
 
     unlinkSync(path);
     const missing = readNetworkDiagram(sqlitePath);
     assert.deepEqual(missing, { reason: "missing" });
     assert.equal(existsSync(path), false);
+  });
+});
+
+describe("linePathsFromJourneys", () => {
+  it("emits an ordered junction-to-junction line including intermediates", () => {
+    const lines = linePathsFromJourneys([
+      journey(["EUS", "WFJ", "APS", "HML", "BKM", "MKC", "CRE"]),
+      journey(["EUS", "WFJ", "APS", "HML", "MKC"]),
+    ]);
+    assert.ok(lines.length >= 1);
+    const throughAps = lines.find((line) => line.stations.includes("APS"));
+    assert.ok(throughAps);
+    const idx = throughAps!.stations.indexOf("APS");
+    assert.ok(idx > 0);
+    assert.ok(idx < throughAps!.stations.length - 1);
+    assert.ok(throughAps!.stations.includes("HML"));
+    assert.ok(throughAps!.stations.includes("WFJ") || throughAps!.stations.includes("EUS"));
+  });
+
+  it("layoutDiagram includes the same lines field", () => {
+    const map = layoutDiagram([
+      journey(["EUS", "APS", "HML", "MKC"]),
+    ]);
+    assert.ok(map.lines.length >= 1);
+    assert.ok(map.lines.some((line) => line.stations.includes("APS")));
   });
 });

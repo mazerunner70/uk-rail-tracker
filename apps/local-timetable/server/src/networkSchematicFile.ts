@@ -9,6 +9,8 @@ import {
 import {
   buildLayoutInput,
   layoutDiagram,
+  linePathsFromJourneys,
+  withSchematicLines,
   type DiagramBody,
   type SchematicJourney,
 } from "./networkSchematic.js";
@@ -97,10 +99,15 @@ async function buildNetworkDiagramMilp(
 ): Promise<NetworkDiagram | FailureBody> {
   const bundle = readJourneys(sqlitePath);
   if ("reason" in bundle) return bundle;
-  const input = buildLayoutInput(bundle.journeys, { geo: loadStationGeo() });
+  const geo = loadStationGeo();
+  const input = buildLayoutInput(bundle.journeys, { geo });
   const oct = await runMilpLayout(input);
+  const body = withSchematicLines(
+    diagramFromOctLayoutResult(oct),
+    linePathsFromJourneys(bundle.journeys, { geo }),
+  );
   return {
-    ...diagramFromOctLayoutResult(oct),
+    ...body,
     loadDay: bundle.loadDay,
     hdSequence: bundle.hdSequence,
   };
@@ -116,10 +123,17 @@ function isDiagram(value: unknown): value is NetworkDiagram {
     && typeof row.hdSequence === "string";
 }
 
+function normalizeDiagram(diagram: NetworkDiagram): NetworkDiagram {
+  return {
+    ...diagram,
+    lines: Array.isArray(diagram.lines) ? diagram.lines : [],
+  };
+}
+
 function readStored(path: string): NetworkDiagram | null {
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-    return isDiagram(parsed) ? parsed : null;
+    return isDiagram(parsed) ? normalizeDiagram(parsed) : null;
   } catch {
     return null;
   }
@@ -135,13 +149,28 @@ function writeAtomic(path: string, diagram: NetworkDiagram): void {
  * Build and atomically write network-schematic.json.
  * Uses PuLP+HiGHS when METRO_LAYOUT_ENGINE=milp (default);
  * uses the in-process geo schematic when METRO_LAYOUT_ENGINE=geo.
+ * When METRO_LAYOUT_ENGINE=external (AWS), skips — the Python Lambda
+ * installs network-schematic.json beside the sqlite file.
+ * If milp dies (e.g. OOM / SIGKILL on small hosts), falls back to geo so
+ * the MCA load can still succeed with a usable map.
  */
 export async function writeNetworkDiagram(sqlitePath: string): Promise<void> {
   const engine = metroLayoutEngine();
-  const built =
-    engine === "geo"
-      ? buildNetworkDiagramGeo(sqlitePath)
-      : await buildNetworkDiagramMilp(sqlitePath);
+  if (engine === "external") {
+    return;
+  }
+  let built: NetworkDiagram | FailureBody;
+  if (engine === "geo") {
+    built = buildNetworkDiagramGeo(sqlitePath);
+  } else {
+    try {
+      built = await buildNetworkDiagramMilp(sqlitePath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("network schematic milp failed; falling back to geo", message);
+      built = buildNetworkDiagramGeo(sqlitePath);
+    }
+  }
   if ("reason" in built) {
     throw new Error(`network schematic was not built: ${built.reason}`);
   }
