@@ -39,4 +39,25 @@ describe("apiClient", () => {
     assert.equal(result.ok, true);
     if (result.ok) assert.equal(result.data.state, "running");
   });
+
+  it("prefixes paths with baseUrl and sends Bearer token", async () => {
+    let seenUrl = "";
+    let seenAuth = "";
+    const fetchFn = async (input: RequestInfo | URL, init?: RequestInit) => {
+      seenUrl = String(input);
+      const headers = new Headers(init?.headers);
+      seenAuth = headers.get("Authorization") ?? "";
+      return new Response(JSON.stringify({ state: "idle", sentence: "", howFar: "" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+    const api = createApiClient("/api", {
+      fetchFn: fetchFn as typeof fetch,
+      getAccessToken: async () => "id.token.value",
+    });
+    await api.getLoadProgress();
+    assert.equal(seenUrl, "/api/load");
+    assert.equal(seenAuth, "Bearer id.token.value");
+  });
 });

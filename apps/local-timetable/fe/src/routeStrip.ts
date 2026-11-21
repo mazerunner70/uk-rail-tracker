@@ -204,6 +204,164 @@ export function selectedProgress(
   return placeOnSpine(place, spine)?.progress ?? null;
 }
 
+export const WINDOW_RADIUS = 5;
+
+export function windowKeyForPlace(place: TrainPlace): string {
+  if (place.atStation) return `at:${place.crs}`;
+  return `between:${place.fromCrs}|${place.toCrs}`;
+}
+
+function sliceWindow(
+  spine: readonly string[],
+  startIdx: number,
+  endIdx: number,
+): string[] {
+  const lo = Math.max(0, startIdx);
+  const hi = Math.min(spine.length - 1, endIdx);
+  if (hi < lo) return [];
+  return spine.slice(lo, hi + 1);
+}
+
+/** ±radius around an at-station place, or radius either side of a between hop. */
+export function windowAroundPlace(
+  spine: readonly string[],
+  place: TrainPlace,
+  radius = WINDOW_RADIUS,
+): string[] {
+  const index = spineIndex(spine);
+  if (place.atStation) {
+    const at = index.get(place.crs);
+    if (at === undefined) return [...spine];
+    return sliceWindow(spine, at - radius, at + radius);
+  }
+  const from = index.get(place.fromCrs);
+  const to = index.get(place.toCrs);
+  if (from === undefined || to === undefined) return [...spine];
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  return sliceWindow(spine, lo - radius, hi + radius);
+}
+
+/** Walk along degree-2 hops away from `prev`, up to `limit` stations. */
+function walkHopChain(
+  links: Map<string, string[]>,
+  start: string,
+  prev: string,
+  limit: number,
+): string[] {
+  const out: string[] = [];
+  let cur = start;
+  let back = prev;
+  for (let i = 0; i < limit; i++) {
+    out.push(cur);
+    const nexts = (links.get(cur) ?? []).filter((n) => n !== back);
+    if (nexts.length !== 1) break;
+    back = cur;
+    cur = nexts[0]!;
+  }
+  return out;
+}
+
+/**
+ * Prefer the longest schematic line containing crs.
+ * Fallback: local two-direction hop chain (never global rank sort).
+ */
+export function corridorThroughStation(
+  diagram: NetworkDiagram,
+  crs: string,
+): string[] {
+  let best: string[] = [crs];
+  for (const line of diagram.lines ?? []) {
+    if (!line.stations.includes(crs)) continue;
+    if (line.stations.length > best.length) best = line.stations;
+  }
+  if (best.length > 1) return best;
+
+  for (const corridor of diagram.corridors) {
+    const seq = [corridor.from, ...corridor.via, corridor.to];
+    if (!seq.includes(crs)) continue;
+    if (seq.length > best.length) best = seq;
+  }
+  if (best.length > 2) return best;
+
+  const links = adjacency(diagram);
+  const neighbors = [...(links.get(crs) ?? [])].sort();
+  if (neighbors.length === 0) return best;
+  const before = walkHopChain(links, neighbors[0]!, crs, WINDOW_RADIUS).reverse();
+  const after =
+    neighbors.length >= 2
+      ? walkHopChain(links, neighbors[1]!, crs, WINDOW_RADIUS)
+      : [];
+  return [...before, crs, ...after];
+}
+
+export function windowAroundStation(
+  diagram: NetworkDiagram,
+  crs: string,
+  radius = WINDOW_RADIUS,
+): string[] {
+  const spine = corridorThroughStation(diagram, crs);
+  const index = spineIndex(spine);
+  const at = index.get(crs);
+  if (at === undefined) return [crs];
+  return sliceWindow(spine, at - radius, at + radius);
+}
+
+export type StationAggregate = {
+  crs: string;
+  atCount: number;
+  approachingCount: number;
+  worstStatus: StatusLabel | null;
+};
+
+function worseStatus(
+  left: StatusLabel | null,
+  right: StatusLabel | undefined,
+): StatusLabel | null {
+  const rank: Record<StatusLabel, number> = {
+    "on time": 0,
+    delayed: 1,
+    cancelled: 2,
+    deactivated: 3,
+  };
+  if (!right) return left;
+  if (!left) return right;
+  return rank[right] >= rank[left] ? right : left;
+}
+
+/** Aggregate live trains at / approaching each window station. */
+export function stationAggregates(
+  window: readonly string[],
+  trains: readonly NetworkTrain[],
+  nowHhmm: string,
+): StationAggregate[] {
+  const index = spineIndex(window);
+  const rows = window.map((crs) => ({
+    crs,
+    atCount: 0,
+    approachingCount: 0,
+    worstStatus: null as StatusLabel | null,
+  }));
+  for (const train of trains) {
+    const place = placeTrain(train.stops ?? [], nowHhmm);
+    if (!place) continue;
+    if (place.atStation) {
+      const at = index.get(place.crs);
+      if (at === undefined) continue;
+      const row = rows[at]!;
+      row.atCount += 1;
+      row.worstStatus = worseStatus(row.worstStatus, train.statusLabel);
+      continue;
+    }
+    const to = index.get(place.toCrs);
+    if (to === undefined) continue;
+    const row = rows[to]!;
+    row.approachingCount += 1;
+    row.worstStatus = worseStatus(row.worstStatus, train.statusLabel);
+  }
+  return rows;
+}
+
 export function stripLayout(
   spine: readonly string[],
   trains: readonly NetworkTrain[],
@@ -215,7 +373,7 @@ export function stripLayout(
     x: STRIP_PAD_X + i * STATION_GAP,
     y: STRIP_Y,
   }));
-  const severities = segmentSeverity(spine, trains, nowHhmm);
+  // Neutral segments for this stage — no severity colouring on the line.
   const segments: StripSegment[] = [];
   for (let i = 0; i < spine.length - 1; i++) {
     const from = stations[i]!;
@@ -223,22 +381,25 @@ export function stripLayout(
     segments.push({
       fromCrs: spine[i]!,
       toCrs: spine[i + 1]!,
-      severity: severities[i] ?? "on-time",
+      severity: "on-time",
       x1: from.x,
       x2: to.x,
       y: STRIP_Y,
     });
   }
   const markers: StripTrainMarker[] = [];
-  let stackAbove = 0;
-  let stackBelow = 0;
+  // Stack only trains that share the same place + side, so a cluster at one
+  // end of the strip cannot push a mid-hop marker out of the viewBox.
+  const stackByLocation = new Map<string, number>();
   for (const train of trains) {
     const place = placeTrain(train.stops ?? [], nowHhmm);
     if (!place) continue;
     const on = placeOnSpine(place, spine);
     if (!on) continue;
     const above = on.towardDest;
-    const stack = above ? stackAbove++ : stackBelow++;
+    const locationKey = `${windowKeyForPlace(place)}:${above ? "above" : "below"}`;
+    const stack = stackByLocation.get(locationKey) ?? 0;
+    stackByLocation.set(locationKey, stack + 1);
     const x =
       STRIP_PAD_X + on.progress * Math.max(1, spine.length - 1) * STATION_GAP;
     const y =

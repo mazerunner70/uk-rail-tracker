@@ -489,6 +489,31 @@ th {
   font-size: 0.68rem;
   letter-spacing: 0.02em;
   pointer-events: none;
+  max-width: calc(100% - 6.5rem);
+}
+
+.map-hint-mobile {
+  display: none;
+}
+
+.board-secondary > summary {
+  display: none;
+  list-style: none;
+  cursor: pointer;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.board-secondary > summary::-webkit-details-marker {
+  display: none;
+}
+
+.board-secondary,
+.board-secondary-body {
+  display: contents;
 }
 
 .network-map {
@@ -635,7 +660,7 @@ th {
 
 .route-footer .journey-card {
   position: static;
-  width: min(24rem, 100%);
+  width: auto;
 }
 
 .journey-card-title {
@@ -751,9 +776,24 @@ th {
   color: var(--ok);
 }
 
+/* Route strip sits in a normal scrolling page — do not let panel flex collapse it. */
+.route-page > [data-testid="route-track"] {
+  flex: 0 0 auto;
+}
+
+.route-page > [data-testid="route-track"] .panel-body {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 .route-strip {
   width: 100%;
+  height: 14rem;
   min-height: 14rem;
+  display: block;
   background: #0b1522;
   border-radius: 4px;
 }
@@ -790,24 +830,62 @@ th {
 }
 
 .route-train.is-selected {
-  stroke: #ffffff;
-  stroke-width: 3px;
+  filter: brightness(1.35);
 }
 
 .route-train-label {
-  fill: #f7fbff;
+  fill: #b8c5d0;
   font-size: 10px;
   font-family: ui-monospace, monospace;
+  font-weight: 500;
   pointer-events: none;
+  /* Group stroke must not outline the text (was the thick white "glow"). */
+  stroke: none;
+}
+
+.route-train.is-selected .route-train-label {
+  fill: #ffffff;
+  font-weight: 700;
 }
 
 .route-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(12rem, 1fr));
   gap: 1rem;
+  align-items: stretch;
   padding: 0 0.25rem 0.5rem;
+}
+
+.route-footer .journey-card,
+.route-footer .panel {
+  min-width: 0;
+}
+
+.route-side-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.route-side-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  gap: 0.2rem 0.65rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid #2a3d55;
+  border-radius: 4px;
+  background: #0c1624;
+  font-size: 0.8rem;
+}
+
+.route-side-row .muted {
+  color: var(--muted);
+  grid-column: 1 / -1;
 }
 
 .route-legend {
@@ -848,21 +926,164 @@ th {
 }
 
 @media (max-width: 720px) {
+  .topbar {
+    gap: 0.45rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .brand {
+    font-size: 1.15rem;
+  }
+
+  .topbar h1 {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    order: 3;
+    flex: 1 0 100%;
+  }
+
+  .clock {
+    font-size: 1.05rem;
+  }
+
+  .toolbar {
+    gap: 0.45rem;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .toolbar .route-filter,
+  .toolbar .field:has([data-testid="interval-input"]) {
+    display: none;
+  }
+
+  .page.is-mobile .board,
+  .shell.is-mobile .board,
   .board {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(12rem, 36%) minmax(0, 1fr) minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    grid-template-rows: none;
+    gap: 0.45rem;
+    padding: 0 0.45rem;
   }
 
   .board > .network-panel {
     grid-column: auto;
+    flex: 1 1 auto;
+    min-height: min(58dvh, 100%);
+  }
+
+  .board-secondary,
+  .board-secondary-body {
+    display: block;
+  }
+
+  .board-secondary {
+    flex: 0 0 auto;
+    max-height: 38dvh;
+    overflow: auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+
+  .board-secondary > summary {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--panel);
+    border-bottom: 1px solid transparent;
+  }
+
+  .board-secondary[open] > summary {
+    border-bottom-color: var(--line);
+  }
+
+  .board-secondary-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.55rem;
+  }
+
+  .board-secondary-body .panel {
+    max-height: none;
+  }
+
+  .board-secondary-body .col-side {
+    overflow: visible;
+  }
+
+  .map-hint-desktop {
+    display: none;
+  }
+
+  .map-hint-mobile {
+    display: block;
+  }
+
+  .map-legend {
+    gap: 0.4rem 0.65rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  .journey-card {
+    left: 0.55rem;
+    bottom: 2.2rem;
+    width: min(20rem, calc(100% - 1.1rem));
+    padding: 0.6rem 0.7rem;
   }
 
   .stations {
     flex-wrap: wrap;
   }
 
-  .board-footer,
+  .board-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0.45rem;
+  }
+
+  .board-footer .tile strong {
+    font-size: 1.05rem;
+  }
+
   .kpi-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .route-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .route-page > [data-testid="route-track"] .panel-body {
+    padding: 0.45rem;
+  }
+
+  .route-strip {
+    /* Wide enough that station labels stay readable; panel scrolls horizontally. */
+    width: max(100%, 40rem);
+    height: 12rem;
+    min-height: 12rem;
+  }
+
+  .route-page .route-header {
+    gap: 0.55rem;
+  }
+
+  .route-selected,
+  .route-stats {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 720px) and (pointer: coarse) {
+  .map-tools button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
   }
 }

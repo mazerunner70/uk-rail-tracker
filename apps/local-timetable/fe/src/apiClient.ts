@@ -20,6 +20,11 @@ export type ApiClient = {
   postPair: (earlierCrs: string, laterCrs: string) => Promise<AskResult<StationPairAnswer>>;
 };
 
+export type CreateApiClientOptions = {
+  fetchFn?: typeof fetch;
+  getAccessToken?: () => string | null | Promise<string | null>;
+};
+
 function isFailureBody(value: unknown): value is FailureBody {
   if (typeof value !== "object" || value === null) return false;
   const reason = (value as FailureBody).reason;
@@ -37,7 +42,16 @@ async function readJson(res: Response): Promise<unknown> {
   return JSON.parse(text) as unknown;
 }
 
-export function createApiClient(baseUrl: string, fetchFn: typeof fetch = fetch): ApiClient {
+export function createApiClient(
+  baseUrl: string,
+  fetchFnOrOptions: typeof fetch | CreateApiClientOptions = fetch,
+): ApiClient {
+  const options: CreateApiClientOptions =
+    typeof fetchFnOrOptions === "function"
+      ? { fetchFn: fetchFnOrOptions }
+      : fetchFnOrOptions;
+  const fetchFn = options.fetchFn ?? fetch;
+  const getAccessToken = options.getAccessToken;
   const base = baseUrl.replace(/\/$/, "");
 
   async function ask<T>(
@@ -46,13 +60,23 @@ export function createApiClient(baseUrl: string, fetchFn: typeof fetch = fetch):
     trainAsk: boolean,
   ): Promise<AskResult<T>> {
     try {
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+        "Accept-Encoding": "gzip",
+      };
+      if (init.headers) {
+        const h = new Headers(init.headers);
+        h.forEach((value, key) => {
+          headers[key] = value;
+        });
+      }
+      if (getAccessToken) {
+        const token = await getAccessToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
       const res = await fetchFn(`${base}${path}`, {
         ...init,
-        headers: {
-          Accept: "application/json",
-          "Accept-Encoding": "gzip",
-          ...(init.headers ?? {}),
-        },
+        headers,
       });
       let body: unknown;
       try {
@@ -73,10 +97,8 @@ export function createApiClient(baseUrl: string, fetchFn: typeof fetch = fetch):
   }
 
   return {
-    startLoad: () =>
-      ask<LoadProgress>("/load", { method: "POST" }, false),
-    getLoadProgress: () =>
-      ask<LoadProgress>("/load", { method: "GET" }, false),
+    startLoad: () => ask<LoadProgress>("/load", { method: "POST" }, false),
+    getLoadProgress: () => ask<LoadProgress>("/load", { method: "GET" }, false),
     getNetwork: (cursor = {}) => {
       const params = new URLSearchParams();
       if (cursor.since !== undefined) {

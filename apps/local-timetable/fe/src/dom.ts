@@ -21,9 +21,12 @@ import {
   pairListMessage,
   previewTrain,
   problemTrains,
+  resolveRouteWindow,
+  routeTrackTitle,
   selectedRouteTrain,
   systemAlertsMessage,
   londonHhmm,
+  routeVisibleTrains,
   visibleNetworkTrains,
   visiblePairTrains,
   withLiveFields,
@@ -50,12 +53,19 @@ import {
   corridorHopsOnSpine,
   corridorTouchesSpine,
   spinePath,
+  stationAggregates,
   stripLayout,
   trainsOnSpine,
   type SegmentSeverity,
+  type StationAggregate,
   type StripLayout,
 } from "./routeStrip.js";
-import type { NetworkDiagram, NetworkTrain, PairTrain } from "./types.js";
+import { placeTrain } from "./networkMap.js";
+import {
+  serviceShortLabelsForGuids,
+  trainLabelMap,
+} from "./serviceLabel.js";
+import type { NetworkDiagram, NetworkTrain, PairTrain, StatusLabel } from "./types.js";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -72,6 +82,19 @@ function el<K extends keyof HTMLElementTagNameMap>(
     node.append(typeof child === "string" ? document.createTextNode(child) : child);
   }
   return node;
+}
+
+/** Narrow / touch-first viewports: map is the primary surface. */
+export function isMobileViewport(media: Pick<Window, "matchMedia"> | null = typeof window !== "undefined" ? window : null): boolean {
+  if (!media || typeof media.matchMedia !== "function") return false;
+  return media.matchMedia("(max-width: 720px)").matches
+    || media.matchMedia("(pointer: coarse) and (max-width: 900px)").matches;
+}
+
+function touchPanEnabled(media: Pick<Window, "matchMedia"> | null = typeof window !== "undefined" ? window : null): boolean {
+  if (!media || typeof media.matchMedia !== "function") return false;
+  return media.matchMedia("(pointer: coarse)").matches
+    || media.matchMedia("(max-width: 720px)").matches;
 }
 
 function panel(title: string, testId: string, body: (Node | string)[]): HTMLElement {
@@ -335,6 +358,12 @@ function scheduleFocusNote(vm: ScreenViewModel): HTMLElement | null {
     parts.push(`Event: ${eventTagLabel(eventFilter)}`);
   }
   parts.push(" ");
+  if (focus?.kind === "station") {
+    parts.push(
+      el("button", { type: "button", "data-testid": "focus-route" }, ["Focus"]),
+    );
+    parts.push(" ");
+  }
   parts.push(
     el("button", { type: "button", "data-testid": "clear-schedule-focus" }, ["Show all"]),
   );
@@ -564,8 +593,10 @@ type MapDrag = { active: boolean; id: number; x: number; y: number };
 function tipText(target: Element): string | null {
   const station = target.closest(".station-mark");
   if (station) return stationName(station.getAttribute("data-crs") ?? "");
-  const train = target.closest(".train-marker");
+  const train = target.closest(".train-marker") ?? target.closest(".route-train");
   if (!train) return null;
+  const tip = train.getAttribute("data-tip");
+  if (tip) return tip;
   const ids = (train.getAttribute("data-service") ?? "").split(",").filter((id) => id.length > 0);
   if (ids.length === 0) return null;
   return ids.join("\n");
@@ -637,20 +668,27 @@ function bindMapGestures(svg: SVGSVGElement, map: Schematic): void {
   }, { signal });
 
   svg.addEventListener("pointerdown", (ev) => {
-    if (ev.button !== 0 || !ev.shiftKey) return;
+    if (ev.button !== 0) return;
+    const touchPan = touchPanEnabled();
+    if (!touchPan && !ev.shiftKey) return;
+    if (touchPan && ev.target instanceof Element) {
+      if (ev.target.closest(".station-mark, .train-marker, button")) return;
+    }
     drag.active = true;
     drag.id = ev.pointerId;
     drag.x = ev.clientX;
     drag.y = ev.clientY;
-    svg.classList.add("is-shift");
+    if (ev.shiftKey || touchPan) svg.classList.add("is-shift");
     svg.classList.add("is-panning");
     if (tip) tip.hidden = true;
     if (typeof svg.setPointerCapture === "function") svg.setPointerCapture(ev.pointerId);
   });
   svg.addEventListener("pointermove", (ev) => {
-    if (ev.shiftKey) svg.classList.add("is-shift");
+    const touchPan = touchPanEnabled();
+    if (ev.shiftKey || (touchPan && drag.active)) svg.classList.add("is-shift");
     else if (!drag.active) svg.classList.remove("is-shift");
-    if (drag.active && drag.id === ev.pointerId && ev.shiftKey) {
+    const canPan = drag.active && drag.id === ev.pointerId && (ev.shiftKey || touchPan);
+    if (canPan) {
       panByPixels(svg, map, ev.clientX - drag.x, ev.clientY - drag.y);
       drag.x = ev.clientX;
       drag.y = ev.clientY;
@@ -753,12 +791,19 @@ function stationMark(station: StationLayout, selected: boolean): SVGGElement {
   return group;
 }
 
-function trainMarker(marker: MarkerLayout, selected: boolean): SVGGElement {
+function trainMarker(
+  marker: MarkerLayout,
+  selected: boolean,
+  byGuid: ReadonlyMap<string, NetworkTrain>,
+): SVGGElement {
   const state = marker.problem ? "problem" : "on-time";
+  const ids = marker.serviceGuid.split(",").filter((id) => id.length > 0);
+  const tip = serviceShortLabelsForGuids(ids, byGuid);
   const group = svgEl("g", {
     class: selected ? `train-marker ${state} is-selected` : `train-marker ${state}`,
     "data-testid": "train-marker",
     "data-service": marker.serviceGuid,
+    "data-tip": tip,
     "data-at-station": marker.atStation ? "true" : "false",
     "data-x": String(marker.x),
     "data-y": String(marker.y),
@@ -768,7 +813,7 @@ function trainMarker(marker: MarkerLayout, selected: boolean): SVGGElement {
   });
   group.append(svgEl("polygon", { points: "-8,-5 12,0 -8,5" }));
   const title = svgEl("title", {});
-  title.textContent = marker.serviceGuid;
+  title.textContent = tip;
   group.append(title);
   return group;
 }
@@ -800,6 +845,7 @@ function schematicSvg(
   previewGuid: string | null,
   spine: readonly string[] | null,
   diagram: NetworkDiagram | null,
+  byGuid: ReadonlyMap<string, NetworkTrain>,
 ): SVGSVGElement {
   const svg = svgEl("svg", {
     class: spine ? "network-map has-route-preview" : "network-map",
@@ -807,7 +853,7 @@ function schematicSvg(
     role: "group",
     tabindex: "0",
     "aria-label": "Network overview",
-    "aria-describedby": "map-hint",
+    "aria-describedby": "map-hint map-hint-mobile",
     "data-testid": "network-map",
   });
   const spineSet = spine ? new Set(spine) : null;
@@ -827,7 +873,7 @@ function schematicSvg(
   for (const marker of map.markers) {
     const ids = marker.serviceGuid.split(",").filter((id) => id.length > 0);
     const previewed = previewGuid !== null && ids.includes(previewGuid);
-    svg.append(trainMarker(marker, markerSelected(marker, focus) || previewed));
+    svg.append(trainMarker(marker, markerSelected(marker, focus) || previewed, byGuid));
   }
   for (const station of map.stations) {
     const selected = (focus?.kind === "station" && focus.crs === station.crs)
@@ -854,18 +900,23 @@ function networkOverview(vm: ScreenViewModel, now: Date): HTMLElement {
   const live = withLiveFields(vm.networkHeld.trains, nowHhmm);
   const map = markersOn(vm.diagramHeld, live, nowHhmm);
   const spine = previewSpine(vm);
+  const byGuid = trainLabelMap(live);
   const svg = schematicSvg(
     map,
     vm.scheduleFocus,
     vm.routePreview?.serviceGuid ?? null,
     spine,
     vm.diagramHeld,
+    byGuid,
   );
   const preview = previewTrain(vm, now);
   const frameChildren: (Node | string)[] = [
     mapTools(),
-    el("p", { class: "map-hint", id: "map-hint" }, [
-      "Scroll to zoom. Hold Shift and drag to move. Click a station to list it. Hover or click a train for its route.",
+    el("p", { class: "map-hint map-hint-desktop", id: "map-hint" }, [
+      "Scroll to zoom. Hold Shift and drag to move. Click a station to track it and list trains. Hover or click a train for its route.",
+    ]),
+    el("p", { class: "map-hint map-hint-mobile", id: "map-hint-mobile" }, [
+      "Use +/− to zoom. Drag to move. Tap a station to track it, or a train for its route.",
     ]),
     el("div", { class: "map-tooltip", "data-testid": "map-tooltip", hidden: "" }),
     svg,
@@ -900,7 +951,30 @@ function renderNetwork(vm: ScreenViewModel, now: Date): HTMLElement {
     ...(message ? [el("p", { "data-testid": "network-message", class: "panel-message" }, [message])] : []),
     scheduleTable(vm, now),
   ]);
-  return el("div", { class: "page" }, [
+  const side = el("div", { class: "col-side" }, [
+    panel(
+      "Disruption summary",
+      "disruptions",
+      messageOr(disruption, disruptionSummaryList(summary, vm.networkEventFilter)),
+    ),
+    noDataPanel("Disruption trend", "disruption-trend"),
+    panel(
+      "Incident logs",
+      "incident-logs",
+      messageOr(incidentEmpty, problemList(problems)),
+    ),
+    panel("System alerts", "system-alerts", [
+      el("p", { class: "nodata" }, [systemAlertsMessage(vm)]),
+    ]),
+  ]);
+  const secondary = el("details", {
+    class: "board-secondary",
+    "data-testid": "board-secondary",
+  }, [
+    el("summary", { "data-testid": "board-secondary-toggle" }, ["Schedules & alerts"]),
+    el("div", { class: "board-secondary-body" }, [schedules, side]),
+  ]);
+  const page = el("div", { class: "page" }, [
     el("div", { class: "toolbar" }, [
       stationFields(vm),
       el("label", { class: "field grow" }, [
@@ -920,26 +994,12 @@ function renderNetwork(vm: ScreenViewModel, now: Date): HTMLElement {
     ]),
     el("div", { class: "board" }, [
       networkOverview(vm, now),
-      schedules,
-      el("div", { class: "col-side" }, [
-        panel(
-          "Disruption summary",
-          "disruptions",
-          messageOr(disruption, disruptionSummaryList(summary, vm.networkEventFilter)),
-        ),
-        noDataPanel("Disruption trend", "disruption-trend"),
-        panel(
-          "Incident logs",
-          "incident-logs",
-          messageOr(incidentEmpty, problemList(problems)),
-        ),
-        panel("System alerts", "system-alerts", [
-          el("p", { class: "nodata" }, [systemAlertsMessage(vm)]),
-        ]),
-      ]),
+      secondary,
     ]),
     networkFooterBar(networkFooter(vm)),
   ]);
+  if (isMobileViewport()) page.classList.add("is-mobile");
+  return page;
 }
 
 function pairTile(label: string, value: string, testId: string): HTMLElement {
@@ -1070,28 +1130,27 @@ function severityClass(severity: SegmentSeverity): string {
   return "sev-ok";
 }
 
-function severityStroke(severity: SegmentSeverity): string {
-  if (severity === "minor") return "#f0b45a";
-  if (severity === "severe") return "#ff6b6b";
-  return "#7dffa8";
-}
-
-function routeStripSvg(layout: StripLayout, selectedGuid: string): SVGSVGElement {
+function routeStripSvg(
+  layout: StripLayout,
+  selectedGuid: string | null,
+  byGuid: ReadonlyMap<string, NetworkTrain>,
+): SVGSVGElement {
   const svg = svgEl("svg", {
     class: "route-strip",
     viewBox: `0 0 ${layout.width} ${layout.height}`,
+    preserveAspectRatio: "xMidYMid meet",
     role: "group",
     "aria-label": "Route live track",
     "data-testid": "route-strip",
   });
   for (const segment of layout.segments) {
     svg.append(svgEl("line", {
-      class: `route-segment ${severityClass(segment.severity)}`,
+      class: "route-segment",
       x1: String(segment.x1),
       y1: String(segment.y),
       x2: String(segment.x2),
       y2: String(segment.y),
-      stroke: severityStroke(segment.severity),
+      stroke: "#5a7a9a",
       "stroke-width": "6",
       "stroke-linecap": "round",
     }));
@@ -1115,6 +1174,7 @@ function routeStripSvg(layout: StripLayout, selectedGuid: string): SVGSVGElement
   }
   for (const marker of layout.markers) {
     const selected = marker.serviceGuid === selectedGuid;
+    const tip = serviceShortLabelsForGuids([marker.serviceGuid], byGuid);
     const group = svgEl("g", {
       class: selected
         ? `route-train ${severityClass(marker.severity)} is-selected`
@@ -1122,10 +1182,11 @@ function routeStripSvg(layout: StripLayout, selectedGuid: string): SVGSVGElement
       transform: `translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)}) rotate(${((marker.angle * 180) / Math.PI).toFixed(1)})`,
       "data-testid": "route-train",
       "data-service": marker.serviceGuid,
+      "data-tip": tip,
     });
     group.append(svgEl("polygon", { points: "-8,-5 12,0 -8,5" }));
     const title = svgEl("title", {});
-    title.textContent = marker.serviceGuid;
+    title.textContent = tip;
     group.append(title);
     const tag = svgEl("text", {
       class: "route-train-label",
@@ -1134,48 +1195,143 @@ function routeStripSvg(layout: StripLayout, selectedGuid: string): SVGSVGElement
       "text-anchor": "middle",
       transform: `rotate(${((-marker.angle * 180) / Math.PI).toFixed(1)})`,
     });
-    tag.textContent = marker.serviceGuid;
+    tag.textContent = tip;
     group.append(tag);
     svg.append(group);
   }
   return svg;
 }
 
-function routeLegend(): HTMLElement {
-  return el("div", { class: "route-legend", "data-testid": "route-legend" }, [
-    el("span", { class: "legend-item" }, [el("span", { class: "swatch sev-ok" }, []), "On Time"]),
-    el("span", { class: "legend-item" }, [el("span", { class: "swatch sev-minor" }, []), "Minor"]),
-    el("span", { class: "legend-item" }, [el("span", { class: "swatch sev-severe" }, []), "Severe"]),
+function placeLabel(train: NetworkTrain, nowHhmm: string): string {
+  const place = placeTrain(train.stops ?? [], nowHhmm);
+  if (!place) return "unknown";
+  if (place.atStation) return `at ${stationName(place.crs)}`;
+  return `${stationName(place.fromCrs)} → ${stationName(place.toCrs)}`;
+}
+
+function statusWordText(label: StatusLabel | undefined, problem: boolean): string {
+  if (label) return label;
+  return problem ? "delayed" : "on time";
+}
+
+function stationEntityCard(
+  crs: string,
+  aggregates: StationAggregate[],
+): HTMLElement {
+  const row = aggregates.find((item) => item.crs === crs);
+  return el("aside", { class: "journey-card", "data-testid": "selected-entity-card" }, [
+    el("p", { class: "journey-card-title" }, [
+      "SELECTED STATION: ",
+      el("span", { class: "mono" }, [crs]),
+    ]),
+    el("p", { class: "journey-card-sub" }, [stationName(crs)]),
+    el("p", { class: "journey-meta" }, [
+      `At station: ${row?.atCount ?? 0}`,
+    ]),
+    el("p", { class: "journey-meta" }, [
+      `Approaching: ${row?.approachingCount ?? 0}`,
+    ]),
+    el("p", { class: "journey-meta" }, [
+      el("span", {
+        class: row?.worstStatus && row.worstStatus !== "on time" ? "dot severe" : "dot ok",
+      }, []),
+      " Worst status: ",
+      row?.worstStatus ?? "none",
+    ]),
   ]);
 }
 
-function worstAlert(layout: StripLayout): { status: boolean; severe: boolean } {
-  let status = false;
-  let severe = false;
-  for (const segment of layout.segments) {
-    if (segment.severity === "minor") status = true;
-    if (segment.severity === "severe") severe = true;
+function otherTrainsPane(
+  trains: readonly NetworkTrain[],
+  trackedGuid: string | null,
+  nowHhmm: string,
+): HTMLElement {
+  const others = trains.filter((train) => train.serviceGuid !== trackedGuid);
+  if (others.length === 0) {
+    return panel("Other visible trains", "route-other-trains", [
+      el("p", { class: "nodata" }, ["No other trains in window"]),
+    ]);
   }
-  return { status, severe };
+  const list = el("ul", { class: "route-side-list" }, []);
+  for (const train of others) {
+    list.append(
+      el("li", { class: "route-side-row", "data-service": train.serviceGuid }, [
+        el("span", { class: "mono" }, [train.serviceGuid]),
+        el("span", {}, [statusWordText(train.statusLabel, train.problem)]),
+        el("span", { class: "muted" }, [placeLabel(train, nowHhmm)]),
+      ]),
+    );
+  }
+  return panel("Other visible trains", "route-other-trains", [list]);
+}
+
+function stationsPane(aggregates: StationAggregate[]): HTMLElement {
+  if (aggregates.length === 0) {
+    return panel("Stations", "route-stations", [
+      el("p", { class: "nodata" }, ["No stations in window"]),
+    ]);
+  }
+  const list = el("ul", { class: "route-side-list" }, []);
+  for (const row of aggregates) {
+    list.append(
+      el("li", { class: "route-side-row", "data-crs": row.crs }, [
+        el("span", { class: "mono" }, [row.crs]),
+        el("span", {}, [stationName(row.crs)]),
+        el("span", {}, [
+          `at ${row.atCount} · app ${row.approachingCount}`,
+        ]),
+        el("span", { class: "muted" }, [row.worstStatus ?? "—"]),
+      ]),
+    );
+  }
+  return panel("Stations", "route-stations", [list]);
 }
 
 function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
-  const route = vm.routeView;
-  if (!route || !vm.diagramHeld || !vm.networkHeld) {
+  const track = vm.routeTrack;
+  if (!track || !vm.diagramHeld || !vm.networkHeld) {
     return el("div", { class: "page" }, [
       el("p", { class: "panel-message" }, ["Route unavailable"]),
       el("button", { type: "button", "data-testid": "open-network" }, ["Back to network"]),
     ]);
   }
   const nowHhmm = londonHhmm(now);
-  const spine = spinePath(vm.diagramHeld, route.originCrs, route.destCrs);
-  const live = withLiveFields(vm.networkHeld.trains, nowHhmm);
-  const onSpine = trainsOnSpine(live, spine, nowHhmm);
-  const layout = stripLayout(spine, onSpine, nowHhmm, route.selectedServiceGuid);
+  const resolved = resolveRouteWindow(vm, nowHhmm);
+  if (!resolved || resolved.window.length === 0) {
+    return el("div", { class: "page" }, [
+      el("p", { class: "panel-message" }, ["Route window unavailable"]),
+      el("button", { type: "button", "data-testid": "open-network" }, ["Back to network"]),
+    ]);
+  }
+  const live = routeVisibleTrains(
+    vm.networkHeld.trains,
+    nowHhmm,
+    resolved.selectedServiceGuid,
+  );
+  const onWindow = trainsOnSpine(live, resolved.window, nowHhmm);
+  const byGuid = trainLabelMap(live);
+  const layout = stripLayout(
+    resolved.window,
+    onWindow,
+    nowHhmm,
+    resolved.selectedServiceGuid,
+  );
   const selected = selectedRouteTrain(vm, now);
-  const alerts = worstAlert(layout);
-  const originName = stationName(route.originCrs);
-  const destName = stationName(route.destCrs);
+  const aggregates = stationAggregates(resolved.window, onWindow, nowHhmm);
+  const title =
+    track.kind === "station"
+      ? `Tracking station ${stationName(track.crs)}`
+      : routeTrackTitle(track);
+
+  const entityPane =
+    track.kind === "station"
+      ? stationEntityCard(track.crs, aggregates)
+      : selected
+        ? journeyCard(selected, layout.selectedProgress, "selected-entity-card")
+        : el("aside", { class: "journey-card", "data-testid": "selected-entity-card" }, [
+            el("p", { class: "nodata" }, ["Tracked train not in feed"]),
+          ]);
+
   return el("div", { class: "page route-page" }, [
     el("div", { class: "toolbar" }, [
       el("p", {}, [
@@ -1188,30 +1344,20 @@ function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
     ]),
     el("div", { class: "route-header" }, [
       el("p", { class: "route-selected", "data-testid": "selected-route" }, [
-        "SELECTED ACTIVE ROUTE: ",
-        el("strong", {}, [`${originName} → ${destName}`]),
+        el("strong", {}, [title]),
       ]),
       el("div", { class: "route-stats", "data-testid": "route-stats" }, [
-        el("p", {}, [`Active Trains: ${onSpine.length}`]),
-        el("p", { class: "service-alerts" }, [
-          "Service Alerts ",
-          ...(alerts.status
-            ? [el("span", { class: "badge minor" }, ["Status"])]
-            : []),
-          ...(alerts.severe
-            ? [el("span", { class: "badge severe" }, ["Severe"])]
-            : [el("span", { class: "badge ok" }, ["Clear"])]),
-        ]),
+        el("p", {}, [`Visible trains: ${onWindow.length}`]),
+        el("p", {}, [`Stations: ${resolved.window.length}`]),
       ]),
     ]),
     panel("Route & Live Track", "route-track", [
-      routeStripSvg(layout, route.selectedServiceGuid),
+      routeStripSvg(layout, resolved.selectedServiceGuid, byGuid),
     ]),
     el("div", { class: "route-footer" }, [
-      selected
-        ? journeyCard(selected, layout.selectedProgress, "selected-train-card")
-        : el("p", { class: "nodata" }, ["No selected train"]),
-      routeLegend(),
+      entityPane,
+      otherTrainsPane(onWindow, resolved.selectedServiceGuid, nowHhmm),
+      stationsPane(aggregates),
     ]),
   ]);
 }
@@ -1223,7 +1369,10 @@ export function renderApp(root: HTMLElement, vm: ScreenViewModel, now = new Date
     : vm.page === "route" && vm.phase === "loaded"
       ? "Route & Live Track"
       : "JOURNEY CONTROL CENTRE";
-  const shell = el("div", { class: "shell" }, [header(vm, title), statusBar(vm)]);
+  const shell = el("div", { class: isMobileViewport() ? "shell is-mobile" : "shell" }, [
+    header(vm, title),
+    statusBar(vm),
+  ]);
   if (vm.phase === "empty") shell.append(renderEmpty(vm));
   else if (vm.page === "pair") shell.append(renderPair(vm));
   else if (vm.page === "route") shell.append(renderRoute(vm, now));

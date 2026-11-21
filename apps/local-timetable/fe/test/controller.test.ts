@@ -13,7 +13,10 @@ import {
   parseIntervalInput,
   problemTrains,
   recordPollUpdates,
+  resolveRouteWindow,
+  syncRouteWindowKey,
   updatesPerMinute,
+  routeVisibleTrains,
   visibleNetworkTrains,
   visiblePairTrains,
   nextScheduleFocus,
@@ -78,6 +81,53 @@ describe("screen controller", () => {
     await c.tick();
     assert.deepEqual(c.getView().networkHeld, network);
     assert.equal(networkListMessage(c.getView(), new Date("2026-11-06T13:00:00Z")), "");
+  });
+
+  it("fetches map and trains on the same tick that discovers load succeeded", async () => {
+    const succeeded: LoadProgress = { state: "succeeded", sentence: "Done" };
+    const network: NetworkAnswer = {
+      calendarDate: "251102",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [{ serviceGuid: "g1", scheduledTime: "1300", problem: false }],
+    };
+    const diagram = {
+      loadDay: "20261106",
+      hdSequence: "1",
+      stations: [],
+      corridors: [],
+      width: 100,
+      height: 80,
+    };
+    let progressCalls = 0;
+    let mapCalls = 0;
+    let networkCalls = 0;
+    const api = stubApi({
+      getLoadProgress: async () => {
+        progressCalls += 1;
+        return { ok: true, data: succeeded };
+      },
+      getNetworkMap: async () => {
+        mapCalls += 1;
+        return { ok: true, data: diagram };
+      },
+      getNetwork: async () => {
+        networkCalls += 1;
+        return { ok: true, data: network };
+      },
+    });
+    const c = createScreenController(api);
+    assert.equal(c.getView().loadSucceeded, false);
+    await c.tick();
+    assert.equal(c.getView().loadSucceeded, true);
+    assert.equal(c.getView().phase, "loaded");
+    assert.deepEqual(c.getView().diagramHeld, diagram);
+    assert.deepEqual(c.getView().networkHeld, network);
+    assert.equal(progressCalls, 1);
+    assert.equal(mapCalls, 1);
+    assert.equal(networkCalls, 1);
   });
 
   it("sets comms lost without clearing held trains", async () => {
@@ -281,6 +331,66 @@ describe("network derivations", () => {
     assert.deepEqual(
       visibleNetworkTrains(vm, now).map((train) => train.serviceGuid),
       ["earlier", "on-the-hour", "later"],
+    );
+  });
+
+  it("applies the same ±2h window on the route strip and keeps the tracked train", () => {
+    const nowHhmm = "1700";
+    const tracked = {
+      serviceGuid: "evening",
+      originCrs: "EUS",
+      destCrs: "BHM",
+      problem: false,
+      stops: [
+        { crs: "EUS", arr: null, dep: "1823" },
+        { crs: "WFJ", arr: "1900", dep: "1905" },
+        { crs: "BHM", arr: "2030", dep: null },
+      ],
+    };
+    const morning = {
+      serviceGuid: "morning",
+      originCrs: "EUS",
+      destCrs: "BHM",
+      problem: true,
+      statusLabel: "delayed" as const,
+      stops: [
+        { crs: "EUS", arr: null, dep: "1100" },
+        { crs: "WFJ", arr: "1130", dep: "1135" },
+        { crs: "BHM", arr: "1300", dep: null },
+      ],
+    };
+    const nearNow = {
+      serviceGuid: "near",
+      originCrs: "EUS",
+      destCrs: "MKC",
+      problem: false,
+      stops: [
+        { crs: "EUS", arr: null, dep: "1600" },
+        { crs: "MKC", arr: "1730", dep: null },
+      ],
+    };
+    assert.deepEqual(
+      routeVisibleTrains([morning, nearNow, tracked], nowHhmm, "evening").map(
+        (train) => train.serviceGuid,
+      ),
+      ["near", "evening"],
+    );
+    // Tracked train stays even when its next event is outside the live window.
+    const finishedEarly = {
+      serviceGuid: "dawn",
+      originCrs: "EUS",
+      destCrs: "BHM",
+      problem: false,
+      stops: [
+        { crs: "EUS", arr: null, dep: "0700" },
+        { crs: "BHM", arr: "0900", dep: null },
+      ],
+    };
+    assert.deepEqual(
+      routeVisibleTrains([finishedEarly, tracked], "1200", "evening").map(
+        (train) => train.serviceGuid,
+      ),
+      ["evening"],
     );
   });
 
@@ -665,33 +775,127 @@ describe("route page controller", () => {
     ],
   };
 
-  it("opens a route view from a train and clears preview", () => {
+  it("opens a route track from a train and clears preview", () => {
     const c = createScreenController(stubApi({}));
     assert.equal(c.setRoutePreview({ serviceGuid: "1M45" }), true);
     assert.equal(c.setRoutePreview({ serviceGuid: "1M45" }), false);
     assert.equal(c.openRouteFromTrain(train), true);
     assert.equal(c.getView().page, "route");
-    assert.deepEqual(c.getView().routeView, {
-      originCrs: "EUS",
-      destCrs: "BHM",
-      selectedServiceGuid: "1M45",
+    assert.deepEqual(c.getView().routeTrack, {
+      kind: "train",
+      serviceGuid: "1M45",
+      lastWindowKey: null,
     });
     assert.equal(c.getView().routePreview, null);
   });
 
+  it("opens a route track from a station focus", () => {
+    const c = createScreenController(stubApi({}));
+    assert.equal(c.openRouteFromStation("mkc"), true);
+    assert.equal(c.getView().page, "route");
+    assert.deepEqual(c.getView().routeTrack, {
+      kind: "station",
+      crs: "MKC",
+      lastWindowKey: "at:MKC",
+    });
+  });
+
   it("selects another train on the open route and clears back to network", () => {
     const c = createScreenController(stubApi({}));
+    c.getView().networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        train,
+        {
+          serviceGuid: "2A08",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          problem: false,
+          stops: [
+            { crs: "EUS", arr: null, dep: "1600" },
+            { crs: "BHM", arr: "1730", dep: null },
+          ],
+        },
+      ],
+    };
     c.openRouteFromTrain(train);
     c.selectRouteTrain("2A08");
-    assert.equal(c.getView().routeView?.selectedServiceGuid, "2A08");
+    const track = c.getView().routeTrack;
+    assert.ok(track);
+    assert.equal(track.kind, "train");
+    assert.equal(track.kind === "train" ? track.serviceGuid : null, "2A08");
     c.clearRoute();
     assert.equal(c.getView().page, "network");
-    assert.equal(c.getView().routeView, null);
+    assert.equal(c.getView().routeTrack, null);
   });
 
   it("refuses a train with no usable ends", () => {
     const c = createScreenController(stubApi({}));
     assert.equal(c.openRouteFromTrain({ serviceGuid: "x", problem: false, stops: [] }), false);
     assert.equal(c.getView().page, "network");
+  });
+
+  it("rewindows when the tracked train advances past the next station", () => {
+    const vm = createInitialViewModel();
+    vm.diagramHeld = {
+      loadDay: "20261106",
+      hdSequence: "1",
+      stations: ["EUS", "WFJ", "MKC", "NMP", "BHM"].map((crs, rank) => ({
+        crs,
+        x: rank * 100,
+        y: 80,
+        rank,
+        lane: 0,
+      })),
+      corridors: [
+        {
+          from: "EUS",
+          to: "BHM",
+          via: ["WFJ", "MKC", "NMP"],
+          points: [],
+          color: "#7dffa8",
+        },
+      ],
+      width: 500,
+      height: 160,
+    };
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "1M45",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          problem: false,
+          stops: [
+            { crs: "EUS", arr: null, dep: "1000" },
+            { crs: "WFJ", arr: "1030", dep: "1035" },
+            { crs: "MKC", arr: "1100", dep: "1105" },
+            { crs: "BHM", arr: "1200", dep: null },
+          ],
+        },
+      ],
+    };
+    vm.routeTrack = {
+      kind: "train",
+      serviceGuid: "1M45",
+      lastWindowKey: null,
+    };
+    assert.equal(syncRouteWindowKey(vm, "1032"), true);
+    assert.equal(vm.routeTrack?.lastWindowKey, "at:WFJ");
+    const first = resolveRouteWindow(vm, "1032");
+    assert.ok(first?.window.includes("WFJ"));
+
+    assert.equal(syncRouteWindowKey(vm, "1032"), false);
+    assert.equal(syncRouteWindowKey(vm, "1102"), true);
+    assert.equal(vm.routeTrack?.lastWindowKey, "at:MKC");
   });
 });
