@@ -1,0 +1,17 @@
+aws_region     = "eu-west-2"
+project        = "urt-lt"
+instance_type  = "t4g.micro"
+root_volume_gb = 8
+
+budget_limit_usd          = 20
+budget_notification_email = "" # set to receive 80% ACTUAL alerts
+
+# First apply can use compute-only: enable_front_door = false
+enable_front_door     = true
+open_api_to_internet  = true # required for API Gateway HTTP → EC2 :8080
+
+# After apply, set these to the cloudfront_url output and re-apply
+# (client has lifecycle ignore_changes on URLs — update via console or remove ignore).
+cognito_callback_urls = ["http://localhost:5173/"]
+cognito_logout_urls   = ["http://localhost:5173/"]
+# cognito_domain_prefix = "urt-lt-661792079381" # optional override
