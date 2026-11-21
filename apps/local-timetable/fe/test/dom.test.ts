@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createInitialViewModel } from "../src/controller.js";
-import { renderApp, schedulePick } from "../src/dom.js";
+import { isMobileViewport, renderApp, schedulePick } from "../src/dom.js";
 import { stationName } from "../src/stationNames.js";
 import type { ScreenViewModel } from "../src/controller.js";
 import type { NetworkDiagram } from "../src/types.js";
@@ -132,13 +132,44 @@ describe("network page", () => {
     assert.match(text(root, "footer-delayed"), /1/);
     assert.match(text(root, "footer-cancelled"), /no data/);
     assert.match(text(root, "footer-updates-per-min"), /no data/);
-    assert.equal(root.querySelectorAll(".board > *").length, 3);
+    assert.equal(root.querySelectorAll(".board > *").length, 2);
+    assert.ok(root.querySelector('[data-testid="board-secondary"]'));
+    assert.ok(root.querySelector('[data-testid="board-secondary"] [data-testid="live-schedules"]'));
+    assert.ok(root.querySelector('[data-testid="board-secondary"] [data-testid="disruptions"]'));
+    assert.match(text(root, "network-overview"), /Use \+\/− to zoom/);
 
     vm.searchText = "eus";
     const filtered = render(vm);
     assert.match(text(filtered, "disruptions"), /No interesting events/);
     assert.doesNotMatch(text(filtered, "incident-logs"), /late-1/);
     assert.match(text(filtered, "incident-logs"), /No problems/);
+  });
+
+  it("detects mobile viewports for the network-first layout", () => {
+    assert.equal(isMobileViewport({
+      matchMedia: (query: string) => ({
+        matches: query.includes("max-width: 720px"),
+        media: query,
+        onchange: null,
+        addListener() {},
+        removeListener() {},
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent() { return false; },
+      }),
+    }), true);
+    assert.equal(isMobileViewport({
+      matchMedia: () => ({
+        matches: false,
+        media: "",
+        onchange: null,
+        addListener() {},
+        removeListener() {},
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent() { return false; },
+      }),
+    }), false);
   });
 
   it("zooms the map and returns to the whole network", () => {
@@ -181,57 +212,116 @@ describe("network page", () => {
   });
 
   it("pans only while Shift is held and shows a hover tip", () => {
-    const vm = createInitialViewModel();
-    vm.phase = "loaded";
-    vm.loadSucceeded = true;
-    vm.diagramHeld = heldDiagram([["EUS", "MKC"], ["CRE", "STA"]]);
-    vm.networkHeld = {
-      calendarDate: "251102",
-      generation: "g1",
-      revision: 0,
-      full: true,
-      removed: [],
-      trains: [
-        {
-          serviceGuid: "on-time-1",
-          originCrs: "EUS",
-          destCrs: "MKC",
-          problem: false,
-          stops: [
-            { crs: "EUS", arr: null, dep: "1200" },
-            { crs: "MKC", arr: "1400", dep: null },
-          ],
-        },
-      ],
-    };
-    const root = render(vm);
-    const svg = root.querySelector<SVGSVGElement>('[data-testid="network-map"]');
-    const tip = root.querySelector<HTMLElement>('[data-testid="map-tooltip"]');
-    const station = root.querySelector(".station-mark");
-    assert.ok(svg && tip && station);
-    assert.equal(tip.hidden, true);
-    station.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
-    assert.equal(tip.hidden, false);
-    assert.equal(tip.textContent, "London Euston");
-    assert.equal(station.querySelector("text")?.textContent, "EUS");
-    assert.equal(stationName("ZZZ"), "ZZZ");
-    const train = root.querySelector('[data-testid="train-marker"]');
-    assert.ok(train);
-    train.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
-    assert.equal(tip.textContent, train.getAttribute("data-service"));
-    svg.dispatchEvent(new PointerEvent("pointerdown", { button: 0, bubbles: true, pointerId: 1 }));
-    assert.equal(svg.classList.contains("is-panning"), false);
-    svg.dispatchEvent(new PointerEvent("pointerdown", {
-      button: 0,
-      bubbles: true,
-      shiftKey: true,
-      pointerId: 2,
-    }));
-    assert.equal(svg.classList.contains("is-panning"), true);
-    assert.equal(svg.classList.contains("is-shift"), true);
-    window.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift" }));
-    assert.equal(svg.classList.contains("is-panning"), false);
-    assert.equal(svg.classList.contains("is-shift"), false);
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() { return false; },
+    })) as typeof window.matchMedia;
+    try {
+      const vm = createInitialViewModel();
+      vm.phase = "loaded";
+      vm.loadSucceeded = true;
+      vm.diagramHeld = heldDiagram([["EUS", "MKC"], ["CRE", "STA"]]);
+      vm.networkHeld = {
+        calendarDate: "251102",
+        generation: "g1",
+        revision: 0,
+        full: true,
+        removed: [],
+        trains: [
+          {
+            serviceGuid: "on-time-1",
+            originCrs: "EUS",
+            destCrs: "MKC",
+            problem: false,
+            stops: [
+              { crs: "EUS", arr: null, dep: "1200" },
+              { crs: "MKC", arr: "1400", dep: null },
+            ],
+          },
+        ],
+      };
+      const root = render(vm);
+      const svg = root.querySelector<SVGSVGElement>('[data-testid="network-map"]');
+      const tip = root.querySelector<HTMLElement>('[data-testid="map-tooltip"]');
+      const station = root.querySelector(".station-mark");
+      assert.ok(svg && tip && station);
+      assert.equal(tip.hidden, true);
+      station.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+      assert.equal(tip.hidden, false);
+      assert.equal(tip.textContent, "London Euston");
+      assert.equal(station.querySelector("text")?.textContent, "EUS");
+      assert.equal(stationName("ZZZ"), "ZZZ");
+      const train = root.querySelector('[data-testid="train-marker"]');
+      assert.ok(train);
+      train.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+      assert.equal(tip.textContent, "EUSMKC-1200");
+      assert.equal(train.getAttribute("data-tip"), "EUSMKC-1200");
+      svg.dispatchEvent(new PointerEvent("pointerdown", { button: 0, bubbles: true, pointerId: 1 }));
+      assert.equal(svg.classList.contains("is-panning"), false);
+      svg.dispatchEvent(new PointerEvent("pointerdown", {
+        button: 0,
+        bubbles: true,
+        shiftKey: true,
+        pointerId: 2,
+      }));
+      assert.equal(svg.classList.contains("is-panning"), true);
+      assert.equal(svg.classList.contains("is-shift"), true);
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift" }));
+      assert.equal(svg.classList.contains("is-panning"), false);
+      assert.equal(svg.classList.contains("is-shift"), false);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it("allows drag pan on the map in a mobile viewport", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 720px") || query.includes("pointer: coarse"),
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() { return false; },
+    })) as typeof window.matchMedia;
+    try {
+      const vm = createInitialViewModel();
+      vm.phase = "loaded";
+      vm.loadSucceeded = true;
+      vm.diagramHeld = heldDiagram([["EUS", "MKC"]]);
+      vm.networkHeld = {
+        calendarDate: "251102",
+        generation: "g1",
+        revision: 0,
+        full: true,
+        removed: [],
+        trains: [],
+      };
+      const root = render(vm);
+      assert.ok(root.querySelector(".shell.is-mobile"));
+      assert.ok(root.querySelector(".page.is-mobile"));
+      const svg = root.querySelector<SVGSVGElement>('[data-testid="network-map"]');
+      assert.ok(svg);
+      svg.dispatchEvent(new PointerEvent("pointerdown", {
+        button: 0,
+        bubbles: true,
+        pointerId: 7,
+        clientX: 40,
+        clientY: 40,
+      }));
+      assert.equal(svg.classList.contains("is-panning"), true);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 
   it("lists the live trains for a clicked station", () => {
@@ -323,16 +413,16 @@ describe("network page", () => {
 });
 
 describe("route detail page", () => {
-  it("renders the corridor strip with intermediate stations and selected train", () => {
+  it("renders the windowed strip, entity pane, and side panes for a tracked train", () => {
     const vm = createInitialViewModel();
     vm.phase = "loaded";
     vm.loadSucceeded = true;
     vm.page = "route";
     vm.diagramHeld = heldDiagram([["EUS", "WFJ", "MKC", "NMP", "BHM"]]);
-    vm.routeView = {
-      originCrs: "EUS",
-      destCrs: "BHM",
-      selectedServiceGuid: "1M45",
+    vm.routeTrack = {
+      kind: "train",
+      serviceGuid: "1M45",
+      lastWindowKey: null,
     };
     vm.networkHeld = {
       calendarDate: "261106",
@@ -356,18 +446,89 @@ describe("route detail page", () => {
             { crs: "BHM", arr: "1600", dep: null },
           ],
         },
+        {
+          serviceGuid: "2A08",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          problem: false,
+          statusLabel: "on time",
+          stops: [
+            { crs: "EUS", arr: null, dep: "1100" },
+            { crs: "WFJ", arr: "1200", dep: "1205" },
+            { crs: "BHM", arr: "1400", dep: null },
+          ],
+        },
+        {
+          serviceGuid: "AM11",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          problem: true,
+          statusLabel: "delayed",
+          stops: [
+            { crs: "EUS", arr: null, dep: "0900" },
+            { crs: "WFJ", arr: "0930", dep: "0935" },
+            { crs: "BHM", arr: "1030", dep: null },
+          ],
+        },
       ],
     };
     const root = render(vm);
     assert.match(root.textContent ?? "", /Route & Live Track/);
-    assert.match(text(root, "selected-route"), /London Euston → Birmingham New Street/);
-    assert.match(text(root, "route-stats"), /Active Trains: 1/);
+    assert.match(text(root, "selected-route"), /Tracking train 1M45/);
+    assert.match(text(root, "route-stats"), /Visible trains:/);
     assert.ok(root.querySelector('[data-testid="route-strip"]'));
-    assert.match(text(root, "route-track"), /Watford Junction/);
-    assert.match(text(root, "route-track"), /Northampton/);
-    assert.match(text(root, "selected-train-card"), /1M45/);
-    assert.match(text(root, "route-legend"), /On Time/);
+    assert.match(text(root, "selected-entity-card"), /1M45/);
+    assert.ok(root.querySelector('[data-testid="route-other-trains"]'));
+    assert.doesNotMatch(text(root, "route-other-trains"), /AM11/);
+    assert.equal(root.querySelectorAll('[data-service="AM11"]').length, 0);
+    assert.ok(root.querySelector('[data-testid="route-stations"]'));
     assert.ok(root.querySelector('[data-testid="open-network"]'));
+  });
+
+  it("shows Focus beside Show all when a station schedule focus is set", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.page = "network";
+    vm.diagramHeld = heldDiagram([["EUS", "MKC", "BHM"]]);
+    vm.scheduleFocus = { kind: "station", crs: "MKC" };
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [],
+    };
+    const root = render(vm);
+    assert.ok(root.querySelector('[data-testid="focus-route"]'));
+    assert.ok(root.querySelector('[data-testid="clear-schedule-focus"]'));
+    assert.match(text(root, "schedule-focus"), /Trains through/);
+  });
+
+  it("renders a station-tracked route with selected station pane", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.page = "route";
+    vm.diagramHeld = heldDiagram([["EUS", "WFJ", "MKC", "NMP", "BHM"]]);
+    vm.routeTrack = {
+      kind: "station",
+      crs: "MKC",
+      lastWindowKey: "at:MKC",
+    };
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [],
+    };
+    const root = render(vm);
+    assert.match(text(root, "selected-route"), /Tracking station/);
+    assert.match(text(root, "selected-entity-card"), /SELECTED STATION/);
+    assert.match(text(root, "selected-entity-card"), /MKC/);
   });
 });
 

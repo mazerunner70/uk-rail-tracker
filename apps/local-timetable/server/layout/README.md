@@ -12,7 +12,7 @@ octilinear (Nöllenburg-style) metro-map layout solved by **HiGHS** through
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `METRO_LAYOUT_ENGINE` | `milp` | `milp` (PuLP+HiGHS) or `geo` (in-process schematic; used by unit tests). Legacy value `optimods` is treated as `milp`. |
+| `METRO_LAYOUT_ENGINE` | `milp` | `milp` (PuLP+HiGHS), `geo` (in-process schematic; tests), or `external` (AWS: skip layout — Python Lambda writes `network-schematic.json`). Legacy `optimods` → `milp`. On OOM during `milp`, falls back to `geo` locally. |
 | `METRO_LAYOUT_TIME_LIMIT_SEC` | `1200` | HiGHS time limit |
 | `METRO_LAYOUT_PYTHON` | `python3` | Interpreter that has PuLP + highspy |
 | `METRO_LAYOUT_SCRIPT` | `layout/metro_layout.py` | Override script path |

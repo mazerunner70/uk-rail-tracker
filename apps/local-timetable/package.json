@@ -8,7 +8,14 @@
     "start-server": "bash scripts/start-server.sh",
     "rebuild-and-start-server": "bash scripts/rebuild-and-start-server.sh",
     "rebuild-and-deploy": "bash scripts/rebuild-and-deploy.sh",
+    "rebuild-and-deploy-all": "bash scripts/rebuild-and-deploy-all.sh",
+    "rebuild-and-deploy-all:aws": "bash scripts/rebuild-and-deploy-all-aws.sh",
+    "terraform:aws": "bash scripts/terraform-aws.sh",
+    "terraform:aws:auto": "bash scripts/terraform-aws.sh -auto-approve",
     "mca-load": "bash scripts/mca-load.sh",
+    "mca-sync:aws": "bash scripts/mca-sync-aws.sh",
+    "mca-upload:aws": "bash scripts/mca-upload-aws.sh",
+    "schematic-process:aws": "bash scripts/schematic-process-aws.sh",
     "logs:server": "bash scripts/show-server-logs.sh"
   },
   "license": "ISC"

@@ -5,6 +5,17 @@ server/poc/timetable/RJTTF*.txt
 sql-workspace/
 
 **/.env
+
+# Terraform (local-timetable AWS)
+**/deploy/aws/terraform/.terraform/
+**/deploy/aws/terraform/*.tfstate
+**/deploy/aws/terraform/*.tfstate.*
+**/deploy/aws/terraform/*.tfvars
+!**/deploy/aws/terraform/*.tfvars.example
+**/deploy/aws/terraform/crash.log
+**/deploy/aws/terraform/override.tf
+**/deploy/aws/terraform/*_override.tf
+
 # BEGIN AI-DLC:gitignore
 # Logs
 logs

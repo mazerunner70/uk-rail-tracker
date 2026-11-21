@@ -79,11 +79,18 @@ export type CorridorLayout = {
   color: string;
 };
 
+export type SchematicLine = {
+  id: string;
+  stations: string[];
+};
+
 export type NetworkDiagram = {
   loadDay: string;
   hdSequence: string;
   stations: StationLayout[];
   corridors: CorridorLayout[];
+  /** Ordered CRS paths for tracking; may be [] on older schematics. */
+  lines?: SchematicLine[];
   width: number;
   height: number;
 };

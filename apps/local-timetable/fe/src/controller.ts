@@ -15,7 +15,15 @@ import {
   scheduledHhmm,
   type StopRow,
 } from "./stopTime.js";
-import { trainEnds } from "./routeStrip.js";
+import {
+  corridorThroughStation,
+  spinePath,
+  trainEnds,
+  windowAroundPlace,
+  windowAroundStation,
+  windowKeyForPlace,
+} from "./routeStrip.js";
+import { placeTrain } from "./networkMap.js";
 
 export type ScreenPhase = "empty" | "loaded";
 export type ScreenPage = "network" | "pair" | "route";
@@ -27,11 +35,12 @@ export type ScheduleFocus =
 
 export type RoutePreview = { serviceGuid: string };
 
-export type RouteView = {
-  originCrs: string;
-  destCrs: string;
-  selectedServiceGuid: string;
-};
+export type RouteTrack =
+  | { kind: "train"; serviceGuid: string; lastWindowKey: string | null }
+  | { kind: "station"; crs: string; lastWindowKey: string | null };
+
+/** @deprecated Use RouteTrack — kept alias for gradual rename in tests. */
+export type RouteView = RouteTrack;
 
 export type ScreenViewModel = {
   phase: ScreenPhase;
@@ -52,7 +61,7 @@ export type ScreenViewModel = {
   scheduleFocus: ScheduleFocus | null;
   networkEventFilter: EventTag | null;
   routePreview: RoutePreview | null;
-  routeView: RouteView | null;
+  routeTrack: RouteTrack | null;
   pairFilter: PairFilter;
   emptyMessage: string;
   updatesPerMin: number | null;
@@ -129,7 +138,7 @@ export function createInitialViewModel(): ScreenViewModel {
     scheduleFocus: null,
     networkEventFilter: null,
     routePreview: null,
-    routeView: null,
+    routeTrack: null,
     pairFilter: "all",
     emptyMessage: "",
     updatesPerMin: null,
@@ -363,6 +372,7 @@ export type ScreenController = {
   setNetworkEventFilter: (tag: EventTag | null) => void;
   setRoutePreview: (preview: RoutePreview | null) => boolean;
   openRouteFromTrain: (train: NetworkTrain) => boolean;
+  openRouteFromStation: (crs: string) => boolean;
   selectRouteTrain: (serviceGuid: string) => void;
   clearRoute: () => void;
   setPairFilter: (filter: PairFilter) => void;
@@ -383,14 +393,111 @@ export function openRouteFromTrainOn(
 ): boolean {
   const ends = trainEnds(train);
   if (!ends) return false;
-  vm.routeView = {
-    originCrs: ends.originCrs,
-    destCrs: ends.destCrs,
-    selectedServiceGuid: train.serviceGuid,
+  vm.routeTrack = {
+    kind: "train",
+    serviceGuid: train.serviceGuid,
+    lastWindowKey: null,
+  };
+  vm.routePreview = null;
+  vm.page = "route";
+  syncRouteWindowKey(vm);
+  return true;
+}
+
+export function openRouteFromStationOn(
+  vm: ScreenViewModel,
+  crs: string,
+): boolean {
+  const code = crs.trim().toUpperCase();
+  if (!code) return false;
+  vm.routeTrack = {
+    kind: "station",
+    crs: code,
+    lastWindowKey: `at:${code}`,
   };
   vm.routePreview = null;
   vm.page = "route";
   return true;
+}
+
+export type ResolvedRouteWindow = {
+  window: string[];
+  windowKey: string;
+  selectedServiceGuid: string | null;
+};
+
+/** Window of stations around the tracked train place or station. */
+export function resolveRouteWindow(
+  vm: ScreenViewModel,
+  nowHhmm = londonHhmm(),
+): ResolvedRouteWindow | null {
+  const track = vm.routeTrack;
+  const diagram = vm.diagramHeld;
+  if (!track || !diagram) return null;
+
+  if (track.kind === "station") {
+    const window = windowAroundStation(diagram, track.crs);
+    return {
+      window,
+      windowKey: `at:${track.crs}`,
+      selectedServiceGuid: null,
+    };
+  }
+
+  const train = findHeldTrain(vm, track.serviceGuid);
+  if (!train) return null;
+  const ends = trainEnds(train);
+  if (!ends) return null;
+  const spine = spinePath(diagram, ends.originCrs, ends.destCrs);
+  const place = placeTrain(train.stops ?? [], nowHhmm);
+  if (!place) {
+    return {
+      window: windowAroundStation(diagram, ends.originCrs),
+      windowKey: `at:${ends.originCrs}`,
+      selectedServiceGuid: track.serviceGuid,
+    };
+  }
+  // Prefer the train OD spine; if place is off that path, fall back to corridor through place.
+  let path = spine;
+  if (!placeOnPath(spine, place)) {
+    const anchor = place.atStation ? place.crs : place.fromCrs;
+    path = corridorThroughStation(diagram, anchor);
+    if (path.length < 2) path = spine;
+  }
+  const window = windowAroundPlace(path, place);
+  return {
+    window: window.length > 0 ? window : path,
+    windowKey: windowKeyForPlace(place),
+    selectedServiceGuid: track.serviceGuid,
+  };
+}
+
+function placeOnPath(
+  spine: readonly string[],
+  place: ReturnType<typeof placeTrain>,
+): boolean {
+  if (!place) return false;
+  if (place.atStation) return spine.includes(place.crs);
+  return spine.includes(place.fromCrs) && spine.includes(place.toCrs);
+}
+
+/** Update lastWindowKey; returns true when the window centre changed. */
+export function syncRouteWindowKey(
+  vm: ScreenViewModel,
+  nowHhmm = londonHhmm(),
+): boolean {
+  const track = vm.routeTrack;
+  if (!track) return false;
+  const resolved = resolveRouteWindow(vm, nowHhmm);
+  if (!resolved) return false;
+  if (track.lastWindowKey === resolved.windowKey) return false;
+  vm.routeTrack = { ...track, lastWindowKey: resolved.windowKey };
+  return true;
+}
+
+export function routeTrackTitle(track: RouteTrack): string {
+  if (track.kind === "train") return `Tracking train ${track.serviceGuid}`;
+  return `Tracking station ${track.crs}`;
 }
 
 export function createScreenController(api: ApiClient): ScreenController {
@@ -415,7 +522,7 @@ export function createScreenController(api: ApiClient): ScreenController {
     setPage(page: ScreenPage) {
       vm.page = page;
       if (page !== "route") {
-        vm.routeView = null;
+        vm.routeTrack = null;
       }
       if (page !== "network") {
         vm.routePreview = null;
@@ -440,12 +547,16 @@ export function createScreenController(api: ApiClient): ScreenController {
     openRouteFromTrain(train: NetworkTrain) {
       return openRouteFromTrainOn(vm, train);
     },
+    openRouteFromStation(crs: string) {
+      return openRouteFromStationOn(vm, crs);
+    },
     selectRouteTrain(serviceGuid: string) {
-      if (!vm.routeView) return;
-      vm.routeView = { ...vm.routeView, selectedServiceGuid: serviceGuid };
+      const train = findHeldTrain(vm, serviceGuid);
+      if (!train) return;
+      openRouteFromTrainOn(vm, train);
     },
     clearRoute() {
-      vm.routeView = null;
+      vm.routeTrack = null;
       vm.routePreview = null;
       vm.page = "network";
     },
@@ -466,7 +577,9 @@ export function createScreenController(api: ApiClient): ScreenController {
       }
     },
     async tick() {
-      if (!vm.loadSucceeded) {
+      // Poll load status until the DB is ready, then continue into map + trains
+      // on the same pass so a fresh page load does not wait a full interval.
+      if (!vm.loadSucceeded || vm.loadProgress?.state === "running") {
         const progress = await api.getLoadProgress();
         if (progress.ok) {
           applyLoadProgress(vm, progress.data);
@@ -475,19 +588,7 @@ export function createScreenController(api: ApiClient): ScreenController {
           vm.commsLost = true;
           vm.statusLine = "comms is lost";
         }
-        return;
-      }
-
-      if (vm.loadProgress?.state === "running") {
-        const progress = await api.getLoadProgress();
-        if (progress.ok) {
-          applyLoadProgress(vm, progress.data);
-          vm.commsLost = false;
-        } else if (progress.kind === "comms") {
-          vm.commsLost = true;
-          vm.statusLine = "comms is lost";
-        }
-        if (vm.loadProgress?.state === "running" || !vm.loadSucceeded) return;
+        if (!vm.loadSucceeded || vm.loadProgress?.state === "running") return;
       }
 
       if (vm.diagramStale || !vm.diagramHeld) {
@@ -522,11 +623,15 @@ export function createScreenController(api: ApiClient): ScreenController {
         recordPollUpdates(vm, previous, data);
       });
       derivePairHeld(vm, londonHhmm());
+      if (vm.page === "route") {
+        syncRouteWindowKey(vm);
+      }
     },
   };
 }
 
-const SCHEDULE_WINDOW_MINUTES = 120;
+/** Live schedule window: ±2 hours of London now (same rule on network list and route strip). */
+export const SCHEDULE_WINDOW_MINUTES = 120;
 
 function includesQuery(value: string | null | undefined, query: string): boolean {
   return (value ?? "").toLowerCase().includes(query);
@@ -579,10 +684,24 @@ function callsAt(train: NetworkTrain, crs: string): boolean {
   return [train.originCrs, train.destCrs, train.reachedCrs, train.nextCrs].some((value) => value === crs);
 }
 
-function inScheduleWindow(train: NetworkTrain, nowHhmm: string): boolean {
+export function inScheduleWindow(train: NetworkTrain, nowHhmm: string): boolean {
   if (!train.scheduledTime) return false;
   const offset = scheduledOffsetMinutes(train.scheduledTime, nowHhmm);
   return offset !== null && Math.abs(offset) <= SCHEDULE_WINDOW_MINUTES;
+}
+
+/** Route strip/list: live ±2h window, always keeping the tracked train when set. */
+export function routeVisibleTrains(
+  trains: readonly NetworkTrain[],
+  nowHhmm: string,
+  trackedServiceGuid: string | null,
+): NetworkTrain[] {
+  const live = withLiveFields([...trains], nowHhmm);
+  return live.filter(
+    (train) =>
+      (trackedServiceGuid !== null && train.serviceGuid === trackedServiceGuid)
+      || inScheduleWindow(train, nowHhmm),
+  );
 }
 
 function byScheduledTime(nowHhmm: string): (left: NetworkTrain, right: NetworkTrain) => number {
@@ -871,9 +990,9 @@ export function previewTrain(vm: ScreenViewModel, now = new Date()): NetworkTrai
 }
 
 export function selectedRouteTrain(vm: ScreenViewModel, now = new Date()): NetworkTrain | null {
-  const guid = vm.routeView?.selectedServiceGuid;
-  if (!guid || !vm.networkHeld) return null;
-  const held = findHeldTrain(vm, guid);
+  const track = vm.routeTrack;
+  if (!track || track.kind !== "train" || !vm.networkHeld) return null;
+  const held = findHeldTrain(vm, track.serviceGuid);
   if (!held) return null;
   return withLiveFields([held], londonHhmm(now))[0] ?? null;
 }

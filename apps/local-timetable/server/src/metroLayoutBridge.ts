@@ -12,11 +12,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 /** Dist layout: dist/metroLayoutBridge.js → ../layout/metro_layout.py; src via tsx → ../layout. */
 export const DEFAULT_METRO_LAYOUT_SCRIPT = join(HERE, "..", "layout", "metro_layout.py");
 
-export type MetroLayoutEngine = "milp" | "geo";
+export type MetroLayoutEngine = "milp" | "geo" | "external";
 
 export function metroLayoutEngine(): MetroLayoutEngine {
   const raw = (process.env.METRO_LAYOUT_ENGINE ?? "milp").trim().toLowerCase();
   if (raw === "geo") return "geo";
+  // AWS: schematic comes from the Python Lambda; /load only writes SQLite.
+  if (raw === "external" || raw === "skip" || raw === "none") return "external";
   // Legacy alias from the Gurobi OptiMods experiment.
   if (raw === "optimods" || raw === "milp" || raw === "highs" || raw === "pulp") return "milp";
   return "milp";
@@ -79,9 +81,17 @@ export function runMilpLayout(
     child.on("error", (err) => {
       reject(err);
     });
-    child.on("close", (code) => {
+    child.on("close", (code, signal) => {
       if (code !== 0) {
-        reject(new Error(`metro_layout.py exited ${code}: ${stderr.trim() || stdout.trim()}`));
+        const how =
+          signal != null
+            ? `signal=${signal}`
+            : `code=${code}`;
+        reject(
+          new Error(
+            `metro_layout.py exited ${how}: ${stderr.trim() || stdout.trim()}`,
+          ),
+        );
         return;
       }
       try {
