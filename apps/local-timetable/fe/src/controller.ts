@@ -8,6 +8,7 @@ import type {
   NetworkTrain,
   PairTrain,
   RemovedTrain,
+  ServiceDetail,
   StationPairAnswer,
 } from "./types.js";
 import {
@@ -62,6 +63,7 @@ export type ScreenViewModel = {
   networkEventFilter: EventTag | null;
   routePreview: RoutePreview | null;
   routeTrack: RouteTrack | null;
+  serviceDetailHeld: ServiceDetail | null;
   pairFilter: PairFilter;
   emptyMessage: string;
   updatesPerMin: number | null;
@@ -139,6 +141,7 @@ export function createInitialViewModel(): ScreenViewModel {
     networkEventFilter: null,
     routePreview: null,
     routeTrack: null,
+    serviceDetailHeld: null,
     pairFilter: "all",
     emptyMessage: "",
     updatesPerMin: null,
@@ -378,6 +381,7 @@ export type ScreenController = {
   setPairFilter: (filter: PairFilter) => void;
   startLoad: () => Promise<void>;
   tick: () => Promise<void>;
+  refreshServiceDetail: () => Promise<void>;
 };
 
 export function findHeldTrain(
@@ -393,6 +397,9 @@ export function openRouteFromTrainOn(
 ): boolean {
   const ends = trainEnds(train);
   if (!ends) return false;
+  const same =
+    vm.routeTrack?.kind === "train"
+    && vm.routeTrack.serviceGuid === train.serviceGuid;
   vm.routeTrack = {
     kind: "train",
     serviceGuid: train.serviceGuid,
@@ -400,6 +407,9 @@ export function openRouteFromTrainOn(
   };
   vm.routePreview = null;
   vm.page = "route";
+  if (!same) {
+    vm.serviceDetailHeld = null;
+  }
   syncRouteWindowKey(vm);
   return true;
 }
@@ -416,6 +426,7 @@ export function openRouteFromStationOn(
     lastWindowKey: `at:${code}`,
   };
   vm.routePreview = null;
+  vm.serviceDetailHeld = null;
   vm.page = "route";
   return true;
 }
@@ -523,6 +534,7 @@ export function createScreenController(api: ApiClient): ScreenController {
       vm.page = page;
       if (page !== "route") {
         vm.routeTrack = null;
+        vm.serviceDetailHeld = null;
       }
       if (page !== "network") {
         vm.routePreview = null;
@@ -558,6 +570,7 @@ export function createScreenController(api: ApiClient): ScreenController {
     clearRoute() {
       vm.routeTrack = null;
       vm.routePreview = null;
+      vm.serviceDetailHeld = null;
       vm.page = "network";
     },
     setPairFilter(filter: PairFilter) {
@@ -625,13 +638,39 @@ export function createScreenController(api: ApiClient): ScreenController {
       derivePairHeld(vm, londonHhmm());
       if (vm.page === "route") {
         syncRouteWindowKey(vm);
+        await loadServiceDetail(vm, api);
       }
+    },
+    async refreshServiceDetail() {
+      await loadServiceDetail(vm, api);
     },
   };
 }
 
+async function loadServiceDetail(
+  vm: ScreenViewModel,
+  api: ApiClient,
+): Promise<void> {
+  const track = vm.routeTrack;
+  if (!track || track.kind !== "train") {
+    vm.serviceDetailHeld = null;
+    return;
+  }
+  const result = await api.getService(track.serviceGuid);
+  if (result.ok) {
+    vm.serviceDetailHeld = result.data;
+    vm.commsLost = false;
+  } else if (result.kind === "comms") {
+    vm.commsLost = true;
+    vm.statusLine = "comms is lost";
+  }
+}
+
 /** Live schedule window: ±2 hours of London now (same rule on network list and route strip). */
 export const SCHEDULE_WINDOW_MINUTES = 120;
+
+/** Triangle markers on network map + route strip: only imminent departures. */
+export const MARKER_DEPARTURE_WINDOW_MINUTES = 15;
 
 function includesQuery(value: string | null | undefined, query: string): boolean {
   return (value ?? "").toLowerCase().includes(query);
@@ -669,6 +708,49 @@ export function scheduledOffsetMinutes(scheduledHhmm: string, nowHhmm: string): 
   if (delta > 12 * 60) delta -= 24 * 60;
   if (delta < -12 * 60) delta += 24 * 60;
   return delta;
+}
+
+/** Next public departure from the station the train is currently standing at. */
+export function nextStationDepartureHhmm(
+  train: NetworkTrain,
+  nowHhmm: string,
+): string | null {
+  const stops = train.stops ?? [];
+  const place = placeTrain(stops, nowHhmm);
+  if (!place || !place.atStation || !place.towardCrs) return null;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const stop = stops[i]!;
+    const next = stops[i + 1]!;
+    if (stop.crs === place.crs && next.crs === place.towardCrs) {
+      return stop.dep;
+    }
+  }
+  return null;
+}
+
+/** True when the train is at a station and due to leave within the marker window. */
+export function dueToDepartWithin(
+  train: NetworkTrain,
+  nowHhmm: string,
+  windowMinutes = MARKER_DEPARTURE_WINDOW_MINUTES,
+): boolean {
+  const dep = nextStationDepartureHhmm(train, nowHhmm);
+  if (!dep) return false;
+  const offset = scheduledOffsetMinutes(dep, nowHhmm);
+  return offset !== null && offset >= 0 && offset <= windowMinutes;
+}
+
+/** Trains drawn as triangles: due to depart in the next 15 minutes (plus optional tracked). */
+export function markerVisibleTrains(
+  trains: readonly NetworkTrain[],
+  nowHhmm: string,
+  alwaysIncludeGuid: string | null = null,
+): NetworkTrain[] {
+  return trains.filter(
+    (train) =>
+      (alwaysIncludeGuid !== null && train.serviceGuid === alwaysIncludeGuid)
+      || dueToDepartWithin(train, nowHhmm),
+  );
 }
 
 function matchesSearch(train: NetworkTrain, query: string): boolean {

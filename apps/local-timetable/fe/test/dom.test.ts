@@ -66,11 +66,11 @@ describe("network page", () => {
           destCrs: "MKC",
           reachedCrs: "EUS",
           nextCrs: "MKC",
-          scheduledTime: "1400",
+          scheduledTime: "1310",
           problem: false,
           statusLabel: "on time",
           stops: [
-            { crs: "EUS", arr: null, dep: "1200" },
+            { crs: "EUS", arr: null, dep: "1310" },
             { crs: "MKC", arr: "1400", dep: null },
           ],
         },
@@ -78,15 +78,15 @@ describe("network page", () => {
           serviceGuid: "late-1",
           originCrs: "CRE",
           destCrs: "STA",
-          reachedCrs: "STA",
-          nextCrs: null,
-          scheduledTime: "1200",
+          reachedCrs: "CRE",
+          nextCrs: "STA",
+          scheduledTime: "1310",
           problem: true,
           statusLabel: "delayed",
           eventTags: ["delayed", "call_forecast"],
           stops: [
-            { crs: "CRE", arr: null, dep: "1100" },
-            { crs: "STA", arr: "1250", dep: "1330" },
+            { crs: "CRE", arr: null, dep: "1310" },
+            { crs: "STA", arr: "1400", dep: null },
           ],
         },
       ],
@@ -104,7 +104,7 @@ describe("network page", () => {
     assert.equal(badge?.textContent, "EUS");
     assert.equal(
       root.querySelector('[data-service="on-time-1"]')?.getAttribute("data-at-station"),
-      "false",
+      "true",
     );
     assert.equal(
       root.querySelector('[data-service="late-1"]')?.getAttribute("data-at-station"),
@@ -118,8 +118,7 @@ describe("network page", () => {
     assert.match(text(root, "network-list"), /on time/);
     assert.match(text(root, "network-list"), /delayed/);
     assert.match(text(root, "network-list"), /EUS/);
-    assert.match(text(root, "network-list"), /1330/);
-    assert.match(text(root, "network-list"), /1400/);
+    assert.match(text(root, "network-list"), /1310/);
     assert.match(text(root, "network-list"), /no data/);
     assert.match(text(root, "disruptions"), /Disruption summary|delayed/);
     assert.match(text(root, "disruption-summary"), /delayed/);
@@ -241,7 +240,7 @@ describe("network page", () => {
             destCrs: "MKC",
             problem: false,
             stops: [
-              { crs: "EUS", arr: null, dep: "1200" },
+              { crs: "EUS", arr: null, dep: "1310" },
               { crs: "MKC", arr: "1400", dep: null },
             ],
           },
@@ -261,8 +260,8 @@ describe("network page", () => {
       const train = root.querySelector('[data-testid="train-marker"]');
       assert.ok(train);
       train.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
-      assert.equal(tip.textContent, "EUSMKC-1200");
-      assert.equal(train.getAttribute("data-tip"), "EUSMKC-1200");
+      assert.equal(tip.textContent, "EUSMKC-1310");
+      assert.equal(train.getAttribute("data-tip"), "EUSMKC-1310");
       svg.dispatchEvent(new PointerEvent("pointerdown", { button: 0, bubbles: true, pointerId: 1 }));
       assert.equal(svg.classList.contains("is-panning"), false);
       svg.dispatchEvent(new PointerEvent("pointerdown", {
@@ -406,7 +405,7 @@ describe("network page", () => {
     vm.routePreview = { serviceGuid: "1M45" };
     const root = render(vm);
     assert.ok(root.querySelector(".network-map.has-route-preview"));
-    assert.match(text(root, "route-preview-card"), /SELECTED TRAIN: 1M45/);
+    assert.match(text(root, "route-preview-card"), /SELECTED TRAIN: EUSBHM-1200/);
     assert.match(text(root, "route-preview-card"), /Delayed \+14m/);
     assert.ok(root.querySelector(".schedule-row.is-preview"));
   });
@@ -477,12 +476,154 @@ describe("route detail page", () => {
     assert.match(text(root, "selected-route"), /Tracking train 1M45/);
     assert.match(text(root, "route-stats"), /Visible trains:/);
     assert.ok(root.querySelector('[data-testid="route-strip"]'));
-    assert.match(text(root, "selected-entity-card"), /1M45/);
+    assert.match(text(root, "selected-entity-card"), /EUSBHM-1200/);
+    assert.doesNotMatch(text(root, "selected-entity-card"), /SELECTED TRAIN: 1M45/);
+    assert.match(text(root, "selected-entity-card"), /Current Location:/);
+    assert.match(text(root, "selected-entity-card"), /Train length:/);
+    assert.ok(root.querySelector('[data-testid="journey-stops"]'));
+    assert.ok(root.querySelector('[data-testid="journey-updates"]'));
     assert.ok(root.querySelector('[data-testid="route-other-trains"]'));
-    assert.doesNotMatch(text(root, "route-other-trains"), /AM11/);
+    assert.match(text(root, "route-other-trains"), /EUSBHM-1100/);
+    assert.doesNotMatch(text(root, "route-other-trains"), /2A08|AM11/);
     assert.equal(root.querySelectorAll('[data-service="AM11"]').length, 0);
     assert.ok(root.querySelector('[data-testid="route-stations"]'));
     assert.ok(root.querySelector('[data-testid="open-network"]'));
+  });
+
+  it("shows between-station location with journey percent and schedule platforms", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.page = "route";
+    vm.diagramHeld = heldDiagram([["EUS", "WFJ", "MKC", "BHM"]]);
+    vm.routeTrack = {
+      kind: "train",
+      serviceGuid: "1M45",
+      lastWindowKey: null,
+    };
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "1M45",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          reachedCrs: "EUS",
+          nextCrs: "MKC",
+          scheduledTime: "1300",
+          problem: false,
+          statusLabel: "on time",
+          stops: [
+            { crs: "EUS", arr: null, dep: "1000", platform: "1" },
+            { crs: "MKC", arr: "1200", dep: "1205", platform: "4" },
+            { crs: "BHM", arr: "1400", dep: null },
+          ],
+        },
+      ],
+    };
+    vm.serviceDetailHeld = {
+      serviceGuid: "1M45",
+      originCrs: "EUS",
+      destCrs: "BHM",
+      reachedCrs: "EUS",
+      nextCrs: "MKC",
+      scheduledTime: "1300",
+      problem: false,
+      statusLabel: "on time",
+      delayMinutes: null,
+      trainLength: 8,
+      stops: [
+        {
+          crs: "EUS",
+          publicArr: null,
+          publicDep: "1000",
+          forecastArr: null,
+          forecastDep: "1000",
+          platform: "1",
+          platformSuppressed: false,
+          trainLength: 8,
+        },
+        {
+          crs: "MKC",
+          publicArr: "1200",
+          publicDep: "1205",
+          forecastArr: "1200",
+          forecastDep: "1205",
+          platform: "4",
+          platformSuppressed: false,
+          trainLength: null,
+        },
+        {
+          crs: "BHM",
+          publicArr: "1400",
+          publicDep: null,
+          forecastArr: "1400",
+          forecastDep: null,
+          platform: null,
+          platformSuppressed: false,
+          trainLength: null,
+        },
+      ],
+      updates: [
+        {
+          id: 1,
+          updateType: "TS",
+          eventTags: ["platform_set"],
+          appliedAt: "2026-11-21T12:00:00.000Z",
+        },
+      ],
+      eventTags: ["platform_set"],
+    };
+    const root = render(vm, new Date("2026-11-06T11:00:00Z"));
+    const card = text(root, "selected-entity-card");
+    assert.match(card, /SELECTED TRAIN: EUSBHM-1000/);
+    assert.match(card, /1205 Milton Keynes Central to Birmingham New Street/);
+    assert.doesNotMatch(card, /London Euston to Birmingham/);
+    assert.match(card, /→/);
+    assert.match(card, /\(\d+%\)/);
+    assert.match(card, /Train length: 8/);
+    assert.match(text(root, "journey-stops"), /4/);
+    assert.match(text(root, "journey-updates"), /platform/);
+  });
+
+  it("shows schedule Plat from stop platform instead of hardcoded no data", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.page = "network";
+    vm.diagramHeld = heldDiagram([["EUS", "MKC", "BHM"]]);
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "1M45",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          reachedCrs: "MKC",
+          scheduledTime: "1400",
+          problem: false,
+          statusLabel: "on time",
+          stops: [
+            { crs: "EUS", arr: null, dep: "1200" },
+            { crs: "MKC", arr: "1400", dep: "1405", platform: "3" },
+            { crs: "BHM", arr: "1600", dep: null },
+          ],
+        },
+      ],
+    };
+    const root = render(vm, new Date("2026-11-06T14:02:00Z"));
+    const row = root.querySelector('[data-testid="schedule-row"]');
+    assert.ok(row);
+    assert.match(row?.textContent ?? "", /3/);
+    assert.doesNotMatch(row?.textContent ?? "", /no data/);
   });
 
   it("shows Focus beside Show all when a station schedule focus is set", () => {

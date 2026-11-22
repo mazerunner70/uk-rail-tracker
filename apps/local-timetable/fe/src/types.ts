@@ -6,12 +6,6 @@ export type LoadProgress = {
   sentence: string;
 };
 
-export type NetworkStop = {
-  crs?: string;
-  arr: string | null;
-  dep: string | null;
-};
-
 export type StatusLabel = "cancelled" | "deactivated" | "delayed" | "on time";
 
 /** Matches server EventTag / kafka-parsing §6. */
@@ -33,6 +27,49 @@ export type EventTag =
   | "rerouted"
   | "associated"
   | "alert";
+
+export type NetworkStop = {
+  crs?: string;
+  arr: string | null;
+  dep: string | null;
+  platform?: string | null;
+  platformSuppressed?: boolean;
+  trainLength?: number | null;
+};
+
+export type ServiceDetailStop = {
+  crs?: string;
+  publicArr: string | null;
+  publicDep: string | null;
+  forecastArr: string | null;
+  forecastDep: string | null;
+  platform: string | null;
+  platformSuppressed: boolean;
+  trainLength: number | null;
+};
+
+export type ServiceUpdateRow = {
+  id: number;
+  updateType: string;
+  eventTags: EventTag[];
+  appliedAt: string;
+};
+
+export type ServiceDetail = {
+  serviceGuid: string;
+  originCrs: string;
+  destCrs: string;
+  reachedCrs: string | null;
+  nextCrs: string | null;
+  scheduledTime: string | null;
+  problem: boolean;
+  statusLabel: StatusLabel;
+  delayMinutes: number | null;
+  trainLength: number | null;
+  stops: ServiceDetailStop[];
+  updates: ServiceUpdateRow[];
+  eventTags: EventTag[];
+};
 
 export type NetworkTrain = {
   serviceGuid: string;

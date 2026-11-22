@@ -204,6 +204,20 @@ export function selectedProgress(
   return placeOnSpine(place, spine)?.progress ?? null;
 }
 
+/** Progress 0–1 along the train's own calling-point CRS spine (full journey). */
+export function journeyProgress(
+  train: { stops?: readonly { crs?: string; arr: string | null; dep: string | null }[] },
+  nowHhmm: string,
+): number | null {
+  const spine = (train.stops ?? [])
+    .map((stop) => stop.crs)
+    .filter((crs): crs is string => Boolean(crs));
+  if (spine.length < 2) return null;
+  const place = placeTrain(train.stops ?? [], nowHhmm);
+  if (!place) return null;
+  return placeOnSpine(place, spine)?.progress ?? null;
+}
+
 export const WINDOW_RADIUS = 5;
 
 export function windowKeyForPlace(place: TrainPlace): string {

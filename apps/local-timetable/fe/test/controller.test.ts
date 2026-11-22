@@ -17,6 +17,8 @@ import {
   syncRouteWindowKey,
   updatesPerMinute,
   routeVisibleTrains,
+  markerVisibleTrains,
+  dueToDepartWithin,
   visibleNetworkTrains,
   visiblePairTrains,
   nextScheduleFocus,
@@ -32,6 +34,7 @@ function stubApi(handlers: Partial<ApiClient>): ApiClient {
     getLoadProgress: handlers.getLoadProgress ?? fail,
     getNetwork: handlers.getNetwork ?? fail,
     getNetworkMap: handlers.getNetworkMap ?? fail,
+    getService: handlers.getService ?? fail,
     postPair: handlers.postPair ?? fail,
   };
 }
@@ -331,6 +334,52 @@ describe("network derivations", () => {
     assert.deepEqual(
       visibleNetworkTrains(vm, now).map((train) => train.serviceGuid),
       ["earlier", "on-the-hour", "later"],
+    );
+  });
+
+  it("shows triangle markers only for departures in the next 15 minutes", () => {
+    const soon = {
+      serviceGuid: "soon",
+      originCrs: "EUS",
+      destCrs: "MKC",
+      problem: false,
+      stops: [
+        { crs: "EUS", arr: null, dep: "1310" },
+        { crs: "MKC", arr: "1400", dep: null },
+      ],
+    };
+    const later = {
+      serviceGuid: "later",
+      originCrs: "EUS",
+      destCrs: "MKC",
+      problem: false,
+      stops: [
+        { crs: "EUS", arr: null, dep: "1340" },
+        { crs: "MKC", arr: "1430", dep: null },
+      ],
+    };
+    const moving = {
+      serviceGuid: "moving",
+      originCrs: "EUS",
+      destCrs: "MKC",
+      problem: false,
+      stops: [
+        { crs: "EUS", arr: null, dep: "1200" },
+        { crs: "MKC", arr: "1400", dep: null },
+      ],
+    };
+    assert.equal(dueToDepartWithin(soon, "1300"), true);
+    assert.equal(dueToDepartWithin(later, "1300"), false);
+    assert.equal(dueToDepartWithin(moving, "1300"), false);
+    assert.deepEqual(
+      markerVisibleTrains([soon, later, moving], "1300").map((train) => train.serviceGuid),
+      ["soon"],
+    );
+    assert.deepEqual(
+      markerVisibleTrains([soon, later, moving], "1300", "moving").map(
+        (train) => train.serviceGuid,
+      ),
+      ["soon", "moving"],
     );
   });
 

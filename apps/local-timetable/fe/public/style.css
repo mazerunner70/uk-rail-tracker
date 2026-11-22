@@ -661,6 +661,8 @@ th {
 .route-footer .journey-card {
   position: static;
   width: auto;
+  max-height: 28rem;
+  overflow: auto;
 }
 
 .journey-card-title {
@@ -694,6 +696,34 @@ th {
   gap: 0.45rem;
   margin: 0.25rem 0;
   font-size: 0.9rem;
+}
+
+.journey-stops {
+  width: 100%;
+  margin: 0.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.journey-stops th,
+.journey-stops td {
+  padding: 0.2rem 0.3rem;
+  text-align: left;
+  border-bottom: 1px solid #243044;
+}
+
+.journey-stop.is-current td,
+.journey-stop.is-hop td {
+  background: #182636;
+}
+
+.journey-updates {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  max-height: 8rem;
+  overflow: auto;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .dot {

@@ -26,6 +26,7 @@ import {
   selectedRouteTrain,
   systemAlertsMessage,
   londonHhmm,
+  markerVisibleTrains,
   routeVisibleTrains,
   visibleNetworkTrains,
   visiblePairTrains,
@@ -54,6 +55,7 @@ import {
   corridorTouchesSpine,
   spinePath,
   stationAggregates,
+  journeyProgress,
   stripLayout,
   trainsOnSpine,
   type SegmentSeverity,
@@ -62,10 +64,19 @@ import {
 } from "./routeStrip.js";
 import { placeTrain } from "./networkMap.js";
 import {
+  serviceShortLabel,
   serviceShortLabelsForGuids,
   trainLabelMap,
 } from "./serviceLabel.js";
-import type { NetworkDiagram, NetworkTrain, PairTrain, StatusLabel } from "./types.js";
+import type {
+  NetworkDiagram,
+  NetworkStop,
+  NetworkTrain,
+  PairTrain,
+  ServiceDetail,
+  ServiceDetailStop,
+  StatusLabel,
+} from "./types.js";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -125,7 +136,7 @@ function networkStatusWord(train: NetworkTrain): HTMLElement {
 }
 
 function textCell(text: string, className = "mono"): HTMLElement {
-  return el("td", { class: className }, [text]);
+  return el("td", className ? { class: className } : {}, [text]);
 }
 
 function intervalField(vm: ScreenViewModel): HTMLElement {
@@ -228,7 +239,12 @@ function scheduleTable(vm: ScreenViewModel, now: Date): HTMLElement {
   return table;
 }
 
-function delayStatusText(train: NetworkTrain): string {
+function delayStatusText(train: {
+  reachedCrs?: string | null;
+  delayMinutes?: number | null;
+  statusLabel?: StatusLabel;
+  problem: boolean;
+}): string {
   const where = train.reachedCrs ? stationName(train.reachedCrs) : "route";
   if (train.delayMinutes != null && train.delayMinutes > 0) {
     return `Delayed +${train.delayMinutes}m at ${where}`;
@@ -238,17 +254,226 @@ function delayStatusText(train: NetworkTrain): string {
   return `${label} at ${where}`;
 }
 
-function journeyCard(train: NetworkTrain, progress: number | null, testId: string): HTMLElement {
-  const origin = stationName(train.originCrs ?? "");
-  const dest = stationName(train.destCrs ?? "");
+function platformDisplay(stop: {
+  platform?: string | null;
+  platformSuppressed?: boolean;
+} | null | undefined): string {
+  if (!stop) return "no data";
+  if (stop.platform) return stop.platform;
+  if (stop.platformSuppressed) return "suppressed";
+  return "no data";
+}
+
+function trainPlatformLabel(train: NetworkTrain): string {
+  const stops = train.stops ?? [];
+  const reached = stops.find((stop) => stop.crs === train.reachedCrs);
+  const fromReached = platformDisplay(reached);
+  if (fromReached !== "no data") return fromReached;
+  const next = stops.find((stop) => stop.crs === train.nextCrs);
+  const fromNext = platformDisplay(next);
+  if (fromNext !== "no data") return fromNext;
+  const known = stops.find((stop) => stop.platform);
+  return platformDisplay(known);
+}
+
+function currentLocationText(
+  train: { stops?: NetworkStop[]; originCrs?: string | null },
+  nowHhmm: string,
+): string {
+  const place = placeTrain(train.stops ?? [], nowHhmm);
+  if (!place) {
+    return stationName(train.originCrs ?? "") || "unknown";
+  }
+  if (place.atStation) {
+    return `at ${stationName(place.crs)}`;
+  }
+  const progress = journeyProgress(train, nowHhmm);
+  const hop = `${stationName(place.fromCrs)} → ${stationName(place.toCrs)}`;
+  if (progress === null) return hop;
+  const pct = Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  return `${hop} (${pct}%)`;
+}
+
+function hhmmOrDash(value: string | null | undefined): string {
+  return value && value.length > 0 ? value : "----";
+}
+
+function stopLateness(
+  publicTime: string | null,
+  forecastTime: string | null,
+): string {
+  if (!publicTime || !forecastTime || publicTime === forecastTime) return "";
+  const pub =
+    Number(publicTime.slice(0, 2)) * 60 + Number(publicTime.slice(2, 4));
+  const live =
+    Number(forecastTime.slice(0, 2)) * 60 + Number(forecastTime.slice(2, 4));
+  let late = live - pub;
+  if (late < -12 * 60) late += 24 * 60;
+  if (late > 12 * 60) late -= 24 * 60;
+  if (late === 0) return "";
+  return late > 0 ? `+${late}m` : `${late}m`;
+}
+
+function callingPointRows(
+  detail: ServiceDetail | null,
+  train: NetworkTrain,
+  nowHhmm: string,
+): HTMLElement {
+  const place = placeTrain(train.stops ?? [], nowHhmm);
+  const table = el("table", {
+    class: "journey-stops",
+    "data-testid": "journey-stops",
+  });
+  table.append(
+    el("thead", {}, [
+      el("tr", {}, [
+        el("th", {}, ["Sta"]),
+        el("th", {}, ["Booked"]),
+        el("th", {}, ["Live"]),
+        el("th", {}, ["Plat"]),
+        el("th", {}, ["Late"]),
+      ]),
+    ]),
+  );
+  const body = el("tbody", {});
+  if (detail && detail.stops.length > 0) {
+    for (const stop of detail.stops) {
+      body.append(detailStopRow(stop, place));
+    }
+  } else {
+    for (const stop of train.stops ?? []) {
+      body.append(networkStopRow(stop, place));
+    }
+  }
+  table.append(body);
+  return table;
+}
+
+function stopRowHighlight(
+  crs: string | undefined,
+  place: ReturnType<typeof placeTrain>,
+): string {
+  if (!crs || !place) return "journey-stop";
+  if (place.atStation && place.crs === crs) return "journey-stop is-current";
+  if (
+    !place.atStation
+    && (place.fromCrs === crs || place.toCrs === crs)
+  ) {
+    return "journey-stop is-hop";
+  }
+  return "journey-stop";
+}
+
+function detailStopRow(
+  stop: ServiceDetailStop,
+  place: ReturnType<typeof placeTrain>,
+): HTMLElement {
+  const booked = `${hhmmOrDash(stop.publicArr)}/${hhmmOrDash(stop.publicDep)}`;
+  const live = `${hhmmOrDash(stop.forecastArr ?? stop.publicArr)}/${hhmmOrDash(stop.forecastDep ?? stop.publicDep)}`;
+  const late =
+    stopLateness(stop.publicArr, stop.forecastArr)
+    || stopLateness(stop.publicDep, stop.forecastDep);
+  return el("tr", { class: stopRowHighlight(stop.crs, place) }, [
+    textCell(stop.crs ?? ""),
+    textCell(booked),
+    textCell(live),
+    textCell(platformDisplay(stop), platformDisplay(stop) === "no data" ? "nodata" : ""),
+    textCell(late || "—"),
+  ]);
+}
+
+function networkStopRow(
+  stop: NetworkStop,
+  place: ReturnType<typeof placeTrain>,
+): HTMLElement {
+  return el("tr", { class: stopRowHighlight(stop.crs, place) }, [
+    textCell(stop.crs ?? ""),
+    textCell(`${hhmmOrDash(stop.arr)}/${hhmmOrDash(stop.dep)}`),
+    textCell(`${hhmmOrDash(stop.arr)}/${hhmmOrDash(stop.dep)}`),
+    textCell(platformDisplay(stop), platformDisplay(stop) === "no data" ? "nodata" : ""),
+    textCell("—"),
+  ]);
+}
+
+function updatesTimeline(detail: ServiceDetail | null): HTMLElement {
+  if (!detail || detail.updates.length === 0) {
+    return el("p", { class: "journey-meta muted", "data-testid": "journey-updates" }, [
+      "No live updates recorded",
+    ]);
+  }
+  const list = el("ul", {
+    class: "journey-updates",
+    "data-testid": "journey-updates",
+  });
+  const recent = detail.updates.slice(-12).reverse();
+  for (const update of recent) {
+    const tags =
+      update.eventTags.length > 0
+        ? update.eventTags.map((tag) => eventTagLabel(tag)).join(", ")
+        : update.updateType;
+    list.append(
+      el("li", {}, [
+        el("span", { class: "mono" }, [update.appliedAt.slice(11, 19) || update.appliedAt]),
+        " ",
+        update.updateType,
+        " — ",
+        tags,
+      ]),
+    );
+  }
+  return list;
+}
+
+/** Station that owns scheduledTime: current if at a stop, else the one being approached. */
+function approachingStationCrs(
+  train: NetworkTrain,
+  detail: ServiceDetail | null,
+  nowHhmm: string,
+): string | null {
+  const place = placeTrain(train.stops ?? [], nowHhmm);
+  if (place?.atStation) return place.crs;
+  if (place && !place.atStation) return place.toCrs;
+  return train.nextCrs ?? detail?.nextCrs ?? null;
+}
+
+function approachingRouteLabel(
+  train: NetworkTrain,
+  detail: ServiceDetail | null,
+  nowHhmm: string,
+): string {
+  const destCrs = train.destCrs ?? detail?.destCrs ?? "";
+  const dest = stationName(destCrs);
+  const time = train.scheduledTime ?? detail?.scheduledTime ?? "----";
+  const atCrs = approachingStationCrs(train, detail, nowHhmm);
+  if (!atCrs) {
+    return `(${time} to ${dest})`;
+  }
+  if (atCrs === destCrs) {
+    return `(${time} ${stationName(atCrs)})`;
+  }
+  return `(${time} ${stationName(atCrs)} to ${dest})`;
+}
+
+function journeyCard(
+  train: NetworkTrain,
+  progress: number | null,
+  testId: string,
+  nowHhmm: string,
+  detail: ServiceDetail | null = null,
+): HTMLElement {
   const pct = progress === null ? 0 : Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  const delaySource = detail ?? train;
+  const length =
+    detail?.trainLength
+    ?? train.stops?.map((stop) => stop.trainLength).find((n) => n != null)
+    ?? null;
   return el("aside", { class: "journey-card", "data-testid": testId }, [
     el("p", { class: "journey-card-title" }, [
       "SELECTED TRAIN: ",
-      el("span", { class: "mono" }, [train.serviceGuid]),
+      el("span", { class: "mono" }, [serviceShortLabel(train)]),
     ]),
     el("p", { class: "journey-card-sub" }, [
-      `(${train.scheduledTime ?? "----"} ${origin} to ${dest})`,
+      approachingRouteLabel(train, detail, nowHhmm),
     ]),
     el("div", { class: "journey-progress", "aria-hidden": "true" }, [
       el("div", {
@@ -259,15 +484,22 @@ function journeyCard(train: NetworkTrain, progress: number | null, testId: strin
     el("p", { class: "journey-meta" }, [
       el("span", { class: "dot location" }, []),
       " Current Location: ",
-      stationName(train.reachedCrs ?? train.originCrs ?? ""),
+      currentLocationText(train, nowHhmm),
     ]),
     el("p", { class: "journey-meta" }, [
       el("span", {
-        class: train.problem ? "dot severe" : "dot ok",
+        class: delaySource.problem ? "dot severe" : "dot ok",
       }, []),
       " ",
-      delayStatusText(train),
+      delayStatusText(delaySource),
     ]),
+    el("p", { class: "journey-meta" }, [
+      "Train length: ",
+      length != null ? `${length}` : el("span", { class: "nodata" }, ["no data"]),
+    ]),
+    callingPointRows(detail, train, nowHhmm),
+    el("p", { class: "journey-card-sub" }, ["Updates"]),
+    updatesTimeline(detail),
   ]);
 }
 
@@ -291,7 +523,10 @@ function scheduleRow(train: NetworkTrain, previewed: boolean): HTMLElement {
     textCell(train.nextCrs ?? ""),
     scheduledCell(train.scheduledTime),
     el("td", {}, [networkStatusWord(train)]),
-    textCell("no data", "nodata"),
+    (() => {
+      const plat = trainPlatformLabel(train);
+      return textCell(plat, plat === "no data" ? "nodata" : "");
+    })(),
   ]);
 }
 
@@ -739,17 +974,20 @@ function mountMap(svg: SVGSVGElement, map: Schematic): void {
   const camera = mapCamera ?? fittedCamera(svg, map);
   paintFrame(svg, map, camera);
   mapResize?.disconnect();
-  if (typeof ResizeObserver !== "undefined") {
-    mapResize = new ResizeObserver(() => {
+  // Detached test renders: skip observers/rAF so the runner event loop can drain.
+  if (svg.isConnected) {
+    if (typeof ResizeObserver !== "undefined") {
+      mapResize = new ResizeObserver(() => {
+        if (!svg.isConnected) return;
+        paintFrame(svg, map, mapCamera ?? fittedCamera(svg, map));
+      });
+      mapResize.observe(svg);
+    }
+    requestAnimationFrame(() => {
       if (!svg.isConnected) return;
       paintFrame(svg, map, mapCamera ?? fittedCamera(svg, map));
     });
-    mapResize.observe(svg);
   }
-  requestAnimationFrame(() => {
-    if (!svg.isConnected) return;
-    paintFrame(svg, map, mapCamera ?? fittedCamera(svg, map));
-  });
   bindMapGestures(svg, map);
 }
 
@@ -898,7 +1136,11 @@ function networkOverview(vm: ScreenViewModel, now: Date): HTMLElement {
   }
   const nowHhmm = londonHhmm(now);
   const live = withLiveFields(vm.networkHeld.trains, nowHhmm);
-  const map = markersOn(vm.diagramHeld, live, nowHhmm);
+  const map = markersOn(
+    vm.diagramHeld,
+    markerVisibleTrains(live, nowHhmm, vm.routePreview?.serviceGuid ?? null),
+    nowHhmm,
+  );
   const spine = previewSpine(vm);
   const byGuid = trainLabelMap(live);
   const svg = schematicSvg(
@@ -923,7 +1165,9 @@ function networkOverview(vm: ScreenViewModel, now: Date): HTMLElement {
   ];
   if (preview && spine) {
     const layout = stripLayout(spine, [preview], nowHhmm, preview.serviceGuid);
-    frameChildren.push(journeyCard(preview, layout.selectedProgress, "route-preview-card"));
+    frameChildren.push(
+      journeyCard(preview, layout.selectedProgress, "route-preview-card", nowHhmm, null),
+    );
   }
   const frame = el("div", { class: "map-frame" }, frameChildren);
   mountMap(svg, map);
@@ -1256,7 +1500,7 @@ function otherTrainsPane(
   for (const train of others) {
     list.append(
       el("li", { class: "route-side-row", "data-service": train.serviceGuid }, [
-        el("span", { class: "mono" }, [train.serviceGuid]),
+        el("span", { class: "mono" }, [serviceShortLabel(train)]),
         el("span", {}, [statusWordText(train.statusLabel, train.problem)]),
         el("span", { class: "muted" }, [placeLabel(train, nowHhmm)]),
       ]),
@@ -1312,7 +1556,7 @@ function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
   const byGuid = trainLabelMap(live);
   const layout = stripLayout(
     resolved.window,
-    onWindow,
+    markerVisibleTrains(onWindow, nowHhmm, resolved.selectedServiceGuid),
     nowHhmm,
     resolved.selectedServiceGuid,
   );
@@ -1327,7 +1571,15 @@ function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
     track.kind === "station"
       ? stationEntityCard(track.crs, aggregates)
       : selected
-        ? journeyCard(selected, layout.selectedProgress, "selected-entity-card")
+        ? journeyCard(
+            selected,
+            layout.selectedProgress,
+            "selected-entity-card",
+            nowHhmm,
+            vm.serviceDetailHeld?.serviceGuid === selected.serviceGuid
+              ? vm.serviceDetailHeld
+              : null,
+          )
         : el("aside", { class: "journey-card", "data-testid": "selected-entity-card" }, [
             el("p", { class: "nodata" }, ["Tracked train not in feed"]),
           ]);
