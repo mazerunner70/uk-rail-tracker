@@ -68,7 +68,14 @@ describe("decodePushPort", () => {
     };
     assert.equal(extractSsd(item), "260517");
     assert.deepEqual(locationForecasts(item), [
-      { tiploc: "CREWE", forecastArr: "0950", forecastDep: "0951" },
+      {
+        tiploc: "CREWE",
+        forecastArr: "0950",
+        forecastDep: "0951",
+        platform: null,
+        platformSuppressed: null,
+        trainLength: null,
+      },
     ]);
   });
 

@@ -5,6 +5,7 @@ import { readNetworkDiagram } from "./networkSchematicFile.js";
 import { CONTAINER_SQLITE_PATH } from "./paths.js";
 import {
   buildNetworkAnswer,
+  buildServiceDetailAnswer,
   buildStationPairAnswer,
   isFailureBody,
 } from "./trainViews.js";
@@ -152,6 +153,29 @@ export function createTimetableHttpServer(
         });
         if (isFailureBody(answer)) {
           sendJson(res, 503, answer, req);
+          return;
+        }
+        sendJson(res, 200, answer, req);
+        return;
+      }
+
+      if (url === "/service" && req.method === "GET") {
+        const serviceGuid = requestUrl.searchParams.get("guid")?.trim() ?? "";
+        if (!serviceGuid) {
+          sendJson(res, 400, { error: "guid required" }, req);
+          return;
+        }
+        const answer = buildServiceDetailAnswer({
+          sqlitePath,
+          clock,
+          serviceGuid,
+        });
+        if (isFailureBody(answer)) {
+          sendJson(res, 503, answer, req);
+          return;
+        }
+        if ("missing" in answer) {
+          sendJson(res, 404, { error: "service not found" }, req);
           return;
         }
         sendJson(res, 200, answer, req);

@@ -98,6 +98,11 @@ async function startApp(auth: CognitoAuth | null): Promise<void> {
     return controller.openRouteFromTrain(train);
   }
 
+  function afterOpenTrainRoute(): void {
+    refresh();
+    void controller.refreshServiceDetail().then(refresh);
+  }
+
   function firstServiceGuid(raw: string | null): string | null {
     if (!raw) return null;
     const ids = raw.split(",").filter((id) => id.length > 0);
@@ -156,7 +161,7 @@ async function startApp(auth: CognitoAuth | null): Promise<void> {
       if (scheduleRow instanceof HTMLElement) {
         const guid = scheduleRow.getAttribute("data-service");
         if (guid && openTrainByGuid(guid)) {
-          refresh();
+          afterOpenTrainRoute();
           return;
         }
       }
@@ -165,7 +170,7 @@ async function startApp(auth: CognitoAuth | null): Promise<void> {
         const guid = firstServiceGuid(routeTrain.getAttribute("data-service"));
         if (guid) {
           controller.selectRouteTrain(guid);
-          refresh();
+          afterOpenTrainRoute();
           return;
         }
       }
@@ -175,7 +180,7 @@ async function startApp(auth: CognitoAuth | null): Promise<void> {
         if (train) {
           const guid = firstServiceGuid(train.getAttribute("data-service"));
           if (guid && openTrainByGuid(guid)) {
-            refresh();
+            afterOpenTrainRoute();
             return;
           }
         }

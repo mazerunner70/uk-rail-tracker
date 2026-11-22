@@ -68,8 +68,22 @@ describe("trainViews network", () => {
     assert.equal(answer.trains[0]?.statusLabel, "on time");
     assert.equal(answer.trains[0]?.delayMinutes, null);
     assert.deepEqual(answer.trains[0]?.stops, [
-      { crs: "CRE", arr: null, dep: "0925" },
-      { crs: "BHM", arr: "1025", dep: "1025" },
+      {
+        crs: "CRE",
+        arr: null,
+        dep: "0925",
+        platform: null,
+        platformSuppressed: false,
+        trainLength: null,
+      },
+      {
+        crs: "BHM",
+        arr: "1025",
+        dep: "1025",
+        platform: null,
+        platformSuppressed: false,
+        trainLength: null,
+      },
     ]);
     assert.equal("graph" in answer, false);
     assert.equal("fraction" in answer.trains[0]!, false);

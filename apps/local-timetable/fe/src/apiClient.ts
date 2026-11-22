@@ -4,6 +4,7 @@ import type {
   LoadProgress,
   NetworkAnswer,
   NetworkDiagram,
+  ServiceDetail,
   StationPairAnswer,
 } from "./types.js";
 
@@ -17,6 +18,7 @@ export type ApiClient = {
   getLoadProgress: () => Promise<AskResult<LoadProgress>>;
   getNetwork: (cursor?: NetworkCursor) => Promise<AskResult<NetworkAnswer>>;
   getNetworkMap: () => Promise<AskResult<NetworkDiagram>>;
+  getService: (serviceGuid: string) => Promise<AskResult<ServiceDetail>>;
   postPair: (earlierCrs: string, laterCrs: string) => Promise<AskResult<StationPairAnswer>>;
 };
 
@@ -116,6 +118,10 @@ export function createApiClient(
     },
     getNetworkMap: () =>
       ask<NetworkDiagram>("/network-map", { method: "GET" }, true),
+    getService: (serviceGuid: string) => {
+      const params = new URLSearchParams({ guid: serviceGuid });
+      return ask<ServiceDetail>(`/service?${params}`, { method: "GET" }, true);
+    },
     postPair: (earlierCrs, laterCrs) =>
       ask<StationPairAnswer>(
         "/pair",

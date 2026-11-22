@@ -13,6 +13,9 @@ export type ForecastWrite = {
   tiploc: string;
   forecastArr: string | null;
   forecastDep: string | null;
+  platform: string | null;
+  platformSuppressed: boolean | null;
+  trainLength: number | null;
 };
 
 export type OverlayWrite =

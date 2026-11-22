@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { placeTrain } from "../src/networkMap.js";
 import {
   corridorThroughStation,
+  journeyProgress,
   segmentSeverity,
   spinePath,
   stationAggregates,
@@ -146,6 +147,20 @@ describe("placeOnSpine / stripLayout", () => {
     assert.ok(layout.selectedProgress !== null);
     assert.ok(Math.abs((layout.selectedProgress ?? 0) - 1 / 3) < 1e-9);
     assert.ok(layout.segments.every((segment) => segment.severity === "on-time"));
+  });
+
+  it("reports journeyProgress along the train calling-point spine", () => {
+    const service = train("1M45", "EUS", "BHM", [
+      stop("EUS", null, "1000"),
+      stop("MKC", "1200", "1205"),
+      stop("BHM", "1300", null),
+    ]);
+    const mid = journeyProgress(service, "1100");
+    assert.ok(mid !== null);
+    assert.ok(Math.abs((mid ?? 0) - 0.25) < 1e-9);
+    const atMkc = journeyProgress(service, "1202");
+    assert.ok(atMkc !== null);
+    assert.ok(Math.abs((atMkc ?? 0) - 0.5) < 1e-9);
   });
 
   it("reads origin and dest from stops when fields are missing", () => {
