@@ -85,6 +85,82 @@ describe("overlayWriter", () => {
     fixture.db.close();
   });
 
+  it("persists platform and train length from TS and overwrites on later update", async () => {
+    const fixture = await createFixtureDb();
+    dirs.push(fixture.dir);
+    openOverlayWriter(fixture.db);
+    insertLmJourney(fixture.db, { serviceGuid: "guid-1", trainUid: "C16922" });
+    const payload = (plat: string, length: number) => ({
+      uR: {
+        TS: {
+          rid: "r-plat",
+          uid: "C16922",
+          ssd: calendarSsd(),
+          Location: {
+            tpl: "CREWE",
+            dep: { et: "09:30" },
+            plat: { "": plat },
+            length,
+          },
+        },
+      },
+    });
+    applyKafkaMessage(fixture.db, payload("3", 8), {
+      topic: "t",
+      partition: 0,
+      offset: 1,
+    });
+    let point = fixture.db
+      .prepare(
+        `SELECT platform, platform_suppressed, train_length FROM calling_points
+         WHERE tiploc = 'CREWE'`,
+      )
+      .get() as {
+        platform: string;
+        platform_suppressed: number;
+        train_length: number;
+      };
+    assert.equal(point.platform, "3");
+    assert.equal(point.platform_suppressed, 0);
+    assert.equal(point.train_length, 8);
+
+    applyKafkaMessage(fixture.db, payload("4", 10), {
+      topic: "t",
+      partition: 0,
+      offset: 2,
+    });
+    point = fixture.db
+      .prepare(
+        `SELECT platform, train_length FROM calling_points WHERE tiploc = 'CREWE'`,
+      )
+      .get() as { platform: string; train_length: number };
+    assert.equal(point.platform, "4");
+    assert.equal(point.train_length, 10);
+    fixture.db.close();
+
+    const network = buildNetworkAnswer({
+      sqlitePath: fixture.sqlitePath,
+      clock,
+    });
+    assert.ok(!("reason" in network));
+    if ("reason" in network) return;
+    const stop = network.trains[0]?.stops.find((row) => row.crs === "CRE");
+    assert.equal(stop?.platform, "4");
+    assert.equal(stop?.trainLength, 10);
+
+    const { buildServiceDetailAnswer } = await import("../../src/trainViews.js");
+    const detail = buildServiceDetailAnswer({
+      sqlitePath: fixture.sqlitePath,
+      clock,
+      serviceGuid: "guid-1",
+    });
+    assert.ok(!("reason" in detail) && !("missing" in detail));
+    if ("reason" in detail || "missing" in detail) return;
+    assert.equal(detail.trainLength, 10);
+    assert.equal(detail.stops[0]?.platform, "4");
+    assert.ok(detail.updates.length >= 2);
+  });
+
   it("replaces a second TS forecast for the same stop", async () => {
     const fixture = await createFixtureDb();
     dirs.push(fixture.dir);

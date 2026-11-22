@@ -9,7 +9,10 @@ import {
   type PushPortItem,
   type UpdateType,
 } from "./pushPort.js";
-import { ensureAppliedUpdatesEventTags } from "./sqliteSchema.js";
+import {
+  ensureAppliedUpdatesEventTags,
+  ensureCallingPointLiveFields,
+} from "./sqliteSchema.js";
 
 export type KafkaMessageMeta = {
   topic: string;
@@ -102,22 +105,38 @@ function applyTs(
   for (const forecast of write.forecasts) {
     const row = db
       .prepare(
-        `SELECT id, forecast_arr, forecast_dep FROM calling_points
+        `SELECT id, forecast_arr, forecast_dep, platform, platform_suppressed, train_length
+         FROM calling_points
          WHERE service_guid = ? AND tiploc = ?`,
       )
       .get(write.serviceGuid, forecast.tiploc) as
-      | { id: number; forecast_arr: string | null; forecast_dep: string | null }
+      | {
+          id: number;
+          forecast_arr: string | null;
+          forecast_dep: string | null;
+          platform: string | null;
+          platform_suppressed: number;
+          train_length: number | null;
+        }
       | undefined;
     if (!row) {
       continue;
     }
     db.prepare(
       `UPDATE calling_points
-       SET forecast_arr = ?, forecast_dep = ?
+       SET forecast_arr = ?, forecast_dep = ?,
+           platform = ?, platform_suppressed = ?, train_length = ?
        WHERE id = ?`,
     ).run(
       forecast.forecastArr ?? row.forecast_arr,
       forecast.forecastDep ?? row.forecast_dep,
+      forecast.platform ?? row.platform,
+      forecast.platformSuppressed === null
+        ? row.platform_suppressed
+        : forecast.platformSuppressed
+          ? 1
+          : 0,
+      forecast.trainLength ?? row.train_length,
       row.id,
     );
   }
@@ -200,6 +219,7 @@ export function openOverlayWriter(db: BetterSqlite3.Database): void {
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
   ensureAppliedUpdatesEventTags(db);
+  ensureCallingPointLiveFields(db);
 }
 
 export function kafkaOffsetsForTopic(

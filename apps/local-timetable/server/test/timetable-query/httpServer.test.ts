@@ -101,6 +101,55 @@ describe("httpServer", () => {
     assert.equal(json.trains.length, 1);
   });
 
+  it("returns service detail for a fixture guid", async () => {
+    const { sqlitePath, db } = await createFixtureDb();
+    insertLmJourney(db);
+    db.prepare(
+      `UPDATE calling_points SET platform = '2', train_length = 5
+       WHERE service_guid = 'lm-guid-1' AND crs = 'CRE'`,
+    ).run();
+    db.close();
+    const server = createTimetableHttpServer({
+      sqlitePath,
+      clock: {
+        calendarYyymmdd: () => CALENDAR_YYMMDD,
+        nowHhmm: () => "1000",
+      },
+      load: {
+        startLoad: () => ({ state: "idle", sentence: "idle" }),
+        getLoadProgress: () => ({ state: "idle", sentence: "idle" }),
+      },
+    });
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("no port");
+    }
+    const missing = await request(address.port, "GET", "/service");
+    const response = await request(
+      address.port,
+      "GET",
+      "/service?guid=lm-guid-1",
+    );
+    const absent = await request(
+      address.port,
+      "GET",
+      "/service?guid=does-not-exist",
+    );
+    server.close();
+    assert.equal(missing.status, 400);
+    assert.equal(response.status, 200);
+    const json = response.json as {
+      serviceGuid: string;
+      stops: Array<{ platform: string | null; trainLength: number | null }>;
+      trainLength: number | null;
+    };
+    assert.equal(json.serviceGuid, "lm-guid-1");
+    assert.equal(json.stops[0]?.platform, "2");
+    assert.equal(json.trainLength, 5);
+    assert.equal(absent.status, 404);
+  });
+
   it("returns 503 for network-map when the schematic file is missing", async () => {
     const { sqlitePath, db } = await createFixtureDb();
     insertLmJourney(db);

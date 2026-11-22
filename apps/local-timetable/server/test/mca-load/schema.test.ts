@@ -4,7 +4,11 @@ import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { createRequire } from "node:module";
-import { SCHEMA_SQL, TABLE_NAMES } from "../../src/sqliteSchema.js";
+import {
+  SCHEMA_SQL,
+  TABLE_NAMES,
+  ensureCallingPointLiveFields,
+} from "../../src/sqliteSchema.js";
 import { openReplacement } from "../../src/sqliteReplacer.js";
 import { assertThrowawaySqlite, HOST_SQLITE, tempDir } from "./helpers.js";
 
@@ -89,6 +93,37 @@ describe("sqlite schema", () => {
     const names = cols.map((col) => col.name);
     assert.ok(names.includes("forecast_arr"));
     assert.ok(names.includes("forecast_dep"));
+    assert.ok(names.includes("platform"));
+    assert.ok(names.includes("platform_suppressed"));
+    assert.ok(names.includes("train_length"));
+  });
+
+  it("ensureCallingPointLiveFields upgrades older calling_points tables", async () => {
+    const dir = await tempDir();
+    const sqlitePath = join(dir, "timetable.sqlite");
+    const db = new BetterSqlite(sqlitePath);
+    db.exec(`
+      CREATE TABLE calling_points (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        service_guid TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        tiploc TEXT NOT NULL,
+        crs TEXT,
+        public_arr TEXT,
+        public_dep TEXT,
+        forecast_arr TEXT,
+        forecast_dep TEXT,
+        activity TEXT NOT NULL DEFAULT 'call'
+      );
+    `);
+    ensureCallingPointLiveFields(db);
+    const names = (
+      db.prepare("PRAGMA table_info(calling_points)").all() as Array<{ name: string }>
+    ).map((col) => col.name);
+    db.close();
+    assert.ok(names.includes("platform"));
+    assert.ok(names.includes("platform_suppressed"));
+    assert.ok(names.includes("train_length"));
   });
 
   it("does not open the host timetable.sqlite", async () => {

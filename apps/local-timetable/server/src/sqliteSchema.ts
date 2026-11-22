@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS calling_points (
     public_dep TEXT,
     forecast_arr TEXT,
     forecast_dep TEXT,
+    platform TEXT,
+    platform_suppressed INTEGER NOT NULL DEFAULT 0,
+    train_length INTEGER,
     activity TEXT NOT NULL DEFAULT 'call',
     UNIQUE (service_guid, seq)
 );
@@ -89,16 +92,38 @@ export const TABLE_NAMES = [
 
 export const OVERLAY_TABLES = ["kafka_offsets", "applied_updates"] as const;
 
-/** Upgrade existing DBs created before event_tags existed. */
-export function ensureAppliedUpdatesEventTags(db: {
+type SchemaDb = {
   pragma: (source: string) => unknown;
   exec: (source: string) => unknown;
-}): void {
-  const cols = db.pragma(`table_info(applied_updates)`) as Array<{ name: string }>;
-  if (cols.some((col) => col.name === "event_tags")) {
+};
+
+function columnNames(db: SchemaDb, table: string): Set<string> {
+  const cols = db.pragma(`table_info(${table})`) as Array<{ name: string }>;
+  return new Set(cols.map((col) => col.name));
+}
+
+/** Upgrade existing DBs created before event_tags existed. */
+export function ensureAppliedUpdatesEventTags(db: SchemaDb): void {
+  if (columnNames(db, "applied_updates").has("event_tags")) {
     return;
   }
   db.exec(
     `ALTER TABLE applied_updates ADD COLUMN event_tags TEXT NOT NULL DEFAULT '[]'`,
   );
+}
+
+/** Upgrade existing DBs created before platform / train_length live fields. */
+export function ensureCallingPointLiveFields(db: SchemaDb): void {
+  const names = columnNames(db, "calling_points");
+  if (!names.has("platform")) {
+    db.exec(`ALTER TABLE calling_points ADD COLUMN platform TEXT`);
+  }
+  if (!names.has("platform_suppressed")) {
+    db.exec(
+      `ALTER TABLE calling_points ADD COLUMN platform_suppressed INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!names.has("train_length")) {
+    db.exec(`ALTER TABLE calling_points ADD COLUMN train_length INTEGER`);
+  }
 }

@@ -17,7 +17,14 @@ describe("planOverlayWrite", () => {
     assert.equal(write.kind, "TS");
     if (write.kind === "TS") {
       assert.deepEqual(write.forecasts, [
-        { tiploc: "CREWE", forecastArr: null, forecastDep: "0926" },
+        {
+          tiploc: "CREWE",
+          forecastArr: null,
+          forecastDep: "0926",
+          platform: null,
+          platformSuppressed: null,
+          trainLength: null,
+        },
       ]);
       assert.ok(write.tags.includes("call_forecast"));
     }

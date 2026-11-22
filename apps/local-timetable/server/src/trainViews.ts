@@ -15,13 +15,50 @@ import {
 
 export type FailureBody = { reason: ReadFailureReason };
 
+export type StatusLabel = "cancelled" | "deactivated" | "delayed" | "on time";
+
 export type NetworkStop = {
   crs?: string;
   arr: string | null;
   dep: string | null;
+  platform?: string | null;
+  platformSuppressed?: boolean;
+  trainLength?: number | null;
 };
 
-export type StatusLabel = "cancelled" | "deactivated" | "delayed" | "on time";
+export type ServiceDetailStop = {
+  crs?: string;
+  publicArr: string | null;
+  publicDep: string | null;
+  forecastArr: string | null;
+  forecastDep: string | null;
+  platform: string | null;
+  platformSuppressed: boolean;
+  trainLength: number | null;
+};
+
+export type ServiceUpdateRow = {
+  id: number;
+  updateType: string;
+  eventTags: EventTag[];
+  appliedAt: string;
+};
+
+export type ServiceDetailAnswer = {
+  serviceGuid: string;
+  originCrs: string;
+  destCrs: string;
+  reachedCrs: string | null;
+  nextCrs: string | null;
+  scheduledTime: string | null;
+  problem: boolean;
+  statusLabel: StatusLabel;
+  delayMinutes: number | null;
+  trainLength: number | null;
+  stops: ServiceDetailStop[];
+  updates: ServiceUpdateRow[];
+  eventTags: EventTag[];
+};
 
 export type NetworkTrainRow = {
   serviceGuid: string;
@@ -76,6 +113,9 @@ type PointRow = {
   public_dep: string | null;
   forecast_arr: string | null;
   forecast_dep: string | null;
+  platform: string | null;
+  platform_suppressed: number;
+  train_length: number | null;
 };
 
 function trackedHhmm(forecast: string | null, published: string | null): string | null {
@@ -86,11 +126,45 @@ function toTrackedStop(point: PointRow): NetworkStop {
   const stop: NetworkStop = {
     arr: trackedHhmm(point.forecast_arr, point.public_arr),
     dep: trackedHhmm(point.forecast_dep, point.public_dep),
+    platform: point.platform,
+    platformSuppressed: point.platform_suppressed === 1,
+    trainLength: point.train_length,
   };
   if (point.crs) {
     return { ...stop, crs: point.crs };
   }
   return stop;
+}
+
+function toDetailStop(point: PointRow): ServiceDetailStop {
+  const stop: ServiceDetailStop = {
+    publicArr: point.public_arr,
+    publicDep: point.public_dep,
+    forecastArr: point.forecast_arr,
+    forecastDep: point.forecast_dep,
+    platform: point.platform,
+    platformSuppressed: point.platform_suppressed === 1,
+    trainLength: point.train_length,
+  };
+  if (point.crs) {
+    return { ...stop, crs: point.crs };
+  }
+  return stop;
+}
+
+function runTrainLength(points: PointRow[]): number | null {
+  let latest: number | null = null;
+  for (const point of points) {
+    if (point.train_length != null) {
+      latest = point.train_length;
+    }
+  }
+  return latest;
+}
+
+function callingPointColumns(db: BetterSqlite3.Database): Set<string> {
+  const info = db.pragma(`table_info(calling_points)`) as Array<{ name: string }>;
+  return new Set(info.map((col) => col.name));
 }
 
 function mapStopRow(row: PointRow): StopRow {
@@ -153,9 +227,36 @@ function loadCallingPoints(
   db: BetterSqlite3.Database,
   serviceGuid: string,
 ): PointRow[] {
+  const cols = callingPointColumns(db);
+  const hasLive =
+    cols.has("platform")
+    && cols.has("platform_suppressed")
+    && cols.has("train_length");
+  if (!hasLive) {
+    const legacy = db
+      .prepare(
+        `SELECT seq, crs, public_arr, public_dep, forecast_arr, forecast_dep
+         FROM calling_points WHERE service_guid = ? ORDER BY seq ASC`,
+      )
+      .all(serviceGuid) as Array<{
+        seq: number;
+        crs: string | null;
+        public_arr: string | null;
+        public_dep: string | null;
+        forecast_arr: string | null;
+        forecast_dep: string | null;
+      }>;
+    return legacy.map((row) => ({
+      ...row,
+      platform: null,
+      platform_suppressed: 0,
+      train_length: null,
+    }));
+  }
   return db
     .prepare(
-      `SELECT seq, crs, public_arr, public_dep, forecast_arr, forecast_dep
+      `SELECT seq, crs, public_arr, public_dep, forecast_arr, forecast_dep,
+              platform, platform_suppressed, train_length
        FROM calling_points WHERE service_guid = ? ORDER BY seq ASC`,
     )
     .all(serviceGuid) as PointRow[];
@@ -473,8 +574,101 @@ export function buildStationPairAnswer(
   }
 }
 
+function loadServiceUpdates(
+  db: BetterSqlite3.Database,
+  serviceGuid: string,
+): ServiceUpdateRow[] {
+  const info = db.pragma(`table_info(applied_updates)`) as Array<{ name: string }>;
+  const hasTags = info.some((col) => col.name === "event_tags");
+  const rows = hasTags
+    ? (db
+        .prepare(
+          `SELECT id, update_type, event_tags, applied_at
+           FROM applied_updates
+           WHERE service_guid = ?
+           ORDER BY id ASC`,
+        )
+        .all(serviceGuid) as Array<{
+          id: number;
+          update_type: string;
+          event_tags: string | null;
+          applied_at: string;
+        }>)
+    : (db
+        .prepare(
+          `SELECT id, update_type, applied_at
+           FROM applied_updates
+           WHERE service_guid = ?
+           ORDER BY id ASC`,
+        )
+        .all(serviceGuid) as Array<{
+          id: number;
+          update_type: string;
+          applied_at: string;
+        }>).map((row) => ({ ...row, event_tags: null as string | null }));
+  return rows.map((row) => ({
+    id: row.id,
+    updateType: row.update_type,
+    eventTags: parseEventTagsJson(row.event_tags),
+    appliedAt: row.applied_at,
+  }));
+}
+
+export function buildServiceDetailAnswer(
+  deps: TrainViewDeps & { serviceGuid: string },
+): ServiceDetailAnswer | FailureBody | { missing: true } {
+  const clock = deps.clock ?? defaultLondonClock();
+  const opened = openTimetableReader(deps.sqlitePath, {
+    openDatabase: deps.openDatabase,
+  });
+  if (!opened.ok) {
+    return { reason: opened.reason };
+  }
+  const db = opened.db;
+  try {
+    const journey = db
+      .prepare(
+        `SELECT service_guid, status, origin_crs, dest_crs
+         FROM journeys WHERE service_guid = ?`,
+      )
+      .get(deps.serviceGuid) as
+      | {
+          service_guid: string;
+          status: string;
+          origin_crs: string;
+          dest_crs: string;
+        }
+      | undefined;
+    if (!journey) {
+      return { missing: true };
+    }
+    const nowHhmm = clock.nowHhmm();
+    const points = loadCallingPoints(db, journey.service_guid);
+    const stopRows = points.map(mapStopRow);
+    const { reachedCrs, nextCrs } = reachedAndNextCrs(stopRows, nowHhmm);
+    const eventTagsByGuid = loadEventTagsByGuid(db);
+    return {
+      serviceGuid: journey.service_guid,
+      originCrs: journey.origin_crs,
+      destCrs: journey.dest_crs,
+      reachedCrs,
+      nextCrs,
+      scheduledTime: scheduledHhmm(stopRows, nowHhmm),
+      problem: journeyHasProblem(journey.status, points),
+      statusLabel: journeyStatusLabel(journey.status, points),
+      delayMinutes: delayMinutesFromPoints(points),
+      trainLength: runTrainLength(points),
+      stops: points.map(toDetailStop),
+      updates: loadServiceUpdates(db, journey.service_guid),
+      eventTags: eventTagsByGuid.get(journey.service_guid) ?? [],
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export function isFailureBody(
-  body: NetworkAnswer | StationPairAnswer | FailureBody,
+  body: NetworkAnswer | StationPairAnswer | ServiceDetailAnswer | FailureBody | { missing: true },
 ): body is FailureBody {
   return "reason" in body;
 }
