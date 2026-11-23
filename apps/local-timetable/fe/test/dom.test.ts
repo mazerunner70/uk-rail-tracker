@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createInitialViewModel } from "../src/controller.js";
+import {
+  createInitialViewModel,
+  londonHhmm,
+  rebuildRouteLive,
+} from "../src/controller.js";
 import { isMobileViewport, renderApp, schedulePick } from "../src/dom.js";
 import { stationName } from "../src/stationNames.js";
 import type { ScreenViewModel } from "../src/controller.js";
@@ -9,6 +13,9 @@ import type { NetworkDiagram } from "../src/types.js";
 const londonAfternoon = new Date("2026-11-06T13:00:00Z");
 
 function render(vm: ScreenViewModel, now = londonAfternoon): HTMLElement {
+  if (vm.page === "route") {
+    rebuildRouteLive(vm, londonHhmm(now));
+  }
   const root = document.createElement("div");
   renderApp(root, vm, now);
   return root;
@@ -488,6 +495,73 @@ describe("route detail page", () => {
     assert.equal(root.querySelectorAll('[data-service="AM11"]').length, 0);
     assert.ok(root.querySelector('[data-testid="route-stations"]'));
     assert.ok(root.querySelector('[data-testid="open-network"]'));
+  });
+
+  it("hides origin trains more than 15 minutes from departure in Other Visible", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.page = "route";
+    vm.diagramHeld = heldDiagram([["EUS", "WFJ", "MKC", "BHM"]]);
+    vm.routeTrack = {
+      kind: "station",
+      crs: "WFJ",
+      lastWindowKey: null,
+    };
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "soon-origin",
+          originCrs: "WFJ",
+          destCrs: "SAA",
+          scheduledTime: "1310",
+          problem: false,
+          statusLabel: "on time",
+          stops: [
+            { crs: "WFJ", arr: null, dep: "1310" },
+            { crs: "SAA", arr: "1400", dep: null },
+          ],
+        },
+        {
+          serviceGuid: "later-origin",
+          originCrs: "WFJ",
+          destCrs: "SAA",
+          scheduledTime: "1400",
+          problem: false,
+          statusLabel: "on time",
+          stops: [
+            { crs: "WFJ", arr: null, dep: "1400" },
+            { crs: "SAA", arr: "1500", dep: null },
+          ],
+        },
+        {
+          serviceGuid: "moving",
+          originCrs: "EUS",
+          destCrs: "BHM",
+          scheduledTime: "1200",
+          problem: false,
+          statusLabel: "on time",
+          stops: [
+            { crs: "EUS", arr: null, dep: "1200" },
+            { crs: "WFJ", arr: "1240", dep: "1245" },
+            { crs: "BHM", arr: "1500", dep: null },
+          ],
+        },
+      ],
+    };
+    const root = render(vm);
+    const stripTrains = root.querySelectorAll('[data-testid="route-train"]').length;
+    assert.match(text(root, "route-stats"), new RegExp(`Visible trains: ${stripTrains}`));
+    assert.equal(stripTrains, 2);
+    assert.match(text(root, "route-other-trains"), /WFJSAA-1310/);
+    assert.match(text(root, "route-other-trains"), /EUSBHM-1200/);
+    assert.doesNotMatch(text(root, "route-other-trains"), /WFJSAA-1400|later-origin/);
+    assert.equal(root.querySelectorAll('[data-service="later-origin"]').length, 0);
   });
 
   it("shows between-station location with journey percent and schedule platforms", () => {

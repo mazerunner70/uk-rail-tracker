@@ -337,49 +337,65 @@ describe("network derivations", () => {
     );
   });
 
-  it("shows triangle markers only for departures in the next 15 minutes", () => {
+  it("applies the 15-minute marker window only at origin", () => {
     const soon = {
       serviceGuid: "soon",
       originCrs: "EUS",
-      destCrs: "MKC",
+      destCrs: "BHM",
       problem: false,
       stops: [
         { crs: "EUS", arr: null, dep: "1310" },
-        { crs: "MKC", arr: "1400", dep: null },
+        { crs: "MKC", arr: "1400", dep: "1402" },
+        { crs: "BHM", arr: "1500", dep: null },
       ],
     };
     const later = {
       serviceGuid: "later",
       originCrs: "EUS",
-      destCrs: "MKC",
+      destCrs: "BHM",
       problem: false,
       stops: [
         { crs: "EUS", arr: null, dep: "1340" },
-        { crs: "MKC", arr: "1430", dep: null },
+        { crs: "MKC", arr: "1430", dep: "1432" },
+        { crs: "BHM", arr: "1530", dep: null },
       ],
     };
     const moving = {
       serviceGuid: "moving",
       originCrs: "EUS",
-      destCrs: "MKC",
+      destCrs: "BHM",
       problem: false,
       stops: [
         { crs: "EUS", arr: null, dep: "1200" },
-        { crs: "MKC", arr: "1400", dep: null },
+        { crs: "MKC", arr: "1400", dep: "1402" },
+        { crs: "BHM", arr: "1500", dep: null },
+      ],
+    };
+    const atIntermediate = {
+      serviceGuid: "at-mkc",
+      originCrs: "EUS",
+      destCrs: "BHM",
+      problem: false,
+      stops: [
+        { crs: "EUS", arr: null, dep: "1200" },
+        { crs: "MKC", arr: "1255", dep: "1310" },
+        { crs: "BHM", arr: "1500", dep: null },
       ],
     };
     assert.equal(dueToDepartWithin(soon, "1300"), true);
     assert.equal(dueToDepartWithin(later, "1300"), false);
     assert.equal(dueToDepartWithin(moving, "1300"), false);
     assert.deepEqual(
-      markerVisibleTrains([soon, later, moving], "1300").map((train) => train.serviceGuid),
-      ["soon"],
-    );
-    assert.deepEqual(
-      markerVisibleTrains([soon, later, moving], "1300", "moving").map(
+      markerVisibleTrains([soon, later, moving, atIntermediate], "1300").map(
         (train) => train.serviceGuid,
       ),
-      ["soon", "moving"],
+      ["soon", "moving", "at-mkc"],
+    );
+    assert.deepEqual(
+      markerVisibleTrains([soon, later, moving], "1300", "later").map(
+        (train) => train.serviceGuid,
+      ),
+      ["soon", "later", "moving"],
     );
   });
 
@@ -880,6 +896,51 @@ describe("route page controller", () => {
     c.clearRoute();
     assert.equal(c.getView().page, "network");
     assert.equal(c.getView().routeTrack, null);
+    assert.equal(c.getView().routeLive, null);
+  });
+
+  it("builds routeLive when opening a route with diagram and network held", () => {
+    const c = createScreenController(stubApi({}));
+    c.getView().diagramHeld = {
+      loadDay: "20261106",
+      hdSequence: "1",
+      stations: ["EUS", "BHM"].map((crs, rank) => ({
+        crs,
+        x: rank * 100,
+        y: 80,
+        rank,
+        lane: 0,
+      })),
+      corridors: [
+        {
+          from: "EUS",
+          to: "BHM",
+          via: [],
+          points: [
+            { x: 0, y: 80 },
+            { x: 100, y: 80 },
+          ],
+          color: "#7dffa8",
+        },
+      ],
+      width: 200,
+      height: 160,
+    };
+    c.getView().networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [train],
+    };
+    assert.equal(c.openRouteFromTrain(train), true);
+    const live = c.getView().routeLive;
+    assert.ok(live);
+    assert.equal(live!.selectedServiceGuid, "1M45");
+    assert.ok(live!.selected);
+    assert.equal(live!.selected!.serviceGuid, "1M45");
+    assert.equal(live!.layout.selectedProgress, live!.selected!.journeyProgress);
   });
 
   it("refuses a train with no usable ends", () => {

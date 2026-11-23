@@ -25,6 +25,12 @@ import {
   windowKeyForPlace,
 } from "./routeStrip.js";
 import { placeTrain } from "./networkMap.js";
+import {
+  buildRouteLiveModel,
+  placementStopsFromRows,
+  rowsForTrain,
+  type RouteLiveModel,
+} from "./routeLiveModel.js";
 
 export type ScreenPhase = "empty" | "loaded";
 export type ScreenPage = "network" | "pair" | "route";
@@ -64,6 +70,8 @@ export type ScreenViewModel = {
   routePreview: RoutePreview | null;
   routeTrack: RouteTrack | null;
   serviceDetailHeld: ServiceDetail | null;
+  /** Immutable route snapshot; panes read this only. Rebuilt on poll / open / select. */
+  routeLive: RouteLiveModel | null;
   pairFilter: PairFilter;
   emptyMessage: string;
   updatesPerMin: number | null;
@@ -126,7 +134,7 @@ export function createInitialViewModel(): ScreenViewModel {
     page: "network",
     loadProgress: null,
     loadSucceeded: false,
-    intervalSeconds: 30,
+    intervalSeconds: 15,
     commsLost: false,
     statusLine: "",
     networkHeld: null,
@@ -142,6 +150,7 @@ export function createInitialViewModel(): ScreenViewModel {
     routePreview: null,
     routeTrack: null,
     serviceDetailHeld: null,
+    routeLive: null,
     pairFilter: "all",
     emptyMessage: "",
     updatesPerMin: null,
@@ -411,6 +420,7 @@ export function openRouteFromTrainOn(
     vm.serviceDetailHeld = null;
   }
   syncRouteWindowKey(vm);
+  rebuildRouteLive(vm);
   return true;
 }
 
@@ -428,7 +438,44 @@ export function openRouteFromStationOn(
   vm.routePreview = null;
   vm.serviceDetailHeld = null;
   vm.page = "route";
+  rebuildRouteLive(vm);
   return true;
+}
+
+/** Rebuild the route pane snapshot from held network + service detail. */
+export function rebuildRouteLive(
+  vm: ScreenViewModel,
+  nowHhmm = londonHhmm(),
+): void {
+  if (vm.page !== "route" || !vm.routeTrack || !vm.diagramHeld || !vm.networkHeld) {
+    vm.routeLive = null;
+    return;
+  }
+  const resolved = resolveRouteWindow(vm, nowHhmm);
+  if (!resolved || resolved.window.length === 0) {
+    vm.routeLive = null;
+    return;
+  }
+  const live = routeVisibleTrains(
+    vm.networkHeld.trains,
+    nowHhmm,
+    resolved.selectedServiceGuid,
+  );
+  const selectedHeld = resolved.selectedServiceGuid
+    ? (() => {
+        const held = findHeldTrain(vm, resolved.selectedServiceGuid);
+        if (!held) return null;
+        return withLiveFields([held], nowHhmm)[0] ?? held;
+      })()
+    : null;
+  vm.routeLive = buildRouteLiveModel(
+    nowHhmm,
+    resolved,
+    live,
+    markerVisibleTrains,
+    selectedHeld,
+    vm.serviceDetailHeld,
+  );
 }
 
 export type ResolvedRouteWindow = {
@@ -460,7 +507,14 @@ export function resolveRouteWindow(
   const ends = trainEnds(train);
   if (!ends) return null;
   const spine = spinePath(diagram, ends.originCrs, ends.destCrs);
-  const place = placeTrain(train.stops ?? [], nowHhmm);
+  const detail =
+    vm.serviceDetailHeld?.serviceGuid === track.serviceGuid
+      ? vm.serviceDetailHeld
+      : null;
+  const place = placeTrain(
+    placementStopsFromRows(rowsForTrain(train, detail)),
+    nowHhmm,
+  );
   if (!place) {
     return {
       window: windowAroundStation(diagram, ends.originCrs),
@@ -535,6 +589,7 @@ export function createScreenController(api: ApiClient): ScreenController {
       if (page !== "route") {
         vm.routeTrack = null;
         vm.serviceDetailHeld = null;
+        vm.routeLive = null;
       }
       if (page !== "network") {
         vm.routePreview = null;
@@ -571,6 +626,7 @@ export function createScreenController(api: ApiClient): ScreenController {
       vm.routeTrack = null;
       vm.routePreview = null;
       vm.serviceDetailHeld = null;
+      vm.routeLive = null;
       vm.page = "network";
     },
     setPairFilter(filter: PairFilter) {
@@ -639,10 +695,14 @@ export function createScreenController(api: ApiClient): ScreenController {
       if (vm.page === "route") {
         syncRouteWindowKey(vm);
         await loadServiceDetail(vm, api);
+        rebuildRouteLive(vm);
+      } else {
+        vm.routeLive = null;
       }
     },
     async refreshServiceDetail() {
       await loadServiceDetail(vm, api);
+      rebuildRouteLive(vm);
     },
   };
 }
@@ -669,7 +729,7 @@ async function loadServiceDetail(
 /** Live schedule window: ±2 hours of London now (same rule on network list and route strip). */
 export const SCHEDULE_WINDOW_MINUTES = 120;
 
-/** Triangle markers on network map + route strip: only imminent departures. */
+/** Triangle markers at origin only: hide until departure is within this window. */
 export const MARKER_DEPARTURE_WINDOW_MINUTES = 15;
 
 function includesQuery(value: string | null | undefined, query: string): boolean {
@@ -740,17 +800,36 @@ export function dueToDepartWithin(
   return offset !== null && offset >= 0 && offset <= windowMinutes;
 }
 
-/** Trains drawn as triangles: due to depart in the next 15 minutes (plus optional tracked). */
+/** Standing at the first public calling point (not yet left origin). */
+export function atOriginStation(train: NetworkTrain, nowHhmm: string): boolean {
+  const stops = train.stops ?? [];
+  const place = placeTrain(stops, nowHhmm);
+  if (!place || !place.atStation || place.fromCrs !== null) return false;
+  const origin =
+    train.originCrs
+    ?? stops.find((stop) => stop.crs)?.crs
+    ?? null;
+  return origin !== null && place.crs === origin;
+}
+
+/**
+ * Route strip markers + Other Visible list: already underway always; at origin
+ * only when due to depart within 15 minutes (plus optional tracked).
+ */
 export function markerVisibleTrains(
   trains: readonly NetworkTrain[],
   nowHhmm: string,
   alwaysIncludeGuid: string | null = null,
 ): NetworkTrain[] {
-  return trains.filter(
-    (train) =>
-      (alwaysIncludeGuid !== null && train.serviceGuid === alwaysIncludeGuid)
-      || dueToDepartWithin(train, nowHhmm),
-  );
+  return trains.filter((train) => {
+    if (alwaysIncludeGuid !== null && train.serviceGuid === alwaysIncludeGuid) {
+      return true;
+    }
+    const place = placeTrain(train.stops ?? [], nowHhmm);
+    if (!place) return false;
+    if (atOriginStation(train, nowHhmm)) return dueToDepartWithin(train, nowHhmm);
+    return true;
+  });
 }
 
 function matchesSearch(train: NetworkTrain, query: string): boolean {

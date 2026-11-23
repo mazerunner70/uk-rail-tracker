@@ -21,17 +21,18 @@ import {
   pairListMessage,
   previewTrain,
   problemTrains,
-  resolveRouteWindow,
   routeTrackTitle,
-  selectedRouteTrain,
   systemAlertsMessage,
   londonHhmm,
   markerVisibleTrains,
-  routeVisibleTrains,
   visibleNetworkTrains,
   visiblePairTrains,
   withLiveFields,
 } from "./controller.js";
+import {
+  asNetworkTrain,
+  type RouteLiveTrain,
+} from "./routeLiveModel.js";
 import {
   clampCamera,
   formatViewBox,
@@ -54,15 +55,13 @@ import {
   corridorHopsOnSpine,
   corridorTouchesSpine,
   spinePath,
-  stationAggregates,
   journeyProgress,
   stripLayout,
-  trainsOnSpine,
   type SegmentSeverity,
   type StationAggregate,
   type StripLayout,
 } from "./routeStrip.js";
-import { placeTrain } from "./networkMap.js";
+import { placeTrain, type TrainPlace } from "./networkMap.js";
 import {
   serviceShortLabel,
   serviceShortLabelsForGuids,
@@ -294,6 +293,22 @@ function currentLocationText(
   return `${hop} (${pct}%)`;
 }
 
+function liveLocationText(live: RouteLiveTrain): string {
+  const place = live.place;
+  if (!place) {
+    return stationName(live.originCrs ?? "") || "unknown";
+  }
+  if (place.atStation) {
+    return `at ${stationName(place.crs)}`;
+  }
+  const hop = `${stationName(place.fromCrs)} → ${stationName(place.toCrs)}`;
+  if (live.journeyProgress === null) return hop;
+  const pct = Math.round(
+    Math.min(1, Math.max(0, live.journeyProgress)) * 100,
+  );
+  return `${hop} (${pct}%)`;
+}
+
 function hhmmOrDash(value: string | null | undefined): string {
   return value && value.length > 0 ? value : "----";
 }
@@ -317,9 +332,8 @@ function stopLateness(
 function callingPointRows(
   detail: ServiceDetail | null,
   train: NetworkTrain,
-  nowHhmm: string,
+  place: TrainPlace | null,
 ): HTMLElement {
-  const place = placeTrain(train.stops ?? [], nowHhmm);
   const table = el("table", {
     class: "journey-stops",
     "data-testid": "journey-stops",
@@ -351,7 +365,7 @@ function callingPointRows(
 
 function stopRowHighlight(
   crs: string | undefined,
-  place: ReturnType<typeof placeTrain>,
+  place: TrainPlace | null,
 ): string {
   if (!crs || !place) return "journey-stop";
   if (place.atStation && place.crs === crs) return "journey-stop is-current";
@@ -366,7 +380,7 @@ function stopRowHighlight(
 
 function detailStopRow(
   stop: ServiceDetailStop,
-  place: ReturnType<typeof placeTrain>,
+  place: TrainPlace | null,
 ): HTMLElement {
   const booked = `${hhmmOrDash(stop.publicArr)}/${hhmmOrDash(stop.publicDep)}`;
   const live = `${hhmmOrDash(stop.forecastArr ?? stop.publicArr)}/${hhmmOrDash(stop.forecastDep ?? stop.publicDep)}`;
@@ -384,7 +398,7 @@ function detailStopRow(
 
 function networkStopRow(
   stop: NetworkStop,
-  place: ReturnType<typeof placeTrain>,
+  place: TrainPlace | null,
 ): HTMLElement {
   return el("tr", { class: stopRowHighlight(stop.crs, place) }, [
     textCell(stop.crs ?? ""),
@@ -426,25 +440,30 @@ function updatesTimeline(detail: ServiceDetail | null): HTMLElement {
 
 /** Station that owns scheduledTime: current if at a stop, else the one being approached. */
 function approachingStationCrs(
-  train: NetworkTrain,
-  detail: ServiceDetail | null,
-  nowHhmm: string,
+  place: TrainPlace | null,
+  nextCrs: string | null,
 ): string | null {
-  const place = placeTrain(train.stops ?? [], nowHhmm);
   if (place?.atStation) return place.crs;
   if (place && !place.atStation) return place.toCrs;
-  return train.nextCrs ?? detail?.nextCrs ?? null;
+  return nextCrs;
 }
 
 function approachingRouteLabel(
-  train: NetworkTrain,
+  train: {
+    destCrs?: string | null;
+    scheduledTime?: string | null;
+    nextCrs?: string | null;
+  },
+  place: TrainPlace | null,
   detail: ServiceDetail | null,
-  nowHhmm: string,
 ): string {
   const destCrs = train.destCrs ?? detail?.destCrs ?? "";
   const dest = stationName(destCrs);
   const time = train.scheduledTime ?? detail?.scheduledTime ?? "----";
-  const atCrs = approachingStationCrs(train, detail, nowHhmm);
+  const atCrs = approachingStationCrs(
+    place,
+    train.nextCrs ?? detail?.nextCrs ?? null,
+  );
   if (!atCrs) {
     return `(${time} to ${dest})`;
   }
@@ -454,6 +473,7 @@ function approachingRouteLabel(
   return `(${time} ${stationName(atCrs)} to ${dest})`;
 }
 
+/** Network preview card — still derives place at paint time (out of route model scope). */
 function journeyCard(
   train: NetworkTrain,
   progress: number | null,
@@ -461,6 +481,7 @@ function journeyCard(
   nowHhmm: string,
   detail: ServiceDetail | null = null,
 ): HTMLElement {
+  const place = placeTrain(train.stops ?? [], nowHhmm);
   const pct = progress === null ? 0 : Math.round(Math.min(1, Math.max(0, progress)) * 100);
   const delaySource = detail ?? train;
   const length =
@@ -473,7 +494,7 @@ function journeyCard(
       el("span", { class: "mono" }, [serviceShortLabel(train)]),
     ]),
     el("p", { class: "journey-card-sub" }, [
-      approachingRouteLabel(train, detail, nowHhmm),
+      approachingRouteLabel(train, place, detail),
     ]),
     el("div", { class: "journey-progress", "aria-hidden": "true" }, [
       el("div", {
@@ -497,7 +518,55 @@ function journeyCard(
       "Train length: ",
       length != null ? `${length}` : el("span", { class: "nodata" }, ["no data"]),
     ]),
-    callingPointRows(detail, train, nowHhmm),
+    callingPointRows(detail, train, place),
+    el("p", { class: "journey-card-sub" }, ["Updates"]),
+    updatesTimeline(detail),
+  ]);
+}
+
+/** Route entity card — reads placement / progress / status from RouteLiveTrain only. */
+function routeJourneyCard(
+  live: RouteLiveTrain,
+  detail: ServiceDetail | null,
+  testId: string,
+): HTMLElement {
+  const progress = live.journeyProgress;
+  const pct =
+    progress === null ? 0 : Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  const train = asNetworkTrain(live);
+  return el("aside", { class: "journey-card", "data-testid": testId }, [
+    el("p", { class: "journey-card-title" }, [
+      "SELECTED TRAIN: ",
+      el("span", { class: "mono" }, [serviceShortLabel(train)]),
+    ]),
+    el("p", { class: "journey-card-sub" }, [
+      approachingRouteLabel(live, live.place, detail),
+    ]),
+    el("div", { class: "journey-progress", "aria-hidden": "true" }, [
+      el("div", {
+        class: "journey-progress-bar",
+        style: `width:${pct}%`,
+      }),
+    ]),
+    el("p", { class: "journey-meta" }, [
+      el("span", { class: "dot location" }, []),
+      " Current Location: ",
+      liveLocationText(live),
+    ]),
+    el("p", { class: "journey-meta" }, [
+      el("span", {
+        class: live.problem ? "dot severe" : "dot ok",
+      }, []),
+      " ",
+      delayStatusText(live),
+    ]),
+    el("p", { class: "journey-meta" }, [
+      "Train length: ",
+      live.trainLength != null
+        ? `${live.trainLength}`
+        : el("span", { class: "nodata" }, ["no data"]),
+    ]),
+    callingPointRows(detail, train, live.place),
     el("p", { class: "journey-card-sub" }, ["Updates"]),
     updatesTimeline(detail),
   ]);
@@ -1446,13 +1515,6 @@ function routeStripSvg(
   return svg;
 }
 
-function placeLabel(train: NetworkTrain, nowHhmm: string): string {
-  const place = placeTrain(train.stops ?? [], nowHhmm);
-  if (!place) return "unknown";
-  if (place.atStation) return `at ${stationName(place.crs)}`;
-  return `${stationName(place.fromCrs)} → ${stationName(place.toCrs)}`;
-}
-
 function statusWordText(label: StatusLabel | undefined, problem: boolean): string {
   if (label) return label;
   return problem ? "delayed" : "on time";
@@ -1485,10 +1547,16 @@ function stationEntityCard(
   ]);
 }
 
+function livePlaceLabel(live: RouteLiveTrain): string {
+  const place = live.place;
+  if (!place) return "unknown";
+  if (place.atStation) return `at ${stationName(place.crs)}`;
+  return `${stationName(place.fromCrs)} → ${stationName(place.toCrs)}`;
+}
+
 function otherTrainsPane(
-  trains: readonly NetworkTrain[],
+  trains: readonly RouteLiveTrain[],
   trackedGuid: string | null,
-  nowHhmm: string,
 ): HTMLElement {
   const others = trains.filter((train) => train.serviceGuid !== trackedGuid);
   if (others.length === 0) {
@@ -1500,9 +1568,9 @@ function otherTrainsPane(
   for (const train of others) {
     list.append(
       el("li", { class: "route-side-row", "data-service": train.serviceGuid }, [
-        el("span", { class: "mono" }, [serviceShortLabel(train)]),
+        el("span", { class: "mono" }, [serviceShortLabel(asNetworkTrain(train))]),
         el("span", {}, [statusWordText(train.statusLabel, train.problem)]),
-        el("span", { class: "muted" }, [placeLabel(train, nowHhmm)]),
+        el("span", { class: "muted" }, [livePlaceLabel(train)]),
       ]),
     );
   }
@@ -1531,37 +1599,22 @@ function stationsPane(aggregates: StationAggregate[]): HTMLElement {
   return panel("Stations", "route-stations", [list]);
 }
 
-function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
+function renderRoute(vm: ScreenViewModel, _now: Date): HTMLElement {
   const track = vm.routeTrack;
+  const model = vm.routeLive;
   if (!track || !vm.diagramHeld || !vm.networkHeld) {
     return el("div", { class: "page" }, [
       el("p", { class: "panel-message" }, ["Route unavailable"]),
       el("button", { type: "button", "data-testid": "open-network" }, ["Back to network"]),
     ]);
   }
-  const nowHhmm = londonHhmm(now);
-  const resolved = resolveRouteWindow(vm, nowHhmm);
-  if (!resolved || resolved.window.length === 0) {
+  if (!model || model.window.length === 0) {
     return el("div", { class: "page" }, [
       el("p", { class: "panel-message" }, ["Route window unavailable"]),
       el("button", { type: "button", "data-testid": "open-network" }, ["Back to network"]),
     ]);
   }
-  const live = routeVisibleTrains(
-    vm.networkHeld.trains,
-    nowHhmm,
-    resolved.selectedServiceGuid,
-  );
-  const onWindow = trainsOnSpine(live, resolved.window, nowHhmm);
-  const byGuid = trainLabelMap(live);
-  const layout = stripLayout(
-    resolved.window,
-    markerVisibleTrains(onWindow, nowHhmm, resolved.selectedServiceGuid),
-    nowHhmm,
-    resolved.selectedServiceGuid,
-  );
-  const selected = selectedRouteTrain(vm, now);
-  const aggregates = stationAggregates(resolved.window, onWindow, nowHhmm);
+  const byGuid = trainLabelMap(model.trainsOnStrip.map(asNetworkTrain));
   const title =
     track.kind === "station"
       ? `Tracking station ${stationName(track.crs)}`
@@ -1569,16 +1622,12 @@ function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
 
   const entityPane =
     track.kind === "station"
-      ? stationEntityCard(track.crs, aggregates)
-      : selected
-        ? journeyCard(
-            selected,
-            layout.selectedProgress,
+      ? stationEntityCard(track.crs, model.aggregates)
+      : model.selected
+        ? routeJourneyCard(
+            model.selected,
+            model.selectedDetail,
             "selected-entity-card",
-            nowHhmm,
-            vm.serviceDetailHeld?.serviceGuid === selected.serviceGuid
-              ? vm.serviceDetailHeld
-              : null,
           )
         : el("aside", { class: "journey-card", "data-testid": "selected-entity-card" }, [
             el("p", { class: "nodata" }, ["Tracked train not in feed"]),
@@ -1599,17 +1648,17 @@ function renderRoute(vm: ScreenViewModel, now: Date): HTMLElement {
         el("strong", {}, [title]),
       ]),
       el("div", { class: "route-stats", "data-testid": "route-stats" }, [
-        el("p", {}, [`Visible trains: ${onWindow.length}`]),
-        el("p", {}, [`Stations: ${resolved.window.length}`]),
+        el("p", {}, [`Visible trains: ${model.layout.markers.length}`]),
+        el("p", {}, [`Stations: ${model.window.length}`]),
       ]),
     ]),
     panel("Route & Live Track", "route-track", [
-      routeStripSvg(layout, resolved.selectedServiceGuid, byGuid),
+      routeStripSvg(model.layout, model.selectedServiceGuid, byGuid),
     ]),
     el("div", { class: "route-footer" }, [
       entityPane,
-      otherTrainsPane(onWindow, resolved.selectedServiceGuid, nowHhmm),
-      stationsPane(aggregates),
+      otherTrainsPane(model.trainsOnStrip, model.selectedServiceGuid),
+      stationsPane(model.aggregates),
     ]),
   ]);
 }
