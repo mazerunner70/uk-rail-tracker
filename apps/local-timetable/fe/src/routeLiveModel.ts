@@ -1,4 +1,5 @@
 import { placeTrain, type TrainPlace } from "./networkMap.js";
+import type { SideBranch } from "./journeySpine.js";
 import {
   journeyProgress,
   placeOnSpine,
@@ -40,6 +41,7 @@ export type RouteLiveModel = {
   window: string[];
   windowKey: string;
   selectedServiceGuid: string | null;
+  sideBranches: SideBranch[];
   trainsOnStrip: RouteLiveTrain[];
   selected: RouteLiveTrain | null;
   selectedDetail: ServiceDetail | null;
@@ -51,7 +53,30 @@ export type ResolvedRouteWindow = {
   window: string[];
   windowKey: string;
   selectedServiceGuid: string | null;
+  sideBranches: SideBranch[];
 };
+
+/** Trains whose live place falls on the window spine or any side branch. */
+export function trainsOnWindowOrBranches(
+  trains: readonly NetworkTrain[],
+  window: readonly string[],
+  sideBranches: readonly SideBranch[],
+  nowHhmm: string,
+): NetworkTrain[] {
+  const onSpine = trainsOnSpine(trains, window, nowHhmm);
+  if (sideBranches.length === 0) return onSpine;
+  const seen = new Set(onSpine.map((t) => t.serviceGuid));
+  const out = [...onSpine];
+  for (const branch of sideBranches) {
+    const branchSpine = [branch.junctionCrs, ...branch.stations];
+    for (const train of trainsOnSpine(trains, branchSpine, nowHhmm)) {
+      if (seen.has(train.serviceGuid)) continue;
+      seen.add(train.serviceGuid);
+      out.push(train);
+    }
+  }
+  return out;
+}
 
 export function networkStopsAsRows(stops: readonly NetworkStop[]): StopRow[] {
   return stops.map((stop, seq) => ({
@@ -206,12 +231,18 @@ export function buildRouteLiveModel(
       ? detail
       : null;
 
+  const sideBranches = resolved.sideBranches ?? [];
   const placed = withPlacementStops(
     routeVisible,
     resolved.selectedServiceGuid,
     selectedDetail,
   );
-  const onWindow = trainsOnSpine(placed, resolved.window, nowHhmm);
+  const onWindow = trainsOnWindowOrBranches(
+    placed,
+    resolved.window,
+    sideBranches,
+    nowHhmm,
+  );
   const visible = markerFilter(
     onWindow,
     nowHhmm,
@@ -232,13 +263,24 @@ export function buildRouteLiveModel(
     networkViews,
     nowHhmm,
     resolved.selectedServiceGuid,
+    sideBranches,
   );
   const onStripGuids = new Set(layout.markers.map((marker) => marker.serviceGuid));
   const trainsOnStrip = normalized.filter((train) =>
     onStripGuids.has(train.serviceGuid),
   );
+  const aggregateCrs: string[] = [];
+  const seenCrs = new Set<string>();
+  for (const crs of [
+    ...resolved.window,
+    ...sideBranches.flatMap((b) => b.stations),
+  ]) {
+    if (seenCrs.has(crs)) continue;
+    seenCrs.add(crs);
+    aggregateCrs.push(crs);
+  }
   const aggregates = stationAggregates(
-    resolved.window,
+    aggregateCrs,
     trainsOnStrip.map(asNetworkTrain),
     nowHhmm,
   );
@@ -263,6 +305,7 @@ export function buildRouteLiveModel(
     window: resolved.window,
     windowKey: resolved.windowKey,
     selectedServiceGuid: resolved.selectedServiceGuid,
+    sideBranches,
     trainsOnStrip,
     selected,
     selectedDetail,

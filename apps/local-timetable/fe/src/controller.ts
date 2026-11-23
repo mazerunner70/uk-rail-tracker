@@ -25,10 +25,12 @@ import {
   windowKeyForPlace,
 } from "./routeStrip.js";
 import { placeTrain } from "./networkMap.js";
+import { mergedStationWindow } from "./journeySpine.js";
 import {
   buildRouteLiveModel,
   placementStopsFromRows,
   rowsForTrain,
+  type ResolvedRouteWindow,
   type RouteLiveModel,
 } from "./routeLiveModel.js";
 
@@ -478,11 +480,7 @@ export function rebuildRouteLive(
   );
 }
 
-export type ResolvedRouteWindow = {
-  window: string[];
-  windowKey: string;
-  selectedServiceGuid: string | null;
-};
+export type { ResolvedRouteWindow };
 
 /** Window of stations around the tracked train place or station. */
 export function resolveRouteWindow(
@@ -494,11 +492,23 @@ export function resolveRouteWindow(
   if (!track || !diagram) return null;
 
   if (track.kind === "station") {
+    const merged = vm.networkHeld
+      ? mergedStationWindow(vm.networkHeld.trains, track.crs)
+      : null;
+    if (merged && merged.window.length > 0) {
+      return {
+        window: merged.window,
+        windowKey: `at:${track.crs}`,
+        selectedServiceGuid: null,
+        sideBranches: merged.sideBranches,
+      };
+    }
     const window = windowAroundStation(diagram, track.crs);
     return {
       window,
       windowKey: `at:${track.crs}`,
       selectedServiceGuid: null,
+      sideBranches: [],
     };
   }
 
@@ -520,6 +530,7 @@ export function resolveRouteWindow(
       window: windowAroundStation(diagram, ends.originCrs),
       windowKey: `at:${ends.originCrs}`,
       selectedServiceGuid: track.serviceGuid,
+      sideBranches: [],
     };
   }
   // Prefer the train OD spine; if place is off that path, fall back to corridor through place.
@@ -534,6 +545,7 @@ export function resolveRouteWindow(
     window: window.length > 0 ? window : path,
     windowKey: windowKeyForPlace(place),
     selectedServiceGuid: track.serviceGuid,
+    sideBranches: [],
   };
 }
 

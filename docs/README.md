@@ -24,11 +24,16 @@ Toolchain setup, Gradle scaffold, and emulator/phone workflows live under [andro
 - [Android native app plan](../android/docs/android-native-app-plan.md) — runbook
 - [Android native app implementation](../android/docs/android-native-app-impl.md) — Hello World spec
 
+## Design docs (KDD)
+
+App design documentation lives under **[kdd/](kdd/)** — that is the home for the design doc for this app.
+
 ## Project layout
 
 ```text
 uk-rail-tracker/
 ├── docs/                  # product docs (this directory)
+│   └── kdd/               # design doc / KDD (canonical location)
 ├── android/               # Kotlin + Compose Android app
 ├── stations.xml           # static National Rail station directory (JSON)
 └── README.md

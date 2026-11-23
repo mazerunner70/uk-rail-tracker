@@ -1,3 +1,4 @@
+import type { SideBranch } from "./journeySpine.js";
 import { placeTrain, type TrainPlace } from "./networkMap.js";
 import type { NetworkDiagram, NetworkTrain, StatusLabel } from "./types.js";
 
@@ -28,10 +29,20 @@ export type StripTrainMarker = {
   above: boolean;
 };
 
+export type StripSideBranchLayout = {
+  junctionCrs: string;
+  /** Spine junction position (for the vertical drop). */
+  fromX: number;
+  fromY: number;
+  stations: StripStation[];
+  segments: StripSegment[];
+};
+
 export type StripLayout = {
   stations: StripStation[];
   segments: StripSegment[];
   markers: StripTrainMarker[];
+  sideBranches: StripSideBranchLayout[];
   width: number;
   height: number;
   selectedProgress: number | null;
@@ -44,6 +55,8 @@ const STRIP_PAD_Y = 24;
 const STATION_GAP = 120;
 const TRAIN_OFFSET_Y = 28;
 const TRAIN_STACK_GAP = 14;
+const SPUR_DROP_Y = 64;
+const SPUR_GAP = 72;
 
 export function adjacency(diagram: NetworkDiagram): Map<string, string[]> {
   const links = new Map<string, string[]>();
@@ -399,12 +412,14 @@ export function stripLayout(
   trains: readonly NetworkTrain[],
   nowHhmm: string,
   selectedServiceGuid: string | null,
+  sideBranches: readonly SideBranch[] = [],
 ): StripLayout {
   const stations: StripStation[] = spine.map((crs, i) => ({
     crs,
     x: STRIP_PAD_X + i * STATION_GAP,
     y: STRIP_Y,
   }));
+  const byCrs = new Map(stations.map((s) => [s.crs, s]));
   // Neutral segments for this stage — no severity colouring on the line.
   const segments: StripSegment[] = [];
   for (let i = 0; i < spine.length - 1; i++) {
@@ -419,23 +434,67 @@ export function stripLayout(
       y: STRIP_Y,
     });
   }
+
+  const spurLayouts: StripSideBranchLayout[] = [];
+  let spurIndex = 0;
+  for (const branch of sideBranches) {
+    const junction = byCrs.get(branch.junctionCrs);
+    if (!junction || branch.stations.length === 0) continue;
+    const spurY = STRIP_Y + SPUR_DROP_Y + spurIndex * 36;
+    spurIndex += 1;
+    const spurStations: StripStation[] = branch.stations.map((crs, i) => ({
+      crs,
+      x: junction.x + (i + 1) * SPUR_GAP,
+      y: spurY,
+    }));
+    const spurSegments: StripSegment[] = [
+      {
+        fromCrs: branch.junctionCrs,
+        toCrs: branch.stations[0]!,
+        severity: "on-time",
+        x1: junction.x,
+        x2: spurStations[0]!.x,
+        y: spurY,
+      },
+    ];
+    for (let i = 0; i < spurStations.length - 1; i++) {
+      spurSegments.push({
+        fromCrs: branch.stations[i]!,
+        toCrs: branch.stations[i + 1]!,
+        severity: "on-time",
+        x1: spurStations[i]!.x,
+        x2: spurStations[i + 1]!.x,
+        y: spurY,
+      });
+    }
+    spurLayouts.push({
+      junctionCrs: branch.junctionCrs,
+      fromX: junction.x,
+      fromY: junction.y,
+      stations: spurStations,
+      segments: spurSegments,
+    });
+  }
+
   const markers: StripTrainMarker[] = [];
   // Stack only trains that share the same place + side, so a cluster at one
   // end of the strip cannot push a mid-hop marker out of the viewBox.
   const stackByLocation = new Map<string, number>();
-  for (const train of trains) {
-    const place = placeTrain(train.stops ?? [], nowHhmm);
-    if (!place) continue;
-    const on = placeOnSpine(place, spine);
-    if (!on) continue;
+  const placeMarker = (
+    train: NetworkTrain,
+    on: { progress: number; towardDest: boolean },
+    path: readonly string[],
+    originX: number,
+    originY: number,
+    gap: number,
+  ) => {
     const above = on.towardDest;
-    const locationKey = `${windowKeyForPlace(place)}:${above ? "above" : "below"}`;
+    const locationKey = `${windowKeyForPlace(placeTrain(train.stops ?? [], nowHhmm)!)}:${above ? "above" : "below"}:${originY}`;
     const stack = stackByLocation.get(locationKey) ?? 0;
     stackByLocation.set(locationKey, stack + 1);
-    const x =
-      STRIP_PAD_X + on.progress * Math.max(1, spine.length - 1) * STATION_GAP;
+    const x = originX + on.progress * Math.max(1, path.length - 1) * gap;
     const y =
-      STRIP_Y + (above ? -1 : 1) * (TRAIN_OFFSET_Y + stack * TRAIN_STACK_GAP);
+      originY + (above ? -1 : 1) * (TRAIN_OFFSET_Y + stack * TRAIN_STACK_GAP);
     markers.push({
       serviceGuid: train.serviceGuid,
       x,
@@ -445,17 +504,48 @@ export function stripLayout(
       progress: on.progress,
       above,
     });
+  };
+
+  for (const train of trains) {
+    const place = placeTrain(train.stops ?? [], nowHhmm);
+    if (!place) continue;
+    const onMain = placeOnSpine(place, spine);
+    if (onMain) {
+      placeMarker(train, onMain, spine, STRIP_PAD_X, STRIP_Y, STATION_GAP);
+      continue;
+    }
+    for (const spur of spurLayouts) {
+      const branch = sideBranches.find((b) => b.junctionCrs === spur.junctionCrs);
+      if (!branch) continue;
+      const path = [branch.junctionCrs, ...branch.stations];
+      const on = placeOnSpine(place, path);
+      if (!on) continue;
+      const junction = byCrs.get(branch.junctionCrs)!;
+      placeMarker(train, on, path, junction.x, spur.stations[0]?.y ?? STRIP_Y + SPUR_DROP_Y, SPUR_GAP);
+      break;
+    }
   }
   const selected = selectedServiceGuid
     ? trains.find((train) => train.serviceGuid === selectedServiceGuid)
     : undefined;
-  const width =
+  let width =
     STRIP_PAD_X * 2 + Math.max(0, spine.length - 1) * STATION_GAP;
+  for (const spur of spurLayouts) {
+    for (const st of spur.stations) {
+      width = Math.max(width, st.x + STRIP_PAD_X);
+    }
+  }
   let minY = STRIP_Y;
   let maxY = STRIP_Y;
   for (const marker of markers) {
     minY = Math.min(minY, marker.y);
     maxY = Math.max(maxY, marker.y);
+  }
+  for (const spur of spurLayouts) {
+    for (const st of spur.stations) {
+      minY = Math.min(minY, st.y);
+      maxY = Math.max(maxY, st.y);
+    }
   }
   // Keep station labels (~+28) and train tags (~±18) inside the viewBox.
   const top = Math.min(0, minY - STRIP_PAD_Y);
@@ -465,11 +555,17 @@ export function stripLayout(
     for (const station of stations) station.y += shift;
     for (const segment of segments) segment.y += shift;
     for (const marker of markers) marker.y += shift;
+    for (const spur of spurLayouts) {
+      spur.fromY += shift;
+      for (const st of spur.stations) st.y += shift;
+      for (const seg of spur.segments) seg.y += shift;
+    }
   }
   return {
     stations,
     segments,
     markers,
+    sideBranches: spurLayouts,
     width: Math.max(width, STRIP_PAD_X * 2),
     height: bottom + shift,
     selectedProgress: selectedProgress(selected, spine, nowHhmm),

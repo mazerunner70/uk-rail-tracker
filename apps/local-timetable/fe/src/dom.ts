@@ -1443,6 +1443,29 @@ function severityClass(severity: SegmentSeverity): string {
   return "sev-ok";
 }
 
+function paintStripStation(
+  svg: SVGSVGElement,
+  station: { crs: string; x: number; y: number },
+  branch: boolean,
+): void {
+  const group = svgEl("g", {
+    class: branch ? "route-station is-branch" : "route-station",
+    transform: `translate(${station.x} ${station.y})`,
+    "data-crs": station.crs,
+    ...(branch ? { "data-branch": "1" } : {}),
+  });
+  group.append(svgEl("circle", { r: "7", class: "route-station-dot" }));
+  const label = svgEl("text", {
+    class: "route-station-label",
+    x: "0",
+    y: "28",
+    "text-anchor": "middle",
+  });
+  label.textContent = stationName(station.crs);
+  group.append(label);
+  svg.append(group);
+}
+
 function routeStripSvg(
   layout: StripLayout,
   selectedGuid: string | null,
@@ -1468,22 +1491,38 @@ function routeStripSvg(
       "stroke-linecap": "round",
     }));
   }
+  for (const spur of layout.sideBranches ?? []) {
+    const spurY = spur.stations[0]?.y ?? spur.fromY;
+    svg.append(svgEl("line", {
+      class: "route-segment route-spur",
+      x1: String(spur.fromX),
+      y1: String(spur.fromY),
+      x2: String(spur.fromX),
+      y2: String(spurY),
+      stroke: "#5a7a9a",
+      "stroke-width": "4",
+      "stroke-linecap": "round",
+      "data-testid": "route-spur",
+      "data-junction": spur.junctionCrs,
+    }));
+    for (const segment of spur.segments) {
+      svg.append(svgEl("line", {
+        class: "route-segment route-spur",
+        x1: String(segment.x1),
+        y1: String(segment.y),
+        x2: String(segment.x2),
+        y2: String(segment.y),
+        stroke: "#5a7a9a",
+        "stroke-width": "4",
+        "stroke-linecap": "round",
+      }));
+    }
+    for (const station of spur.stations) {
+      paintStripStation(svg, station, true);
+    }
+  }
   for (const station of layout.stations) {
-    const group = svgEl("g", {
-      class: "route-station",
-      transform: `translate(${station.x} ${station.y})`,
-      "data-crs": station.crs,
-    });
-    group.append(svgEl("circle", { r: "7", class: "route-station-dot" }));
-    const label = svgEl("text", {
-      class: "route-station-label",
-      x: "0",
-      y: "28",
-      "text-anchor": "middle",
-    });
-    label.textContent = stationName(station.crs);
-    group.append(label);
-    svg.append(group);
+    paintStripStation(svg, station, false);
   }
   for (const marker of layout.markers) {
     const selected = marker.serviceGuid === selectedGuid;
@@ -1577,18 +1616,35 @@ function otherTrainsPane(
   return panel("Other visible trains", "route-other-trains", [list]);
 }
 
-function stationsPane(aggregates: StationAggregate[]): HTMLElement {
+function stationsPane(
+  aggregates: StationAggregate[],
+  windowCrs: readonly string[],
+  sideBranches: readonly { junctionCrs: string; stations: string[] }[],
+): HTMLElement {
   if (aggregates.length === 0) {
     return panel("Stations", "route-stations", [
       el("p", { class: "nodata" }, ["No stations in window"]),
     ]);
   }
+  const branchOf = new Map<string, string>();
+  for (const branch of sideBranches) {
+    for (const crs of branch.stations) branchOf.set(crs, branch.junctionCrs);
+  }
   const list = el("ul", { class: "route-side-list" }, []);
   for (const row of aggregates) {
+    const via = branchOf.get(row.crs);
+    const onSpine = windowCrs.includes(row.crs);
     list.append(
-      el("li", { class: "route-side-row", "data-crs": row.crs }, [
+      el("li", {
+        class: via ? "route-side-row is-branch" : "route-side-row",
+        "data-crs": row.crs,
+        ...(via ? { "data-branch-of": via } : {}),
+      }, [
         el("span", { class: "mono" }, [row.crs]),
-        el("span", {}, [stationName(row.crs)]),
+        el("span", {}, [
+          stationName(row.crs)
+          + (via ? ` (branch @ ${via})` : onSpine ? "" : ""),
+        ]),
         el("span", {}, [
           `at ${row.atCount} · app ${row.approachingCount}`,
         ]),
@@ -1649,7 +1705,12 @@ function renderRoute(vm: ScreenViewModel, _now: Date): HTMLElement {
       ]),
       el("div", { class: "route-stats", "data-testid": "route-stats" }, [
         el("p", {}, [`Visible trains: ${model.layout.markers.length}`]),
-        el("p", {}, [`Stations: ${model.window.length}`]),
+        el("p", {}, [
+          `Stations: ${model.window.length}`
+          + (model.sideBranches.length > 0
+            ? ` · branches: ${model.sideBranches.length}`
+            : ""),
+        ]),
       ]),
     ]),
     panel("Route & Live Track", "route-track", [
@@ -1658,7 +1719,7 @@ function renderRoute(vm: ScreenViewModel, _now: Date): HTMLElement {
     el("div", { class: "route-footer" }, [
       entityPane,
       otherTrainsPane(model.trainsOnStrip, model.selectedServiceGuid),
-      stationsPane(model.aggregates),
+      stationsPane(model.aggregates, model.window, model.sideBranches),
     ]),
   ]);
 }
