@@ -40,8 +40,10 @@ export type StripLayout = {
 const STRIP_PAD_X = 48;
 const STRIP_Y = 80;
 const STRIP_HEIGHT = 160;
+const STRIP_PAD_Y = 24;
 const STATION_GAP = 120;
 const TRAIN_OFFSET_Y = 28;
+const TRAIN_STACK_GAP = 14;
 
 export function adjacency(diagram: NetworkDiagram): Map<string, string[]> {
   const links = new Map<string, string[]>();
@@ -115,13 +117,29 @@ export function placeOnSpine(
   }
   const from = index.get(place.fromCrs);
   const to = index.get(place.toCrs);
-  if (from === undefined || to === undefined) return null;
-  const span = Math.abs(to - from);
-  if (span === 0) return { progress: from / last, towardDest: true };
-  const local = from < to ? place.fraction : 1 - place.fraction;
-  const lo = Math.min(from, to);
-  const progress = (lo + local * span) / last;
-  return { progress, towardDest: from < to };
+  // Hop fully on the strip.
+  if (from !== undefined && to !== undefined) {
+    const span = Math.abs(to - from);
+    if (span === 0) return { progress: from / last, towardDest: true };
+    const local = from < to ? place.fraction : 1 - place.fraction;
+    const lo = Math.min(from, to);
+    const progress = (lo + local * span) / last;
+    return { progress, towardDest: from < to };
+  }
+  // Entering the window: map the external→on-spine hop onto the last strip
+  // hop into `to` (e.g. MKC→APS while the window starts at CED).
+  if (from === undefined && to !== undefined) {
+    const prev = Math.max(0, to - 1);
+    const progress = (prev + place.fraction * (to - prev)) / last;
+    return { progress, towardDest: true };
+  }
+  // Leaving the window: keep the marker at/near the last on-spine station.
+  if (from !== undefined && to === undefined) {
+    const next = Math.min(last, from + 1);
+    const progress = (from + place.fraction * (next - from)) / last;
+    return { progress, towardDest: next >= from };
+  }
+  return null;
 }
 
 export function trainsOnSpine(
@@ -417,7 +435,7 @@ export function stripLayout(
     const x =
       STRIP_PAD_X + on.progress * Math.max(1, spine.length - 1) * STATION_GAP;
     const y =
-      STRIP_Y + (above ? -1 : 1) * (TRAIN_OFFSET_Y + stack * 14);
+      STRIP_Y + (above ? -1 : 1) * (TRAIN_OFFSET_Y + stack * TRAIN_STACK_GAP);
     markers.push({
       serviceGuid: train.serviceGuid,
       x,
@@ -433,12 +451,27 @@ export function stripLayout(
     : undefined;
   const width =
     STRIP_PAD_X * 2 + Math.max(0, spine.length - 1) * STATION_GAP;
+  let minY = STRIP_Y;
+  let maxY = STRIP_Y;
+  for (const marker of markers) {
+    minY = Math.min(minY, marker.y);
+    maxY = Math.max(maxY, marker.y);
+  }
+  // Keep station labels (~+28) and train tags (~±18) inside the viewBox.
+  const top = Math.min(0, minY - STRIP_PAD_Y);
+  const bottom = Math.max(STRIP_HEIGHT, maxY + STRIP_PAD_Y + 28);
+  const shift = -top;
+  if (shift > 0) {
+    for (const station of stations) station.y += shift;
+    for (const segment of segments) segment.y += shift;
+    for (const marker of markers) marker.y += shift;
+  }
   return {
     stations,
     segments,
     markers,
     width: Math.max(width, STRIP_PAD_X * 2),
-    height: STRIP_HEIGHT,
+    height: bottom + shift,
     selectedProgress: selectedProgress(selected, spine, nowHhmm),
   };
 }
