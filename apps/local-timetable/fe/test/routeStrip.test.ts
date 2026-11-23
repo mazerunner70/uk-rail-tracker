@@ -4,6 +4,7 @@ import { placeTrain } from "../src/networkMap.js";
 import {
   corridorThroughStation,
   journeyProgress,
+  placeOnSpine,
   segmentSeverity,
   spinePath,
   stationAggregates,
@@ -133,6 +134,46 @@ describe("segmentSeverity", () => {
 });
 
 describe("placeOnSpine / stripLayout", () => {
+  it("maps a hop entering the window onto the approach into the first on-spine stop", () => {
+    // National Rail-style: departed MKC, next call APS, window is CED…WFJ (no MKC).
+    const spine = ["CED", "TRI", "BKM", "XOE", "HML", "APS", "KGL", "WFJ"];
+    const place = {
+      atStation: false as const,
+      fromCrs: "MKC",
+      toCrs: "APS",
+      fraction: 0.73,
+    };
+    const on = placeOnSpine(place, spine);
+    assert.ok(on);
+    const apsIdx = 5;
+    const prev = apsIdx - 1;
+    const last = spine.length - 1;
+    const expected = (prev + 0.73 * (apsIdx - prev)) / last;
+    assert.ok(Math.abs((on?.progress ?? -1) - expected) < 1e-9);
+    assert.equal(on?.towardDest, true);
+    const service = train("nr-aps", "MKC", "EUS", [
+      stop("MKC", null, "2042"),
+      stop("APS", "2115", "2116"),
+      stop("WFJ", "2125", null),
+    ]);
+    assert.equal(trainsOnSpine([service], spine, "2106").length, 1);
+    assert.equal(stripLayout(spine, [service], "2106", null).markers.length, 1);
+  });
+
+  it("keeps a hop leaving the window pinned near the last on-spine station", () => {
+    const spine = ["CED", "TRI", "BKM", "XOE", "HML", "APS", "KGL", "WFJ"];
+    const place = {
+      atStation: false as const,
+      fromCrs: "WFJ",
+      toCrs: "BSY",
+      fraction: 0.4,
+    };
+    const on = placeOnSpine(place, spine);
+    assert.ok(on);
+    assert.equal(on?.progress, 1);
+    assert.equal(on?.towardDest, true);
+  });
+
   it("projects a mid-hop train onto the strip and reports selected progress", () => {
     const spine = ["EUS", "WFJ", "MKC", "BHM"];
     const service = train("1M45", "EUS", "BHM", [
