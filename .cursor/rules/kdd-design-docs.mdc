@@ -1,0 +1,22 @@
+---
+description: Design docs live under docs/kdd
+alwaysApply: true
+---
+
+# Design documentation (KDD)
+
+The design document for this app is held in **`docs/kdd/`**.
+
+When creating, updating, or citing app design / KDD material, use that folder — not other trees under `docs/` or app-local `docs/` folders — unless the user explicitly points elsewhere.
+
+## Glossary (required)
+
+Every KDD must open with a **Glossary** section (immediately after the title/lede) that defines local terminology used in the doc — code constants (e.g. `WINDOW_RADIUS`), domain shorthand, and project-specific names.
+
+- Only include terms that help **quick readability** of that doc.
+- Skip obvious English and terms defined only by a one-off code citation the reader does not need to carry.
+- Prefer a compact term/meaning table.
+
+## Project terminology canon
+
+**[`docs/kdd/002-terminology-map.md`](docs/kdd/002-terminology-map.md) (KDD-002)** is the project-wide terminology source of truth (Station; adjacent/neighbouring; Through =2 / Terminal =1 / Junction ≥3; Segment = Route; JunctionSegment / Line; Journey; live-track context vs topology Route; spine; window; etc.). Prefer those definitions in new prose and code; migrate older identifiers over time. Diagrams in KDD-002 are normative for the build-up terms.

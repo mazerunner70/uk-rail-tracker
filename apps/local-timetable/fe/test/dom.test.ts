@@ -745,6 +745,61 @@ describe("route detail page", () => {
     assert.match(text(root, "selected-entity-card"), /SELECTED STATION/);
     assert.match(text(root, "selected-entity-card"), /MKC/);
   });
+
+  it("draws a side-branch spur for station-tap merged journeys", () => {
+    const vm = createInitialViewModel();
+    vm.phase = "loaded";
+    vm.loadSucceeded = true;
+    vm.page = "route";
+    vm.diagramHeld = heldDiagram([
+      ["CED", "TRI", "APS", "KGL", "WFJ", "BUS", "EUS"],
+    ]);
+    vm.routeTrack = {
+      kind: "station",
+      crs: "APS",
+      lastWindowKey: "at:APS",
+    };
+    vm.networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "main",
+          problem: false,
+          stops: ["CED", "TRI", "APS", "KGL", "WFJ", "BUS", "EUS"].map((crs) => ({
+            crs,
+            arr: null,
+            dep: "1200",
+          })),
+        },
+        {
+          serviceGuid: "main2",
+          problem: false,
+          stops: ["CED", "TRI", "APS", "KGL", "WFJ", "BUS", "EUS"].map((crs) => ({
+            crs,
+            arr: null,
+            dep: "1210",
+          })),
+        },
+        {
+          serviceGuid: "branch",
+          problem: false,
+          stops: ["APS", "KGL", "WFJ", "SAA"].map((crs) => ({
+            crs,
+            arr: null,
+            dep: "1205",
+          })),
+        },
+      ],
+    };
+    const root = render(vm);
+    assert.ok(root.querySelector('[data-testid="route-spur"]'));
+    assert.ok(root.querySelector('.route-station.is-branch[data-crs="SAA"]'));
+    assert.match(text(root, "route-stations"), /branch @ WFJ/);
+  });
 });
 
 describe("station pair page", () => {

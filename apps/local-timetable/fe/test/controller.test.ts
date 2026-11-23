@@ -941,6 +941,70 @@ describe("route page controller", () => {
     assert.ok(live!.selected);
     assert.equal(live!.selected!.serviceGuid, "1M45");
     assert.equal(live!.layout.selectedProgress, live!.selected!.journeyProgress);
+    assert.deepEqual(live!.sideBranches, []);
+  });
+
+  it("station tap merges journeys through S and may attach side branches", () => {
+    const c = createScreenController(stubApi({}));
+    const crs = ["CED", "TRI", "BKM", "HML", "APS", "KGL", "WFJ", "BUS", "EUS"];
+    c.getView().diagramHeld = {
+      loadDay: "20261106",
+      hdSequence: "1",
+      stations: crs.map((code, rank) => ({
+        crs: code,
+        x: rank * 40,
+        y: 80,
+        rank,
+        lane: 0,
+      })),
+      corridors: [],
+      lines: [
+        // Short line ending at WFJ — old KDD-001 clamp; merge must go past.
+        { id: "short", stations: ["CED", "TRI", "BKM", "HML", "APS", "KGL", "WFJ"] },
+      ],
+      width: 400,
+      height: 160,
+    };
+    c.getView().networkHeld = {
+      calendarDate: "261106",
+      generation: "g1",
+      revision: 0,
+      full: true,
+      removed: [],
+      trains: [
+        {
+          serviceGuid: "wcml",
+          problem: false,
+          stops: crs.map((code) => ({ crs: code, arr: null, dep: "1200" })),
+        },
+        {
+          serviceGuid: "abbey",
+          problem: false,
+          stops: ["APS", "KGL", "WFJ", "SAA"].map((code) => ({
+            crs: code,
+            arr: null,
+            dep: "1200",
+          })),
+        },
+        {
+          serviceGuid: "wcml2",
+          problem: false,
+          stops: crs.map((code) => ({ crs: code, arr: null, dep: "1210" })),
+        },
+      ],
+    };
+    assert.equal(c.openRouteFromStation("APS"), true);
+    const live = c.getView().routeLive;
+    assert.ok(live);
+    assert.ok(live!.window.includes("APS"));
+    assert.ok(
+      live!.window.includes("BUS"),
+      `expected BUS on window past WFJ, got ${live!.window.join(",")}`,
+    );
+    assert.ok(
+      live!.sideBranches.some((b) => b.junctionCrs === "WFJ" && b.stations.includes("SAA")),
+      `expected SAA branch at WFJ, got ${JSON.stringify(live!.sideBranches)}`,
+    );
   });
 
   it("refuses a train with no usable ends", () => {

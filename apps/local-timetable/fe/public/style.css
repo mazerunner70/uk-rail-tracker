@@ -834,6 +834,15 @@ th {
   stroke-width: 1.5px;
 }
 
+.route-station.is-branch .route-station-dot {
+  fill: #c5d4e4;
+}
+
+.route-spur {
+  stroke-dasharray: 0;
+  opacity: 0.85;
+}
+
 .route-station-label {
   fill: var(--muted);
   font-size: 11px;
